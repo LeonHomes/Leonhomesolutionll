@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LEON Home Solutions | Sistema de Ventas & CRM</title>
+    <!-- Ícono de la pestaña del navegador (favicon). Arranca con este monograma "L" a modo de
+         marcador de posición — en cuanto suban su logo real desde el panel Admin → "Editor de Sitio
+         Web", renderSiteBranding() reemplaza este href por el logo real, así el mismo archivo que
+         suben para el header también queda como ícono de la pestaña, sin subir nada por separado. -->
+    <link id="site-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230a1a2e%22/%3E%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23025fae%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%231893f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22url(%23g)%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2245%22%20font-family%3D%22Arial%2C%20Helvetica%2C%20sans-serif%22%20font-size%3D%2234%22%20font-weight%3D%22900%22%20fill%3D%22%23ffffff%22%20text-anchor%3D%22middle%22%3EL%3C/text%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -373,7 +378,7 @@
     <!-- Corporate info bar (black detail strip) -->
     <div id="corporate-topbar" class="hidden md:flex justify-between items-center px-8 lg:px-12 py-2 bg-ink-950 border-b border-ink-800 text-[11px] font-bold text-slate-400 relative z-30">
         <div class="flex gap-6">
-            <span class="flex items-center gap-2 hover:text-brand-400 transition-colors cursor-pointer"><i class="fa-solid fa-phone text-brand-400"></i>787-410-0694</span>
+            <span class="flex items-center gap-2 hover:text-brand-400 transition-colors cursor-pointer"><i class="fa-solid fa-phone text-brand-400"></i> 787-410-0694</span>
             <span class="flex items-center gap-2 hover:text-brand-400 transition-colors cursor-pointer"><i class="fa-solid fa-envelope text-brand-400"></i> ventas@leonsolutions.com</span>
         </div>
         <div class="flex gap-6">
@@ -387,7 +392,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
                 <div class="flex items-center gap-3 cursor-pointer group" onclick="switchView('public')">
-                    <div id="header-logo-box" class="w-12 h-12 bg-gradient-to-br from-ink-900 to-ink-700 rounded-xl flex items-center justify-center text-brand-400 font-extrabold text-2xl shadow-[0_0_18px_rgba(24,147,245,0.35)] overflow-hidden group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300">
+                    <div id="header-logo-box" class="w-14 h-14 bg-gradient-to-br from-ink-900 to-ink-700 rounded-xl flex items-center justify-center text-brand-400 font-extrabold text-2xl shadow-[0_0_18px_rgba(24,147,245,0.35)] group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300">
                         <i class="fa-solid font-bold fa-house-chimney"></i>
                     </div>
                     <div>
@@ -726,6 +731,10 @@
                     <div><span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Inversión Estimada:</span><div class="text-3xl font-black text-brand-600 mt-1" id="cart-total-price">$0.00 USD</div></div>
                     <button onclick="showCreditFormStep()" class="bg-gradient-to-r from-brand-600 to-brand-400 hover:from-brand-500 hover:to-brand-300 text-white px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 shadow-lg shadow-brand-500/30 hover:-translate-y-0.5 flex items-center gap-2">Formalizar <i class="fa-solid fa-arrow-right"></i></button>
                 </div>
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl border border-dashed border-brand-200 bg-white">
+                    <div class="text-xs text-slate-500"><i class="fa-solid fa-circle-info text-brand-500 mr-1"></i>¿No sabes qué equipo necesitas? Puedes pedir una cotización de sistema solar según tu consumo eléctrico, sin seleccionar productos.</div>
+                    <button type="button" onclick="leonV2StartConsumptionQuote()" class="shrink-0 bg-white border-2 border-brand-200 hover:border-brand-500 text-brand-700 px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 flex items-center gap-2"><i class="fa-solid fa-bolt"></i>Cotizar por mi consumo</button>
+                </div>
             </div>
         </div>
     </div>
@@ -810,11 +819,24 @@
                 </div>
                 <div class="col-span-1 md:col-span-2 pt-4 border-t border-brand-100">
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Fotos adicionales (galería)</label>
-                    <p class="text-[10px] text-slate-400 mb-2">Estas se suman a la portada de arriba — el cliente podrá pasar varias fotos en el detalle del equipo.</p>
-                    <input type="file" id="prod-extra-img-file" accept="image/*" multiple class="hidden" onchange="handleProdExtraImgFiles(event)">
-                    <button type="button" onclick="document.getElementById('prod-extra-img-file').click()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-images mr-1"></i> Añadir fotos</button>
+                    <p class="text-[10px] text-slate-400 mb-2">Estas se suman a la portada de arriba — el cliente podrá pasar varias fotos en el detalle del equipo. Puedes subir archivos o pegar enlaces (URL), y añadir tantas como necesites.</p>
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <input type="file" id="prod-extra-img-file" accept="image/*" multiple class="hidden" onchange="handleProdExtraImgFiles(event)">
+                        <button type="button" onclick="document.getElementById('prod-extra-img-file').click()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-images mr-1"></i> Subir archivo(s)</button>
+                        <span class="text-[10px] text-slate-300 font-bold">o</span>
+                        <input type="url" id="prod-extra-img-url" placeholder="https://... (URL de la foto)" onkeydown="if(event.key==='Enter'){event.preventDefault();addProdExtraImageUrl();}" class="flex-grow min-w-[180px] bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-xs">
+                        <button type="button" onclick="addProdExtraImageUrl()" title="Añadir esta URL a la galería" class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-black text-base transition"><i class="fa-solid fa-plus"></i></button>
+                    </div>
                     <span id="prod-extra-img-status" class="text-[10px] text-slate-400 font-mono ml-2"></span>
                     <div id="prod-extra-images-list" class="flex flex-wrap gap-2 mt-3"></div>
+                </div>
+                <div class="col-span-1 md:col-span-2 pt-4 border-t border-brand-100">
+                    <div class="flex items-center justify-between mb-1 flex-wrap gap-2">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Variantes del Equipo (opcional)</label>
+                        <button type="button" onclick="addProdVariant()" class="bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Añadir variante</button>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mb-3">Úsalo cuando el mismo equipo se vende en combos distintos (ej. "Solo Batería" vs. "Batería + Panel Solar"), cada uno con su propio precio y fotos. En el catálogo público, al pasar las fotos de esa variante el sistema la selecciona sola y actualiza el precio en pantalla. Si una variante trae otro producto del catálogo incluido (ej. un panel solar), márcalo abajo para que el inventario de ambos baje junto en cada venta.</p>
+                    <div id="prod-variants-list" class="space-y-3"></div>
                 </div>
                 <div class="col-span-1 md:col-span-2 pt-4 border-t border-brand-100">
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Video del Equipo (opcional)</label>
@@ -829,6 +851,24 @@
                         <video id="prod-video-preview" controls class="w-full h-full object-contain bg-black"></video>
                     </div>
                     <button type="button" id="prod-video-remove-btn" onclick="clearProdVideo()" class="hidden mt-2 text-[10px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-wider transition"><i class="fa-solid fa-trash mr-1"></i>Quitar video</button>
+                </div>
+                <div class="col-span-1 md:col-span-2 pt-4 border-t border-brand-100">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Documentos y enlaces (opcional)</label>
+                    <p class="text-[10px] text-slate-400 mb-3">Pega el enlace de cada documento (PDF, página del fabricante, etc.) — en el detalle público del equipo, la persona podrá darle clic para verlo. Deja en blanco los que no tengas; solo se muestran como enlace los que sí tengan URL.</p>
+                    <div class="grid sm:grid-cols-2 gap-3">
+                        <div><label class="text-[10px] text-slate-500 flex items-center gap-1.5 mb-1"><i class="fa-solid fa-file-pdf text-brand-500"></i>Ficha técnica</label><input type="url" id="prod-doc-ficha" placeholder="https://..." class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-xs"></div>
+                        <div><label class="text-[10px] text-slate-500 flex items-center gap-1.5 mb-1"><i class="fa-solid fa-shield text-brand-500"></i>Garantía</label><input type="url" id="prod-doc-garantia" placeholder="https://..." class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-xs"></div>
+                        <div><label class="text-[10px] text-slate-500 flex items-center gap-1.5 mb-1"><i class="fa-solid fa-screwdriver-wrench text-brand-500"></i>Instalación</label><input type="url" id="prod-doc-instalacion" placeholder="https://..." class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-xs"></div>
+                        <div><label class="text-[10px] text-slate-500 flex items-center gap-1.5 mb-1"><i class="fa-solid fa-link text-brand-500"></i>Compatibilidad</label><input type="url" id="prod-doc-compatibilidad" placeholder="https://..." class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-xs"></div>
+                    </div>
+                </div>
+                <div class="col-span-1 md:col-span-2 pt-4 border-t border-brand-100">
+                    <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-800"><input type="checkbox" id="prod-roofseal-enabled" class="w-4 h-4 accent-brand-600" onchange="toggleRoofSealFields()"> <i class="fa-solid fa-house-chimney-crack text-brand-500"></i> Este equipo es un plan de Sellado de Techo (precio por pie²)</label>
+                    <p class="text-[10px] text-slate-400 mt-1 mb-3">Al marcar esta casilla, el "Precio (USD)" de arriba (y el de cada variante/combo) se interpreta como <b>precio por pie²</b>, no precio fijo — este equipo aparecerá en la Calculadora de Sellado de Techo del sitio público y en el asistente de propuestas de Roof Intelligence, filtrado aparte de los demás equipos.</p>
+                    <div id="prod-roofseal-fields" class="hidden grid sm:grid-cols-2 gap-3 p-4 rounded-xl bg-brand-50/40 border border-brand-100">
+                        <div><label class="text-[10px] text-slate-500 mb-1 block">Años de garantía</label><input type="number" id="prod-roofseal-warranty" min="0" step="1" placeholder="Ej. 10" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs outline-none"></div>
+                        <div class="sm:col-span-2"><label class="text-[10px] text-slate-500 mb-1 block">Materiales / qué incluye este plan</label><textarea id="prod-roofseal-materials" rows="2" placeholder="Ej. Membrana elastomérica, primer, sellado de juntas y penetraciones, 2 manos de acabado reflectivo..." class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs outline-none"></textarea></div>
+                    </div>
                 </div>
                 <div class="col-span-1 md:col-span-2 pt-4 border-t border-brand-100 flex justify-end gap-3">
                     <button type="button" onclick="closeProductModal()" class="px-5 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancelar</button>
@@ -957,7 +997,7 @@
             quotes: [
                 {
                     id: 'L-8812', clientName: 'Residencial Los Ríos', clientEmail: 'compras@losrios.com',
-                    clientCompany: '', clientPhone: '787-410-0694',
+                    clientCompany: '', clientPhone: '787-555-0110',
                     items: [ { name: 'Kit Solar Híbrido 10kW', qty: 2, price: 6800 } ],
                     total: 13600, status: 'En revisión de crédito', paymentType: 'Financiamiento 12 Meses',
                     vendorName: 'Juan Pérez', vendorEmail: 'vendedor@leonsolutions.com', origin: 'Asistido',
@@ -1006,7 +1046,21 @@
             // Tareas/recordatorios de seguimiento — una por cliente, asignable a cualquier miembro
             // del equipo, con fecha de vencimiento. Se sincroniza como colección normal (con id),
             // ver FB_LIST_COLLECTIONS más abajo.
-            followupTasks: []
+            followupTasks: [],
+            // ===================== LEON ROOF INTELLIGENCE =====================
+            // Una "propiedad" agrupa todo lo que pasa en una dirección física a lo largo del tiempo
+            // (evaluaciones de techo, propuestas, garantías) — vive aparte del expediente del cliente
+            // porque un mismo cliente puede tener varias propiedades, y una propiedad puede sobrevivir
+            // a un cambio de dueño. {id, clientId, clientName, address, municipio, zip, lat, lng,
+            // mapsUrl, createdAt, createdBy}
+            properties: [],
+            // Cada evaluación de techo es un documento autocontenido (mismo criterio que las
+            // cotizaciones: todo lo relacionado — secciones medidas, equipos, condición, fotos,
+            // precio — vive embebido adentro en vez de repartirse en 15 colecciones nuevas; encaja
+            // mejor con Firestore y con el resto de este archivo). {id, propertyId, clientId,
+            // clientName, version, status, createdAt, createdBy, imagerySource, sections[], equipment[],
+            // condition, roofScore, photos[], pricingPlanId, pricingSnapshot, repairs[], charges[]}
+            roofAssessments: []
         };
         // `let` bindings at script top-level do NOT become `window` properties (unlike plain
         // `function`/`var` declarations) — the LEON V2 block below checks `window.state` before
@@ -1017,6 +1071,9 @@
         let currentProdImgMode = 'url';
         let currentProductExtraImages = []; // galería de fotos adicionales del equipo en edición (además de la portada)
         let currentProdVideoMode = 'url';
+        // Variantes del equipo en edición: [{id,label,price,images:[url,...],includes:[{productId,qty}]}].
+        // Ausente o vacío = comportamiento actual sin cambios (un solo precio/portada para el equipo).
+        let currentProductVariants = [];
         let charts = { status: null, category: null };
         // Paginación simple en el cliente para no intentar pintar catálogos/listas enormes de una vez.
         const PAGE_SIZE = 12;
@@ -1220,10 +1277,12 @@
                         <div class="p-6"><h3 class="font-bold text-slate-900 text-base leading-snug mb-2">${prod.name}</h3><p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">${prod.desc}</p></div>
                     </div>
                     <div class="p-6 pt-0 flex items-center justify-between border-t border-brand-50 mt-2">
-                        <div><span class="text-[9px] text-brand-600 font-black uppercase tracking-widest block mb-0.5">Precio Base</span><span class="text-xl font-black text-slate-900">$${prod.price.toLocaleString()}</span></div>
-                        <button onclick="addToCart('${prod.id}')" ${prod.agotado ? 'disabled' : ''} class="bg-ink-900 hover:bg-gradient-to-r hover:from-brand-600 hover:to-brand-400 text-white p-3 rounded-xl font-bold text-xs transition-all duration-300 flex items-center gap-2 shadow hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-ink-900 disabled:hover:translate-y-0">
+                        <div><span class="text-[9px] text-brand-600 font-black uppercase tracking-widest block mb-0.5">${prod.roofSealing && prod.roofSealing.enabled ? 'Desde (por pie²)' : 'Precio Base'}</span><span class="text-xl font-black text-slate-900">$${prod.price.toLocaleString()}${prod.roofSealing && prod.roofSealing.enabled ? '<span class="text-xs font-bold text-slate-400">/pie²</span>' : ''}</span></div>
+                        ${prod.roofSealing && prod.roofSealing.enabled
+                            ? `<button onclick="leonV2OpenRoofSealCalc('${prod.id}')" ${prod.agotado ? 'disabled' : ''} class="bg-ink-900 hover:bg-gradient-to-r hover:from-brand-600 hover:to-brand-400 text-white p-3 rounded-xl font-bold text-xs transition-all duration-300 flex items-center gap-2 shadow hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-calculator"></i> <span class="hidden sm:inline">Cotizar</span></button>`
+                            : `<button onclick="addToCart('${prod.id}')" ${prod.agotado ? 'disabled' : ''} class="bg-ink-900 hover:bg-gradient-to-r hover:from-brand-600 hover:to-brand-400 text-white p-3 rounded-xl font-bold text-xs transition-all duration-300 flex items-center gap-2 shadow hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-ink-900 disabled:hover:translate-y-0">
                             <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">${prod.agotado ? 'Agotado' : 'Agregar'}</span>
-                        </button>
+                        </button>`}
                     </div>
                 `;
                 grid.appendChild(card);
@@ -1246,12 +1305,19 @@
         function addToCart(productId) {
             const product = state.products.find(p => p.id === productId);
             if (!product || product.agotado) return;
-            const existing = state.cart.find(item => item.id === productId);
-            // Se excluyen images/video: la propuesta solo necesita la portada — cargar toda la
+            // Un plan de Sellado de Techo se cotiza por pie² (calculadora), no se añade como una
+            // unidad más al carrito — por si este botón se dispara desde algún punto viejo del DOM.
+            if (product.roofSealing && product.roofSealing.enabled) { if (typeof window.leonV2OpenRoofSealCalc === 'function') window.leonV2OpenRoofSealCalc(productId); return; }
+            // Este "añadir rápido" desde la tarjeta del catálogo no pasó por el carrusel de detalle,
+            // así que siempre usa el precio base (sin variante) — solo cuenta como la misma línea otra
+            // unidad SIN variante seleccionada; no debe fundirse con una línea que sí tiene variante
+            // (leonV2AddProduct, desde el detalle del equipo), que se identifica por su propio cartLineId.
+            const existing = state.cart.find(item => item.id === productId && !item.variantId);
+            // Se excluyen images/video/variants: la propuesta solo necesita la portada — cargar toda la
             // galería en cada línea de la cotización la infla sin necesidad (y puede pasarse del
             // límite de 1MB por documento de Firestore).
-            const { images, video, ...productForCart } = product;
-            if (existing) { existing.qty += 1; } else { state.cart.push({ ...productForCart, qty: 1 }); }
+            const { images, video, variants, ...productForCart } = product;
+            if (existing) { existing.qty += 1; } else { state.cart.push({ ...productForCart, cartLineId: productId, qty: 1 }); }
             updateCartUI();
             showToast(`Añadido: ${product.name}`, 'success');
         }
@@ -1279,7 +1345,7 @@
                     <div class="flex items-center justify-between p-4 bg-brand-50/50 rounded-xl border border-brand-100 text-sm">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-12 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-brand-100"><img src="${item.image}" class="w-full h-full object-cover"></div>
-                            <div><h4 class="font-bold text-slate-900">${item.name}</h4><span class="text-brand-600 font-mono text-xs">$${item.price.toLocaleString()} c/u</span></div>
+                            <div><h4 class="font-bold text-slate-900">${item.name}${item.variantLabel ? ` <span class="text-brand-600 font-normal">— ${item.variantLabel}</span>` : ''}</h4><span class="text-brand-600 font-mono text-xs">$${item.price.toLocaleString()} c/u</span></div>
                         </div>
                         <div class="flex items-center gap-4">
                             <div class="flex items-center border border-brand-200 rounded-lg bg-white overflow-hidden text-slate-700">
@@ -1691,6 +1757,7 @@
                             ${p.oculto ? `<span class="text-[9px] text-slate-500 uppercase border border-slate-200 px-1.5 py-0.5 rounded"><i class="fa-solid fa-eye-slash"></i> Oculto</span>` : ''}
                             ${(Array.isArray(p.images) && p.images.length) ? `<span class="text-[9px] text-slate-500 uppercase border border-slate-200 px-1.5 py-0.5 rounded"><i class="fa-solid fa-images mr-0.5"></i>+${p.images.length} foto${p.images.length===1?'':'s'}</span>` : ''}
                             ${p.video ? `<span class="text-[9px] text-slate-500 uppercase border border-slate-200 px-1.5 py-0.5 rounded"><i class="fa-solid fa-circle-play mr-0.5"></i>Video</span>` : ''}
+                            ${(Array.isArray(p.variants) && p.variants.length) ? `<span class="text-[9px] text-brand-700 uppercase border border-brand-200 bg-brand-50 px-1.5 py-0.5 rounded"><i class="fa-solid fa-layer-group mr-0.5"></i>${p.variants.length} variante${p.variants.length === 1 ? '' : 's'}</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -1728,6 +1795,17 @@
                 currentProductExtraImages = Array.isArray(p.images) ? [...p.images] : [];
                 document.getElementById('prod-video-url').value = p.video || '';
                 previewProdVideo(p.video || '');
+                currentProductVariants = Array.isArray(p.variants) ? JSON.parse(JSON.stringify(p.variants)) : [];
+                const docs = p.docs || {};
+                document.getElementById('prod-doc-ficha').value = docs.ficha || '';
+                document.getElementById('prod-doc-garantia').value = docs.garantia || '';
+                document.getElementById('prod-doc-instalacion').value = docs.instalacion || '';
+                document.getElementById('prod-doc-compatibilidad').value = docs.compatibilidad || '';
+                const rs = p.roofSealing || {};
+                document.getElementById('prod-roofseal-enabled').checked = !!rs.enabled;
+                document.getElementById('prod-roofseal-warranty').value = rs.warrantyYears || '';
+                document.getElementById('prod-roofseal-materials').value = rs.materials || '';
+                toggleRoofSealFields();
             } else {
                 document.getElementById('product-modal-title').innerHTML = '<i class="fa-solid fa-circle-plus text-brand-500"></i> Nuevo Equipo';
                 document.getElementById('prod-stock').value = 0;
@@ -1735,12 +1813,29 @@
                 currentProductExtraImages = [];
                 document.getElementById('prod-video-url').value = '';
                 previewProdVideo('');
+                currentProductVariants = [];
+                document.getElementById('prod-doc-ficha').value = '';
+                document.getElementById('prod-doc-garantia').value = '';
+                document.getElementById('prod-doc-instalacion').value = '';
+                document.getElementById('prod-doc-compatibilidad').value = '';
+                document.getElementById('prod-roofseal-enabled').checked = false;
+                document.getElementById('prod-roofseal-warranty').value = '';
+                document.getElementById('prod-roofseal-materials').value = '';
+                toggleRoofSealFields();
             }
             renderProdExtraImagesList();
+            renderProdVariantsList();
             const modal = document.getElementById('product-modal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             requestAnimationFrame(() => modal.classList.add('modal-open'));
+        }
+        // Muestra/oculta los campos de garantía/materiales del plan de Sellado de Techo — el precio
+        // en sí NO cambia de campo (sigue siendo #prod-price / el precio de cada variante), solo
+        // cambia cómo se INTERPRETA ese número (fijo vs. por pie²) en el resto del sistema.
+        function toggleRoofSealFields() {
+            const box = document.getElementById('prod-roofseal-fields');
+            if (box) box.classList.toggle('hidden', !document.getElementById('prod-roofseal-enabled').checked);
         }
         function closeProductModal() {
             const modal = document.getElementById('product-modal');
@@ -1768,7 +1863,35 @@
                 oculto: document.getElementById('prod-oculto').checked,
                 stock: Math.max(0, parseInt(document.getElementById('prod-stock').value, 10) || 0),
                 images: [...currentProductExtraImages],
-                video: document.getElementById('prod-video-url').value || ''
+                video: document.getElementById('prod-video-url').value || '',
+                // Enlaces a documentos (ficha técnica, garantía, instalación, compatibilidad) — cada
+                // uno opcional; el detalle público solo muestra como clic los que traen URL.
+                docs: {
+                    ficha: document.getElementById('prod-doc-ficha').value.trim() || '',
+                    garantia: document.getElementById('prod-doc-garantia').value.trim() || '',
+                    instalacion: document.getElementById('prod-doc-instalacion').value.trim() || '',
+                    compatibilidad: document.getElementById('prod-doc-compatibilidad').value.trim() || ''
+                },
+                // Plan de Sellado de Techo: cuando enabled=true, el precio de este equipo (y el de
+                // cada variante) se interpreta como $/pie² en toda la calculadora/asistente de Roof
+                // Intelligence — ver leonV2AllRoofSealingPlans() y leonV2RoofSealingPlansForProduct().
+                roofSealing: {
+                    enabled: document.getElementById('prod-roofseal-enabled').checked,
+                    warrantyYears: parseInt(document.getElementById('prod-roofseal-warranty').value, 10) || 0,
+                    materials: document.getElementById('prod-roofseal-materials').value.trim() || ''
+                },
+                // Variantes válidas: se descartan filas sin nombre (dejadas a medias). Cada una guarda
+                // su propio precio, fotos (para vincular con el carrusel público) y los productos que
+                // trae incluidos (para bajar inventario de ambos juntos en cada venta).
+                variants: currentProductVariants
+                    .filter(v => v.label && String(v.label).trim())
+                    .map(v => ({
+                        id: v.id || ('var-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
+                        label: String(v.label).trim(),
+                        price: (typeof v.price === 'number' && !isNaN(v.price)) ? v.price : (parseFloat(v.price) || 0),
+                        images: Array.isArray(v.images) ? [...v.images] : [],
+                        includes: Array.isArray(v.includes) ? v.includes.map(inc => ({ productId: inc.productId, qty: Math.max(1, parseInt(inc.qty, 10) || 1) })) : []
+                    }))
             };
             if (currentEditProductId) {
                 const idx = state.products.findIndex(p => p.id === currentEditProductId);
@@ -1955,10 +2078,23 @@
         function renderSiteBranding() {
             const logoBox = document.getElementById('header-logo-box');
             if (logoBox) {
-                logoBox.innerHTML = state.siteContent.logoUrl
-                    ? `<img src="${state.siteContent.logoUrl}" alt="Logo" class="w-full h-full object-contain p-1 bg-white">`
-                    : `<i class="fa-solid font-bold fa-house-chimney"></i>`;
+                if (state.siteContent.logoUrl) {
+                    // Logo real de la empresa: se muestra completo y más grande, sin recortarlo ni
+                    // forzarlo dentro del cuadrito cuadrado con fondo que usa el ícono por defecto —
+                    // el archivo que suban ya trae su propio diseño (aro, texto, etc.), así que solo
+                    // se limita la altura para que quepa en el header, y el ancho se ajusta solo.
+                    logoBox.className = 'h-14 sm:h-16 flex items-center group-hover:scale-105 transition-transform duration-300';
+                    logoBox.innerHTML = `<img src="${state.siteContent.logoUrl}" alt="Logo" class="h-full w-auto max-w-[240px] object-contain">`;
+                } else {
+                    logoBox.className = 'w-14 h-14 bg-gradient-to-br from-ink-900 to-ink-700 rounded-xl flex items-center justify-center text-brand-400 font-extrabold text-2xl shadow-[0_0_18px_rgba(24,147,245,0.35)] group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300';
+                    logoBox.innerHTML = `<i class="fa-solid font-bold fa-house-chimney"></i>`;
+                }
             }
+            // El mismo logo que suben para el header se usa también como ícono de la pestaña del
+            // navegador (favicon) — así no hay que subir un archivo aparte para eso. Si todavía no
+            // han subido logo, se queda con el monograma "L" de marcador de posición del <head>.
+            const faviconEl = document.getElementById('site-favicon');
+            if (faviconEl && state.siteContent.logoUrl) faviconEl.href = state.siteContent.logoUrl;
             const heroSlot = document.getElementById('hero-media-slot');
             if (heroSlot) {
                 if (state.siteContent.heroMediaType === 'video' && state.siteContent.heroVideoUrl) {
@@ -2283,6 +2419,124 @@
             currentProductExtraImages.splice(index, 1);
             renderProdExtraImagesList();
         }
+        // Además de subir archivos, el admin puede pegar una URL de foto directamente (por ejemplo,
+        // una imagen ya alojada en el sitio del fabricante) y sumarla a la misma galería con "+".
+        function addProdExtraImageUrl() {
+            const input = document.getElementById('prod-extra-img-url');
+            const url = (input && input.value || '').trim();
+            if (!url) { showToast('Escribe o pega una URL de foto primero.', 'warning'); return; }
+            currentProductExtraImages.push(url);
+            renderProdExtraImagesList();
+            input.value = '';
+            const statusEl = document.getElementById('prod-extra-img-status');
+            if (statusEl) statusEl.innerText = 'Foto por URL añadida.';
+        }
+        window.addProdExtraImageUrl = addProdExtraImageUrl;
+
+        // ===================== VARIANTES DEL EQUIPO (precio + fotos + productos incluidos por combo) =====================
+        // Cada variante es un combo vendible del mismo equipo (ej. "Solo Batería" vs "Batería + Panel
+        // Solar"): precio propio, fotos propias (para que el carrusel público las reconozca y cambie
+        // de variante solo), y una lista "includes" de otros productos del catálogo que también deben
+        // bajar de inventario cuando se vende esa variante (ej. el panel solar que trae incluido).
+        function addProdVariant() {
+            currentProductVariants.push({ id: 'var-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), label: '', price: null, images: [], includes: [] });
+            renderProdVariantsList();
+        }
+        function removeProdVariant(index) {
+            currentProductVariants.splice(index, 1);
+            renderProdVariantsList();
+        }
+        function updateProdVariantField(index, field, value) {
+            if (!currentProductVariants[index]) return;
+            currentProductVariants[index][field] = value;
+        }
+        function addProdVariantImageUrl(index) {
+            const input = document.getElementById('prod-variant-img-url-' + index);
+            const url = (input && input.value || '').trim();
+            if (!url) { showToast('Escribe o pega una URL de foto primero.', 'warning'); return; }
+            currentProductVariants[index].images.push(url);
+            renderProdVariantsList();
+        }
+        function handleProdVariantImgFiles(event, index) {
+            const files = Array.from(event.target.files || []);
+            if (!files.length) return;
+            Promise.all(files.map(f => compressImageFile(f, 1000, 0.82))).then(results => {
+                results.forEach(r => currentProductVariants[index].images.push(r.dataUrl));
+                renderProdVariantsList();
+                showToast(results.length + (results.length === 1 ? ' foto añadida a la variante.' : ' fotos añadidas a la variante.'), 'success');
+            }).catch(err => { console.error(err); showToast('No se pudieron procesar algunas fotos.', 'error'); });
+        }
+        function removeProdVariantImage(index, imgIndex) {
+            currentProductVariants[index].images.splice(imgIndex, 1);
+            renderProdVariantsList();
+        }
+        function addProdVariantInclude(index) {
+            const sel = document.getElementById('prod-variant-include-select-' + index);
+            const qtyInput = document.getElementById('prod-variant-include-qty-' + index);
+            const productId = sel && sel.value;
+            if (!productId) { showToast('Selecciona un producto del catálogo para incluir.', 'warning'); return; }
+            if (productId === currentEditProductId) { showToast('Un producto no puede incluirse a sí mismo como componente.', 'warning'); return; }
+            const qty = Math.max(1, parseInt(qtyInput && qtyInput.value, 10) || 1);
+            const v = currentProductVariants[index];
+            const existing = v.includes.find(i => i.productId === productId);
+            if (existing) existing.qty = qty; else v.includes.push({ productId, qty });
+            renderProdVariantsList();
+        }
+        function removeProdVariantInclude(index, productId) {
+            currentProductVariants[index].includes = currentProductVariants[index].includes.filter(i => i.productId !== productId);
+            renderProdVariantsList();
+        }
+        function renderProdVariantsList() {
+            const wrap = document.getElementById('prod-variants-list');
+            if (!wrap) return;
+            if (!currentProductVariants.length) {
+                wrap.innerHTML = '<div class="text-[10px] text-slate-400">Sin variantes — el equipo se vende con el precio único de arriba.</div>';
+                return;
+            }
+            const otherProducts = (state.products || []).filter(p => p.id !== currentEditProductId);
+            wrap.innerHTML = currentProductVariants.map((v, i) => `
+                <div class="border border-brand-100 rounded-xl p-3 bg-brand-50/40">
+                    <div class="flex items-start gap-2 mb-2">
+                        <input type="text" value="${(v.label || '').replace(/"/g, '&quot;')}" oninput="updateProdVariantField(${i},'label',this.value)" placeholder="Nombre de la variante (ej. Batería + Panel Solar)" class="flex-grow bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-brand-500">
+                        <input type="number" min="0" step="0.01" value="${v.price != null && v.price !== '' ? v.price : ''}" oninput="updateProdVariantField(${i},'price',this.value)" placeholder="Precio USD" class="w-28 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-brand-500">
+                        <button type="button" onclick="removeProdVariant(${i})" title="Quitar variante" class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-red-200 text-red-500 hover:bg-red-50"><i class="fa-solid fa-trash text-xs"></i></button>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <input type="file" id="prod-variant-img-file-${i}" accept="image/*" multiple class="hidden" onchange="handleProdVariantImgFiles(event,${i})">
+                        <button type="button" onclick="document.getElementById('prod-variant-img-file-${i}').click()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider"><i class="fa-solid fa-images mr-1"></i>Subir foto(s)</button>
+                        <span class="text-[10px] text-slate-300 font-bold">o</span>
+                        <input type="url" id="prod-variant-img-url-${i}" placeholder="https://... (URL de foto de esta variante)" onkeydown="if(event.key==='Enter'){event.preventDefault();addProdVariantImageUrl(${i});}" class="flex-grow min-w-[140px] bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-brand-500">
+                        <button type="button" onclick="addProdVariantImageUrl(${i})" class="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        ${(v.images || []).map((url, ii) => `<div class="relative w-14 h-14 rounded-lg overflow-hidden border border-brand-100 bg-white group"><img src="${url}" class="w-full h-full object-cover"><button type="button" onclick="removeProdVariantImage(${i},${ii})" class="absolute inset-0 bg-ink-950/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-trash text-[10px]"></i></button></div>`).join('') || '<div class="text-[10px] text-slate-400">Sin fotos propias — usará la portada del equipo en el carrusel.</div>'}
+                    </div>
+                    <div class="border-t border-brand-100 pt-2">
+                        <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Esta variante incluye (baja inventario también de):</label>
+                        <div class="flex flex-wrap gap-2 mb-2">
+                            <select id="prod-variant-include-select-${i}" class="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] outline-none focus:border-brand-500">
+                                <option value="">Selecciona un producto...</option>
+                                ${otherProducts.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                            </select>
+                            <input type="number" id="prod-variant-include-qty-${i}" min="1" step="1" value="1" class="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] outline-none focus:border-brand-500">
+                            <button type="button" onclick="addProdVariantInclude(${i})" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-2 py-1.5 rounded-lg font-bold text-[10px] uppercase"><i class="fa-solid fa-link mr-1"></i>Añadir</button>
+                        </div>
+                        <div class="flex flex-wrap gap-1">
+                            ${(v.includes || []).map(inc => { const p = (state.products || []).find(x => x.id === inc.productId); return `<span class="v2-pill text-[10px]">${p ? p.name : inc.productId} × ${inc.qty} <button type="button" onclick="removeProdVariantInclude(${i},'${inc.productId}')" class="ml-1 text-red-400 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button></span>`; }).join('') || '<span class="text-[10px] text-slate-400">Ninguno.</span>'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        window.addProdVariant = addProdVariant;
+        window.removeProdVariant = removeProdVariant;
+        window.updateProdVariantField = updateProdVariantField;
+        window.addProdVariantImageUrl = addProdVariantImageUrl;
+        window.handleProdVariantImgFiles = handleProdVariantImgFiles;
+        window.removeProdVariantImage = removeProdVariantImage;
+        window.addProdVariantInclude = addProdVariantInclude;
+        window.removeProdVariantInclude = removeProdVariantInclude;
+        window.renderProdVariantsList = renderProdVariantsList;
 
         // ===================== VIDEO DEL EQUIPO (URL de YouTube/Vimeo/MP4, o archivo subido) =====================
         function setProdVideoMode(mode) {
@@ -2663,9 +2917,9 @@
 .v2-modal{position:fixed;inset:0;background:rgba(3,10,20,.72);backdrop-filter:blur(8px);z-index:100;display:none;align-items:center;justify-content:center;padding:16px}
 .v2-modal.show{display:flex}
 .v2-modal-box{background:#fff;border-radius:26px;max-width:900px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 30px 90px rgba(0,0,0,.3)}
-.v2-product-media{background:linear-gradient(145deg,#06111f,#12395b);min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;gap:14px}
-.v2-product-media img{max-height:320px;max-width:90%;object-fit:contain;border-radius:18px}
-.v2-product-media-main{width:100%;flex:1;display:flex;align-items:center;justify-content:center;min-height:220px}
+.v2-product-media{background:linear-gradient(145deg,#06111f,#12395b);min-height:420px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;gap:14px}
+.v2-product-media img{max-height:100%;max-width:100%;width:auto;height:auto;object-fit:contain;border-radius:18px}
+.v2-product-media-main{width:100%;flex:1;display:flex;align-items:center;justify-content:center;min-height:320px}
 .v2-product-video-frame{width:100%;max-width:92%;aspect-ratio:16/9;border:0;border-radius:18px;background:#000}
 .v2-product-thumbs{display:flex;gap:8px;overflow-x:auto;width:100%;padding:2px 0}
 .v2-product-thumb{flex:0 0 auto;width:56px;height:56px;border-radius:10px;overflow:hidden;border:2px solid transparent;opacity:.6;transition:.15s;background:#0a1a2e;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;color:#fff;font-size:16px}
@@ -2680,6 +2934,9 @@
 .v2-editor-block{background:#fff;border:1px solid #dfeaf3;border-radius:12px;padding:14px;margin-bottom:10px;cursor:grab}
 .v2-editor-block:hover{border-color:#1893f5}
 .v2-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:#f1f7fc;color:#436079;font-size:10px;font-weight:900}
+.v2-variant-pill{display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;background:#fff;color:#436079;font-size:11px;font-weight:800;border:2px solid #e4edf6;cursor:pointer;transition:.15s}
+.v2-variant-pill:hover{border-color:#1893f5}
+.v2-variant-pill.active{border-color:#1893f5;background:#eef8ff;color:#0876c9}
 @media(max-width:900px){.v2-layout{grid-template-columns:1fr!important}.v2-nav{position:static}.v2-nav button{display:inline-flex;width:auto}.v2-product-media{min-height:220px}}
 /* Brutal stat bars — real numbers from state, pure CSS/JS, zero chart libraries. */
 .v2-bar-card{position:relative;background:#fff;border:1px solid #e4eef8;border-radius:22px;padding:26px;box-shadow:0 35px 80px -18px rgba(2,95,174,.28),0 0 50px -12px rgba(24,147,245,.18);overflow:hidden}
@@ -2715,6 +2972,7 @@
 <div id="leon-v2-client-form" class="v2-modal">
   <div class="v2-modal-box p-6 md:p-8 max-w-2xl">
     <div class="flex justify-between items-start"><div><div class="v2-pill mb-2"><i class="fa-solid fa-user-check"></i> DATOS DEL PROCESO</div><h3 class="text-2xl font-black text-slate-900">Completa tu solicitud</h3></div><button onclick="leonV2CloseClientForm()" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+    <div id="v2-consumption-banner" class="hidden mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold flex items-start gap-2"><i class="fa-solid fa-bolt mt-0.5"></i><span>Estás cotizando un sistema solar según tu consumo eléctrico, sin haber seleccionado equipos del catálogo. Completa la calculadora solar más abajo (factura mensual o historial de kWh) — tu consultor armará el equipo exacto y el precio final a partir del tamaño de sistema calculado.</span></div>
     <form onsubmit="leonV2SubmitClient(event)" class="mt-6 space-y-5">
       <div class="grid md:grid-cols-2 gap-4"><div><label class="text-[10px] font-black uppercase text-slate-500">Nombre completo *</label><input id="v2-client-name" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Nombre del cliente"></div><div><label class="text-[10px] font-black uppercase text-slate-500">Empresa</label><input id="v2-client-company" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Empresa (opcional)"></div><div><label class="text-[10px] font-black uppercase text-slate-500">Correo *</label><input id="v2-client-email" type="email" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="cliente@email.com"></div><div><label class="text-[10px] font-black uppercase text-slate-500">Teléfono *</label><input id="v2-client-phone" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="787-410-0694"></div></div>
       <div class="grid md:grid-cols-2 gap-4"><div><label class="text-[10px] font-black uppercase text-slate-500">Municipio</label><input id="v2-client-municipio" list="v2-municipios" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. Bayamón"><datalist id="v2-municipios"><option>Adjuntas</option><option>Aguada</option><option>Aguadilla</option><option>Aguas Buenas</option><option>Aibonito</option><option>Añasco</option><option>Arecibo</option><option>Arroyo</option><option>Barceloneta</option><option>Barranquitas</option><option>Bayamón</option><option>Cabo Rojo</option><option>Caguas</option><option>Camuy</option><option>Canóvanas</option><option>Carolina</option><option>Cataño</option><option>Cayey</option><option>Ceiba</option><option>Ciales</option><option>Cidra</option><option>Coamo</option><option>Comerío</option><option>Corozal</option><option>Culebra</option><option>Dorado</option><option>Fajardo</option><option>Florida</option><option>Guánica</option><option>Guayama</option><option>Guayanilla</option><option>Guaynabo</option><option>Gurabo</option><option>Hatillo</option><option>Hormigueros</option><option>Humacao</option><option>Isabela</option><option>Jayuya</option><option>Juana Díaz</option><option>Juncos</option><option>Lajas</option><option>Lares</option><option>Las Marías</option><option>Las Piedras</option><option>Loíza</option><option>Luquillo</option><option>Manatí</option><option>Maricao</option><option>Maunabo</option><option>Mayagüez</option><option>Moca</option><option>Morovis</option><option>Naguabo</option><option>Naranjito</option><option>Orocovis</option><option>Patillas</option><option>Peñuelas</option><option>Ponce</option><option>Quebradillas</option><option>Rincón</option><option>Río Grande</option><option>Sabana Grande</option><option>Salinas</option><option>San Germán</option><option>San Juan</option><option>San Lorenzo</option><option>San Sebastián</option><option>Santa Isabel</option><option>Toa Alta</option><option>Toa Baja</option><option>Trujillo Alto</option><option>Utuado</option><option>Vega Alta</option><option>Vega Baja</option><option>Vieques</option><option>Villalba</option><option>Yabucoa</option><option>Yauco</option></datalist></div><div><label class="text-[10px] font-black uppercase text-slate-500">Dirección</label><input id="v2-client-address" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Calle, urbanización..."></div></div>
@@ -2837,6 +3095,17 @@
 <!-- LEON V2: Contrato de Vendedor — perfil, datos personales y de pago del empleado -->
 <div id="leon-v2-vendor-contract" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-3xl"><div id="v2-vendor-contract-content"></div></div></div>
 
+<!-- LEON ROOF INTELLIGENCE: modal de propiedad (crear/editar) -->
+<div id="leon-v2-property-modal" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-xl"><div id="v2-property-modal-content"></div></div></div>
+<!-- LEON ROOF INTELLIGENCE: detalle de propiedad (info + lista de evaluaciones de techo) -->
+<div id="leon-v2-property-detail" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-3xl"><div id="v2-property-detail-content"></div></div></div>
+<!-- LEON ROOF INTELLIGENCE: workspace de evaluación de techo (imagen + medición por polígono) -->
+<div id="leon-v2-roof-assessment" class="v2-modal"><div class="v2-modal-box p-0 max-w-6xl overflow-hidden"><div id="v2-roof-assessment-content"></div></div></div>
+<!-- LEON ROOF INTELLIGENCE: calculadora pública de Sellado de Techo (desde un producto del catálogo) -->
+<div id="leon-v2-roofseal-public" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-xl"><div id="v2-roofseal-public-content"></div></div></div>
+<!-- LEON ROOF INTELLIGENCE: asistente profesional de Propuesta de Sellado de Techo (panel de control) -->
+<div id="leon-v2-roofseal-pro" class="v2-modal"><div class="v2-modal-box p-0 max-w-6xl overflow-hidden"><div id="v2-roofseal-pro-content"></div></div></div>
+
 <!-- LEON V2: ajustar el monto de una comisión ya generada, con motivo obligatorio -->
 <div id="leon-v2-adjust-commission" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-md">
   <div class="flex justify-between items-start"><h3 class="text-xl font-black">Ajustar comisión</h3><button onclick="leonV2Close('leon-v2-adjust-commission')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
@@ -2878,6 +3147,10 @@
   const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0});
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
   let v2Flow='propuesta', v2Help=null, v2Blocks=['Encabezado','Información del cliente','Productos seleccionados','Resumen financiero','Condiciones','Firma'];
+  // true cuando el cliente entró por "Cotizar por tu consumo" (sin seleccionar ningún equipo del
+  // catálogo) — permite que leonV2SubmitClient acepte un carrito vacío SOLO en ese caso, y solo con
+  // Sunrun/solar ya calculado (ver window.leonV2StartConsumptionQuote más abajo).
+  let v2ConsumptionOnlyMode=false;
   let v2ProductMediaState=null; // {id, media:[{type,url}], idx} — galería de fotos/video del equipo abierto en el detalle
   const DEFAULT_EDITOR_BLOCKS=v2Blocks.slice();
   let v2EditorQuoteId=null, v2PricingQuoteId=null;
@@ -3270,7 +3543,8 @@
     reviewCommissions:['Administrador'],
     voidSale:['Administrador'],
     unlockLogin:['Administrador'],
-    systemBackup:['Administrador']
+    systemBackup:['Administrador'],
+    deleteProperty:['Administrador']
   };
   function leonV2Can(action){
     const role=state.currentUser&&state.currentUser.role;
@@ -3448,7 +3722,7 @@
   // auditLog y securityLog NO están aquí: son bitácoras que solo crecen (unshift), y reescribir
   // las 500 entradas completas en cada evento sería carísimo — esas dos usan leonV2DbAppendLog
   // (un documento nuevo por evento) más abajo, en vez de leonV2SyncCollection.
-  const FB_LIST_COLLECTIONS = ['categories','products','users','quotes','quotesHistory','clients','trash','commissions','tickets','projects','followupTasks'];
+  const FB_LIST_COLLECTIONS = ['categories','products','users','quotes','quotesHistory','clients','trash','commissions','tickets','projects','followupTasks','properties','roofAssessments'];
   // chatMessages vive como bitácora (un documento nuevo por mensaje, ver leonV2DbAppendLog) — igual
   // que auditLog/securityLog, así reescribir el historial completo no cuesta una escritura enorme
   // cada vez que alguien manda un mensaje.
@@ -3532,6 +3806,14 @@
       // hacer clic". Mismo patrón de guardas por elemento que el resto de esta función.
       if(typeof calcRenderProductGrid==='function' && document.getElementById('calc-product-grid')) calcRenderProductGrid();
       if(typeof calcRenderSelectedPanel==='function' && document.getElementById('calc-selected-panel') && !document.getElementById('calc-selected-panel').classList.contains('hidden')) calcRenderSelectedPanel();
+      // Mismo patrón que la calculadora arriba: las pastillas de categoría (#category-filters) se
+      // pintan una vez al cargar con lo que haya en state.categories EN ESE MOMENTO — si Firestore
+      // entrega después una versión más nueva/corregida (p.ej. categorías viejas que ya no existen,
+      // reemplazadas por las reales), sin esta llamada las pastillas se quedan mostrando las viejas
+      // hasta que algo más las repinte por casualidad (clic en una pastilla → filterCategory). De ahí
+      // el reporte "aparecen categorías que ya no existen, y al hacer clic ahí sí se ven las nuevas".
+      if(typeof renderCategoryFilters==='function' && document.getElementById('category-filters')) renderCategoryFilters();
+      if(typeof renderCategorySelect==='function' && document.getElementById('prod-cat')) renderCategorySelect();
       const internalView = document.getElementById('internal-view');
       const activeBtn = document.querySelector('#v2-nav button.active');
       if(internalView && !internalView.classList.contains('hidden') && activeBtn && activeBtn.dataset.sec && typeof leonV2OpenSection==='function'){
@@ -3668,7 +3950,7 @@
 
   window.leonV2Close=id=>document.getElementById(id)?.classList.remove('show');
   window.leonV2CloseChoice=()=>leonV2Close('leon-v2-proposal-choice');
-  window.leonV2CloseClientForm=()=>leonV2Close('leon-v2-client-form');
+  window.leonV2CloseClientForm=()=>{v2ConsumptionOnlyMode=false;const banner=document.getElementById('v2-consumption-banner');if(banner)banner.classList.add('hidden');leonV2Close('leon-v2-client-form');};
   function products(){return (window.state&&state.products)||[]}
   function users(){return (window.state&&state.users)||[]}
   function consultants(){return users().filter(u=>/vendedor|consultor/i.test(u.role));}
@@ -3684,6 +3966,15 @@
     if(vim) return `<iframe src="https://player.vimeo.com/video/${vim[1]}" class="v2-product-video-frame" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
     return `<video src="${esc(url)}" controls playsinline class="v2-product-video-frame"></video>`;
   }
+  // Precio que corresponde a lo que está en pantalla ahora mismo: si hay una variante seleccionada
+  // (por clic en su pastilla o porque el carrusel llegó a una de sus fotos), es su precio propio;
+  // si no, el precio base del equipo. Esto es lo único que leonV2AddProduct debe confiar como precio
+  // real al capturar la cotización — nunca relee p.price después sin pasar por aquí.
+  function leonV2CurrentProductPrice(){
+    const st=v2ProductMediaState; if(!st)return 0;
+    if(st.selectedVariantId){ const v=(st.variants||[]).find(x=>x.id===st.selectedVariantId); if(v) return v.price; }
+    const p=products().find(x=>x.id===st.id); return p?p.price:0;
+  }
   window.leonV2RenderProductMedia=()=>{
     const st=v2ProductMediaState; if(!st)return;
     const m=st.media[st.idx]||st.media[0];
@@ -3696,23 +3987,95 @@
         :`<button type="button" onclick="leonV2SetProductMedia(${i})" class="v2-product-thumb${i===st.idx?' active':''}" title="Ver foto ${i+1}"><img src="${esc(mm.url)}" onerror="this.style.opacity='0'"></button>`
       ).join('');
     }
+    // Refleja en pantalla la variante/precio que corresponde a la foto activa ahora mismo.
+    const priceBox=document.getElementById('v2-product-price-box');
+    if(priceBox) priceBox.innerText=money(leonV2CurrentProductPrice());
+    const pickerEl=document.getElementById('v2-product-variant-picker');
+    if(pickerEl && st.variants && st.variants.length){
+      pickerEl.innerHTML=st.variants.map(v=>`<button type="button" onclick="leonV2SelectProductVariant('${v.id}')" class="v2-variant-pill${st.selectedVariantId===v.id?' active':''}">${esc(v.label)} — ${money(v.price)}</button>`).join('');
+    }
   };
-  window.leonV2SetProductMedia=(i)=>{ if(!v2ProductMediaState)return; v2ProductMediaState.idx=i; leonV2RenderProductMedia(); };
+  window.leonV2SetProductMedia=(i)=>{
+    if(!v2ProductMediaState)return;
+    v2ProductMediaState.idx=i;
+    const m=v2ProductMediaState.media[i];
+    // El gesto de deslizar/hacer clic en la galería ES el que selecciona la variante: si la foto
+    // activa pertenece a un combo distinto (ej. pasó de "Solo Batería" a "Batería + Panel Solar"),
+    // el precio y la variante interna se actualizan solos, sin recargar nada.
+    if(m && m.variantId!==undefined) v2ProductMediaState.selectedVariantId=m.variantId||null;
+    leonV2RenderProductMedia();
+  };
+  // Selección manual de variante (pastilla), independiente del gesto de carrusel — mantiene ambos
+  // en sincronía: si la variante tiene fotos propias, salta el carrusel a la primera de ellas.
+  window.leonV2SelectProductVariant=(variantId)=>{
+    const st=v2ProductMediaState; if(!st)return;
+    st.selectedVariantId=variantId||null;
+    const idx=st.media.findIndex(m=>m.variantId===variantId);
+    if(idx!==-1) st.idx=idx;
+    leonV2RenderProductMedia();
+  };
   window.leonV2OpenProduct=(id)=>{
     const p=products().find(x=>x.id===id); if(!p)return;
+    const variants=Array.isArray(p.variants)?p.variants:[];
     const media=[];
-    if(p.image) media.push({type:'image',url:p.image});
-    (Array.isArray(p.images)?p.images:[]).forEach(u=>{ if(u) media.push({type:'image',url:u}) });
-    if(p.video) media.push({type:'video',url:p.video});
-    if(!media.length) media.push({type:'image',url:''});
-    v2ProductMediaState={id:p.id, name:p.name, media, idx:0};
-    document.getElementById('v2-product-detail').innerHTML=`<div class="grid lg:grid-cols-2"><div class="v2-product-media p-6 sm:p-8"><div id="v2-product-media-main" class="v2-product-media-main"></div>${media.length>1?`<div id="v2-product-media-thumbs" class="v2-product-thumbs"></div>`:''}</div><div class="p-7"><div class="flex justify-between gap-4"><div><div class="v2-pill">${esc(p.category||'Solución')}</div><h3 class="text-3xl font-black text-slate-900 mt-3">${esc(p.name)}</h3></div><button onclick="leonV2Close('leon-v2-product-modal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div><p class="text-slate-600 text-sm leading-relaxed mt-4">${esc(p.desc||'Solución profesional para mejorar el rendimiento y confort de su propiedad.')}</p><div class="grid grid-cols-2 gap-3 mt-6"><div class="p-4 bg-slate-50 rounded-xl"><div class="text-[10px] uppercase font-black text-slate-500">Precio</div><div class="text-xl font-black text-brand-600 mt-1">${money(p.price)}</div></div><div class="p-4 bg-slate-50 rounded-xl"><div class="text-[10px] uppercase font-black text-slate-500">Disponibilidad</div><div class="font-black mt-1">${p.agotado?'Agotado':((typeof p.stock==='number')?p.stock+' en stock':'Disponible')}</div></div></div><div class="mt-6"><button onclick="leonV2AddProduct('${p.id}');leonV2Close('leon-v2-product-modal')" class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase"><i class="fa-solid fa-plus mr-2"></i>Agregar a propuesta</button></div><div class="mt-7 border-t pt-5"><div class="font-black text-sm mb-3">Documentación</div><div class="grid grid-cols-2 gap-2"><span class="v2-pill"><i class="fa-solid fa-file-pdf"></i> Ficha técnica</span><span class="v2-pill"><i class="fa-solid fa-shield"></i> Garantía</span><span class="v2-pill"><i class="fa-solid fa-screwdriver-wrench"></i> Instalación</span><span class="v2-pill"><i class="fa-solid fa-link"></i> Compatibilidad</span></div></div></div></div>`;
+    if(p.image) media.push({type:'image',url:p.image,variantId:null});
+    (Array.isArray(p.images)?p.images:[]).forEach(u=>{ if(u) media.push({type:'image',url:u,variantId:null}) });
+    if(p.video) media.push({type:'video',url:p.video,variantId:null});
+    // Las fotos propias de cada variante se suman al mismo carrusel, marcadas con su variantId —
+    // así, al llegar el usuario a esa foto deslizando, el sistema sabe exactamente a qué combo
+    // corresponde y puede cambiar la variante/precio activos sin que el usuario tenga que hacer nada más.
+    variants.forEach(v=>{ (Array.isArray(v.images)?v.images:[]).forEach(u=>{ if(u) media.push({type:'image',url:u,variantId:v.id}) }); });
+    if(!media.length) media.push({type:'image',url:'',variantId:null});
+    v2ProductMediaState={id:p.id, name:p.name, media, idx:0, variants, selectedVariantId:null};
+    // Cada pill de "Documentación" se vuelve un enlace real (clic → abre en pestaña nueva) SOLO si el
+    // admin cargó una URL para ese documento en Catálogo; si no, queda como pill gris no clicable —
+    // así nunca se le promete al cliente un documento que en realidad no existe.
+    const docs=p.docs||{};
+    const docItem=(url,icon,label)=>url
+      ? `<a href="${esc(url)}" target="_blank" rel="noopener" class="v2-pill hover:bg-brand-100 hover:text-brand-700 transition cursor-pointer"><i class="fa-solid ${icon}"></i> ${label}</a>`
+      : `<span class="v2-pill opacity-40" title="Documento no disponible todavía"><i class="fa-solid ${icon}"></i> ${label}</span>`;
+    const docsHtml=[docItem(docs.ficha,'fa-file-pdf','Ficha técnica'),docItem(docs.garantia,'fa-shield','Garantía'),docItem(docs.instalacion,'fa-screwdriver-wrench','Instalación'),docItem(docs.compatibilidad,'fa-link','Compatibilidad')].join('');
+    document.getElementById('v2-product-detail').innerHTML=`<div class="grid lg:grid-cols-2"><div class="v2-product-media p-6 sm:p-8"><div id="v2-product-media-main" class="v2-product-media-main"></div>${media.length>1?`<div id="v2-product-media-thumbs" class="v2-product-thumbs"></div>`:''}</div><div class="p-7"><div class="flex justify-between gap-4"><div><div class="v2-pill">${esc(p.category||'Solución')}</div><h3 class="text-3xl font-black text-slate-900 mt-3">${esc(p.name)}</h3></div><button onclick="leonV2Close('leon-v2-product-modal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div><p class="text-slate-600 text-sm leading-relaxed mt-4">${esc(p.desc||'Solución profesional para mejorar el rendimiento y confort de su propiedad.')}</p><div class="grid grid-cols-2 gap-3 mt-6"><div class="p-4 bg-slate-50 rounded-xl"><div class="text-[10px] uppercase font-black text-slate-500">Precio</div><div id="v2-product-price-box" class="text-xl font-black text-brand-600 mt-1">${money(p.price)}</div></div><div class="p-4 bg-slate-50 rounded-xl"><div class="text-[10px] uppercase font-black text-slate-500">Disponibilidad</div><div class="font-black mt-1">${p.agotado?'Agotado':((typeof p.stock==='number')?p.stock+' en stock':'Disponible')}</div></div></div>${variants.length&&!(p.roofSealing&&p.roofSealing.enabled)?`<div class="mt-4"><div class="text-[10px] uppercase font-black text-slate-500 mb-2">Elige tu combo</div><div id="v2-product-variant-picker" class="flex flex-wrap gap-2"></div></div>`:''}<div class="mt-6">${(p.roofSealing&&p.roofSealing.enabled)?`<button onclick="leonV2Close('leon-v2-product-modal');leonV2OpenRoofSealCalc('${p.id}')" class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase"><i class="fa-solid fa-calculator mr-2"></i>Cotizar sellado de techo</button>`:`<button onclick="leonV2AddProduct('${p.id}');leonV2Close('leon-v2-product-modal')" class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase"><i class="fa-solid fa-plus mr-2"></i>Agregar a propuesta</button>`}</div><div class="mt-7 border-t pt-5"><div class="font-black text-sm mb-3">Documentación</div><div class="grid grid-cols-2 gap-2">${docsHtml}</div></div></div></div>`;
     leonV2RenderProductMedia();
     open('leon-v2-product-modal');
   };
-  window.leonV2AddProduct=id=>{const p=products().find(x=>x.id===id); if(!p)return; const ex=state.cart.find(x=>x.id===id); const {images,video,...pForCart}=p; if(ex)ex.qty++;else state.cart.push({...pForCart,qty:1}); if(typeof updateCartUI==='function')updateCartUI(); showToast('Producto añadido a tu propuesta.','success')};
+  // Captura exactamente lo que estaba en pantalla en el momento del clic: si hay una variante activa
+  // (por carrusel o por pastilla), guarda su id/nombre/precio y los productos que incluye — clonados
+  // en la línea del carrito, no por referencia — para que un cambio posterior al producto en Catálogo
+  // nunca altere retroactivamente una cotización ya generada.
+  window.leonV2AddProduct=(id,variantIdArg)=>{
+    const p=products().find(x=>x.id===id); if(!p)return;
+    const st=v2ProductMediaState;
+    const variantId = variantIdArg!==undefined ? variantIdArg : (st&&st.id===id ? st.selectedVariantId : null);
+    const variant = variantId ? (Array.isArray(p.variants)?p.variants:[]).find(v=>v.id===variantId) : null;
+    const price = variant ? variant.price : p.price;
+    const includes = variant && Array.isArray(variant.includes) ? variant.includes.map(inc=>({productId:inc.productId,qty:inc.qty})) : [];
+    const cartLineId = variant ? (p.id+'::'+variant.id) : p.id;
+    const ex=state.cart.find(x=>x.cartLineId===cartLineId || (!x.cartLineId && !variant && x.id===id));
+    const {images,video,variants,...pForCart}=p;
+    if(ex){ ex.qty++; }
+    else{ state.cart.push({...pForCart, id:p.id, cartLineId, price, qty:1, variantId:variant?variant.id:null, variantLabel:variant?variant.label:null, includes}); }
+    if(typeof updateCartUI==='function')updateCartUI();
+    showToast(variant? ('Añadido a tu propuesta: '+variant.label+'.') : 'Producto añadido a tu propuesta.','success');
+  };
 
-  window.leonV2ChooseFlow=flow=>{v2Flow=flow;document.getElementById('v2-flow').value=flow;leonV2CloseChoice(); if(flow==='asesoria'){showToast('Perfecto. Completa tus datos y asignaremos la solicitud a un consultor.','info')} document.getElementById('v2-consultant').innerHTML=consultants().map(u=>`<option value="${esc(u.name)}">${esc(u.name)} — ${esc(u.role)}</option>`).join('')||'<option>Asignación automática</option>'; v2SolarLastResult=null; if(document.getElementById('v2-solar-result'))document.getElementById('v2-solar-result').innerHTML=''; leonV2UpdateFinancingOptions(); open('leon-v2-client-form');};
+  window.leonV2ChooseFlow=flow=>{v2Flow=flow;v2ConsumptionOnlyMode=false;const banner=document.getElementById('v2-consumption-banner');if(banner)banner.classList.add('hidden');document.getElementById('v2-flow').value=flow;leonV2CloseChoice(); if(flow==='asesoria'){showToast('Perfecto. Completa tus datos y asignaremos la solicitud a un consultor.','info')} document.getElementById('v2-consultant').innerHTML=consultants().map(u=>`<option value="${esc(u.name)}">${esc(u.name)} — ${esc(u.role)}</option>`).join('')||'<option>Asignación automática</option>'; v2SolarLastResult=null; if(document.getElementById('v2-solar-result'))document.getElementById('v2-solar-result').innerHTML=''; leonV2UpdateFinancingOptions(); open('leon-v2-client-form');};
+
+  // Punto de entrada explícito para cotizar un sistema solar por consumo/factura eléctrica SIN
+  // seleccionar ningún equipo primero — reutiliza el mismo formulario y la misma calculadora solar
+  // (Sunrun/PPA) que ya existe, solo que aquí se permite llegar con el carrito vacío. El
+  // vendedor/consultor arma el equipo exacto y el precio final después, a partir del tamaño de
+  // sistema (kW) que arroja la calculadora con el consumo indicado.
+  window.leonV2StartConsumptionQuote=()=>{
+    const cartModal=document.getElementById('cart-modal');
+    if(cartModal && !cartModal.classList.contains('hidden') && typeof toggleCartModal==='function') toggleCartModal();
+    leonV2ChooseFlow('asesoria');
+    v2ConsumptionOnlyMode=true;
+    const providerSel=document.getElementById('v2-fin-provider');
+    if(providerSel){ providerSel.value='Sunrun'; leonV2UpdateFinancingOptions(); }
+    const banner=document.getElementById('v2-consumption-banner');
+    if(banner) banner.classList.remove('hidden');
+  };
 
   // Reglas reales de financiamiento por proveedor:
   // Cash = sin plazo (Efectivo/Cheque). Sunrun = PPA por producción solar, NO un préstamo de
@@ -3791,7 +4154,11 @@
     e.preventDefault();
     if(v2Help===null){showToast('Indica si recibiste ayuda de un consultor.','warning');return}
     if(v2Help&&!document.getElementById('v2-consultant').value){showToast('Selecciona el consultor que te ayudó.','warning');return}
-    if(!state.cart||!state.cart.length){showToast('Tu carrito está vacío.','warning');return}
+    // Único caso donde un carrito vacío es válido: pidieron "Cotizar por mi consumo" (sistema solar
+    // por factura/historial, sin equipo seleccionado) Y de verdad tienen Sunrun elegido — para
+    // cualquier otro flujo, el carrito vacío sigue bloqueado como siempre.
+    const isConsumptionSubmit = v2ConsumptionOnlyMode && document.getElementById('v2-fin-provider').value==='Sunrun';
+    if(!isConsumptionSubmit && (!state.cart||!state.cart.length)){showToast('Tu carrito está vacío.','warning');return}
     const items=state.cart.map(x=>({...x}));
     const total=items.reduce((s,x)=>s+x.price*x.qty,0);
     const id='L-'+Math.floor(10000+Math.random()*89999);
@@ -3828,6 +4195,7 @@
     const q=Object.assign({id,clientName:document.getElementById('v2-client-name').value,clientCompany:document.getElementById('v2-client-company').value,clientEmail:document.getElementById('v2-client-email').value,clientPhone:document.getElementById('v2-client-phone').value,clientMunicipio:document.getElementById('v2-client-municipio')?document.getElementById('v2-client-municipio').value:'',clientAddress:document.getElementById('v2-client-address')?document.getElementById('v2-client-address').value:'',clientLocationUrl:document.getElementById('v2-client-location-url')?document.getElementById('v2-client-location-url').value:'',clientIdType:idType||null,clientIdNumberMasked:idRaw?maskId(idRaw):null,items,total,status:v2Flow==='cotizacion'?'Pendiente de cotización':v2Flow==='asesoria'?'Nueva asesoría':'Propuesta generada',paymentType,financingProvider:provider,financingRate,vendorName:consultant,vendorEmail:consultants().find(u=>u.name===consultant)?.email||null,origin:v2Help?'Asistido':'Autogestionado',source:v2Help?'Consultor':'Sitio Web',createdAt:new Date().toISOString().slice(0,10),version:1,discount:0,installationFee:0,transportFee:0,taxRate:11.5,financingMonths}, solarFields);
     state.quotes.unshift(q);
     state.cart=[];
+    v2ConsumptionOnlyMode=false;
     if(typeof updateCartUI==='function')updateCartUI();
     leonV2UpsertClient(q,'Propuesta '+id+' generada — '+q.status);
     leonV2Audit('Propuesta creada', id+' · '+q.clientName+' · '+paymentType);
@@ -3842,6 +4210,8 @@
     const q=findQuoteAnywhere(qid);
     if(!q){showToast('No se encontró la propuesta.','error');return}
     const t=leonV2ComputeTotal(q);
+    const rsPlan=leonV2RoofSealPlanInfo(q);
+    const roofSealBox=rsPlan?`<div class="v2-card p-6 mt-6 bg-brand-50/30 border border-brand-100"><h4 class="font-black flex items-center gap-2"><i class="fa-solid fa-house-chimney-crack text-brand-500"></i> Detalle del plan de Sellado de Techo</h4><div class="grid sm:grid-cols-3 gap-3 mt-4 text-sm"><div class="p-3 bg-white rounded-xl"><div class="text-[10px] uppercase font-black text-slate-500">Área a sellar</div><b>${rsPlan.sqft.toLocaleString('en-US')} ft²</b></div><div class="p-3 bg-white rounded-xl"><div class="text-[10px] uppercase font-black text-slate-500">Precio por pie²</div><b>${money(rsPlan.pricePerFt2)}</b></div><div class="p-3 bg-white rounded-xl"><div class="text-[10px] uppercase font-black text-slate-500">Garantía</div><b>${rsPlan.warrantyYears?rsPlan.warrantyYears+' años':'—'}</b></div></div>${rsPlan.materials?`<p class="text-xs text-slate-500 mt-3">${esc(rsPlan.materials)}</p>`:''}</div>`:'';
     const breakdown=`<div class="v2-card p-6 mt-6"><h4 class="font-black">Desglose financiero</h4><div class="grid sm:grid-cols-2 gap-3 mt-4 text-sm">
       <div class="flex justify-between p-3 bg-slate-50 rounded-xl"><span>Subtotal</span><b>${money(t.subtotal)}</b></div>
       ${t.discount?`<div class="flex justify-between p-3 bg-slate-50 rounded-xl"><span>Descuento</span><b>-${money(t.discount)}</b></div>`:''}
@@ -3859,7 +4229,7 @@
     } else {
       decisionHtml=`<div class="v2-card p-6 mt-6"><div class="flex flex-wrap gap-3"><button onclick="leonV2TogglePortalAccept()" class="py-3 px-4 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase"><i class="fa-solid fa-signature mr-2"></i>Aceptar propuesta</button><button onclick="leonV2TogglePortalReject()" class="py-3 px-4 rounded-xl border border-red-200 text-red-600 text-xs font-black uppercase"><i class="fa-solid fa-xmark mr-2"></i>Rechazar</button><button onclick="showToast('Solicitud de cambio enviada al consultor.','success')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-comments mr-2"></i>Solicitar cambio</button></div><div id="v2-portal-accept-box" class="hidden mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-100 space-y-3"><div class="text-xs text-emerald-800"><i class="fa-solid fa-circle-info mr-1"></i>Esto guarda una firma real trazada a mano + nombre + huella del dispositivo — no es un proveedor certificado con validez legal notarial como DocuSign.</div><input id="v2-accept-name" placeholder="Escribe tu nombre completo" class="w-full px-4 py-3 rounded-xl border border-emerald-200 text-sm outline-none">${leonV2SignaturePadHtml('v2-accept-signature')}<label class="flex items-center gap-2 text-xs text-emerald-800"><input type="checkbox" id="v2-accept-check"> Confirmo que acepto los términos de esta propuesta.</label><button onclick="leonV2ConfirmAccept('${q.id}')" class="w-full py-3 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase">Confirmar aceptación</button></div><div id="v2-portal-reject-box" class="hidden mt-4 p-4 rounded-xl bg-red-50 border border-red-100 space-y-3"><input id="v2-reject-reason" placeholder="Motivo (opcional)" class="w-full px-4 py-3 rounded-xl border border-red-200 text-sm outline-none"><button onclick="leonV2ConfirmReject('${q.id}')" class="w-full py-3 rounded-xl bg-red-600 text-white text-xs font-black uppercase">Confirmar rechazo</button></div></div>`;
     }
-    const html=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">PORTAL DEL CLIENTE · ${esc(q.id)}</div><h3 class="text-2xl md:text-3xl font-black">${esc(q.clientName)}</h3><p class="text-sm text-slate-500">${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</p></div><button onclick="leonV2Close('leon-v2-client-portal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div><div class="grid lg:grid-cols-3 gap-4 mt-7"><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Estado</div><div class="text-xl font-black mt-2">${esc(q.status)}</div><div class="text-xs text-slate-500 mt-2">Origen: <b>${esc(q.origin)}</b></div></div><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Consultor</div><div class="text-xl font-black mt-2">${esc(q.vendorName||'Asignación pendiente')}</div><div class="text-xs text-slate-500 mt-2">Responsable comercial</div></div><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Valor</div><div class="text-2xl font-black text-brand-600 mt-2">${money(t.total)}</div><div class="text-xs text-slate-500 mt-2">${esc(q.paymentType)}</div></div></div><div class="grid lg:grid-cols-[1.2fr_.8fr] gap-6 mt-6"><div class="v2-card p-6"><h4 class="font-black">Productos</h4><div class="mt-4 space-y-3">${q.items.map(i=>`<div class="flex justify-between gap-4 p-3 bg-slate-50 rounded-xl"><div><b>${esc(i.name)}</b><div class="text-xs text-slate-500">Cantidad: ${i.qty}</div></div><b>${money(i.price*i.qty)}</b></div>`).join('')}</div></div><div class="v2-card p-6"><h4 class="font-black">Progreso</h4><div class="v2-timeline mt-5 space-y-5"><div class="relative"><span class="v2-dot"></span><b class="text-sm">Solicitud creada</b><div class="text-xs text-slate-500">${esc(q.createdAt)}</div></div><div class="relative"><span class="v2-dot"></span><b class="text-sm">Revisión comercial</b><div class="text-xs text-slate-500">En proceso</div></div><div class="relative"><span class="v2-dot" style="background:#cbd5e1"></span><b class="text-sm">Aprobación</b><div class="text-xs text-slate-500">Pendiente</div></div></div></div></div>${breakdown}${decisionHtml}<div class="flex flex-wrap gap-3 mt-6"><button onclick="leonV2OpenEditor('${q.id}')" class="py-3 px-4 rounded-xl bg-ink-900 text-white text-xs font-black uppercase"><i class="fa-solid fa-pen-ruler mr-2"></i>Editar propuesta</button><button onclick="leonV2PrintProposalById('${q.id}')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-file-pdf mr-2"></i>PDF / Imprimir</button><button onclick="leonV2EmailProposal('${q.id}')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-envelope mr-2"></i>Enviar por correo</button></div>`;
+    const html=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">PORTAL DEL CLIENTE · ${esc(q.id)}</div><h3 class="text-2xl md:text-3xl font-black">${esc(q.clientName)}</h3><p class="text-sm text-slate-500">${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</p></div><button onclick="leonV2Close('leon-v2-client-portal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div><div class="grid lg:grid-cols-3 gap-4 mt-7"><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Estado</div><div class="text-xl font-black mt-2">${esc(q.status)}</div><div class="text-xs text-slate-500 mt-2">Origen: <b>${esc(q.origin)}</b></div></div><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Consultor</div><div class="text-xl font-black mt-2">${esc(q.vendorName||'Asignación pendiente')}</div><div class="text-xs text-slate-500 mt-2">Responsable comercial</div></div><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Valor</div><div class="text-2xl font-black text-brand-600 mt-2">${money(t.total)}</div><div class="text-xs text-slate-500 mt-2">${esc(q.paymentType)}</div></div></div><div class="grid lg:grid-cols-[1.2fr_.8fr] gap-6 mt-6"><div class="v2-card p-6"><h4 class="font-black">Productos</h4><div class="mt-4 space-y-3">${q.items.map(i=>`<div class="flex justify-between gap-4 p-3 bg-slate-50 rounded-xl"><div><b>${esc(i.name)}</b><div class="text-xs text-slate-500">Cantidad: ${i.qty}</div></div><b>${money(i.price*i.qty)}</b></div>`).join('')}</div></div><div class="v2-card p-6"><h4 class="font-black">Progreso</h4><div class="v2-timeline mt-5 space-y-5"><div class="relative"><span class="v2-dot"></span><b class="text-sm">Solicitud creada</b><div class="text-xs text-slate-500">${esc(q.createdAt)}</div></div><div class="relative"><span class="v2-dot"></span><b class="text-sm">Revisión comercial</b><div class="text-xs text-slate-500">En proceso</div></div><div class="relative"><span class="v2-dot" style="background:#cbd5e1"></span><b class="text-sm">Aprobación</b><div class="text-xs text-slate-500">Pendiente</div></div></div></div></div>${roofSealBox}${breakdown}${decisionHtml}<div class="flex flex-wrap gap-3 mt-6"><button onclick="leonV2OpenEditor('${q.id}')" class="py-3 px-4 rounded-xl bg-ink-900 text-white text-xs font-black uppercase"><i class="fa-solid fa-pen-ruler mr-2"></i>Editar propuesta</button><button onclick="leonV2PrintProposalById('${q.id}')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-file-pdf mr-2"></i>PDF / Imprimir</button><button onclick="leonV2EmailProposal('${q.id}')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-envelope mr-2"></i>Enviar por correo</button></div>`;
     document.getElementById('v2-client-portal-content').innerHTML=html;
     open('leon-v2-client-portal');
   };
@@ -3937,13 +4307,16 @@
     }
     return `<div style="text-align:right;color:#0876c9">Pago mensual estimado (${t.months} meses): ${money(t.monthly)}</div>`;
   }
-  window.leonV2PrintProposalById=id=>{const q=findQuoteAnywhere(id);if(!q)return;const t=leonV2ComputeTotal(q);const w=window.open('','_blank');w.document.write(`<html><head><title>Propuesta ${esc(q.id)}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}h1{color:#0876c9}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}img{width:80px;height:60px;object-fit:contain} .total{font-size:22px;font-weight:800;text-align:right;margin-top:20px}.head{display:flex;justify-content:space-between;border-bottom:3px solid #0876c9;padding-bottom:18px}.box{background:#f5f9fd;padding:16px;border-radius:10px;margin-top:20px}.breakdown td{padding:6px 0;border:none}</style></head><body><div class="head"><div><h1>LEON HOME SOLUTIONS</h1><b>PROPUESTA COMERCIAL</b><div>${esc(q.id)}</div></div><div><b>Fecha</b><br>${esc(q.createdAt||'')}</div></div><div class="box"><b>CLIENTE</b><br>${esc(q.clientName)}<br>${esc(q.clientCompany||'')}<br>${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</div><div class="box"><b>CONSULTOR</b><br>${esc(q.vendorName||'Asignación pendiente')}<br>Origen: ${esc(q.origin||'')}</div><table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${q.items.map(i=>`<tr><td><img src="${esc(i.image||'')}" onerror="this.style.display='none'"> ${esc(i.name)}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${money(i.price*i.qty)}</td></tr>`).join('')}</tbody></table><table class="breakdown"><tbody><tr><td>Subtotal</td><td style="text-align:right">${money(t.subtotal)}</td></tr>${t.discount?`<tr><td>Descuento</td><td style="text-align:right">-${money(t.discount)}</td></tr>`:''}${t.install?`<tr><td>Instalación</td><td style="text-align:right">${money(t.install)}</td></tr>`:''}${t.transport?`<tr><td>Transporte</td><td style="text-align:right">${money(t.transport)}</td></tr>`:''}${t.tax?`<tr><td>Impuesto</td><td style="text-align:right">${money(t.tax)}</td></tr>`:''}</tbody></table><div class="total">TOTAL: ${money(t.total)}</div>${leonV2PrintFinancingBlock(q,t)}<div class="box">Condiciones: propuesta sujeta a disponibilidad, validación comercial y condiciones de financiación. Vigencia configurable por administración.</div>${q.acceptance?`<div class="box" style="background:#ecfdf5"><b>ACEPTACIÓN DIGITAL</b><br>${esc(q.acceptance.name)} — ${esc(new Date(q.acceptance.acceptedAt).toLocaleString())}<br>${q.acceptance.signatureDataUrl?`<img src="${q.acceptance.signatureDataUrl}" style="height:50px;margin-top:6px;display:block">`:''}<span style="font-size:11px;color:#555">Firma trazada a mano por la persona (no es un proveedor certificado con validez legal notarial).</span></div>`:''}<div style="margin-top:70px;display:flex;justify-content:space-between"><div>________________________<br>Cliente</div><div>________________________<br>Consultor</div></div><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()};
+  // Detalle del plan de Sellado de Techo asociado a una propuesta (si alguno de sus items viene de
+  // la calculadora/asistente de Sellado de Techo) — usado tanto en el PDF como en el portal.
+  function leonV2RoofSealPlanInfo(q){ const it=(q.items||[]).find(i=>i.roofSealingPlan); return it?it.roofSealingPlan:null; }
+  window.leonV2PrintProposalById=id=>{const q=findQuoteAnywhere(id);if(!q)return;const t=leonV2ComputeTotal(q);const rs=leonV2RoofSealPlanInfo(q);const w=window.open('','_blank');w.document.write(`<html><head><title>Propuesta ${esc(q.id)}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}h1{color:#0876c9}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}img{width:80px;height:60px;object-fit:contain} .total{font-size:22px;font-weight:800;text-align:right;margin-top:20px}.head{display:flex;justify-content:space-between;border-bottom:3px solid #0876c9;padding-bottom:18px}.box{background:#f5f9fd;padding:16px;border-radius:10px;margin-top:20px}.breakdown td{padding:6px 0;border:none}</style></head><body><div class="head"><div><h1>LEON HOME SOLUTIONS</h1><b>PROPUESTA COMERCIAL</b><div>${esc(q.id)}</div></div><div><b>Fecha</b><br>${esc(q.createdAt||'')}</div></div><div class="box"><b>CLIENTE</b><br>${esc(q.clientName)}<br>${esc(q.clientCompany||'')}<br>${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</div><div class="box"><b>CONSULTOR</b><br>${esc(q.vendorName||'Asignación pendiente')}<br>Origen: ${esc(q.origin||'')}</div>${rs?`<div class="box"><b>DETALLE DEL PLAN DE SELLADO DE TECHO</b><br>Área a sellar: <b>${rs.sqft.toLocaleString('en-US')} ft²</b> · Precio: <b>${money(rs.pricePerFt2)}/ft²</b>${rs.warrantyYears?' · Garantía: <b>'+rs.warrantyYears+' años</b>':''}${rs.materials?'<br>Materiales/incluye: '+esc(rs.materials):''}</div>`:''}<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${q.items.map(i=>`<tr><td><img src="${esc(i.image||'')}" onerror="this.style.display='none'"> ${esc(i.name)}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${money(i.price*i.qty)}</td></tr>`).join('')}</tbody></table><table class="breakdown"><tbody><tr><td>Subtotal</td><td style="text-align:right">${money(t.subtotal)}</td></tr>${t.discount?`<tr><td>Descuento</td><td style="text-align:right">-${money(t.discount)}</td></tr>`:''}${t.install?`<tr><td>Instalación</td><td style="text-align:right">${money(t.install)}</td></tr>`:''}${t.transport?`<tr><td>Transporte</td><td style="text-align:right">${money(t.transport)}</td></tr>`:''}${t.tax?`<tr><td>Impuesto</td><td style="text-align:right">${money(t.tax)}</td></tr>`:''}</tbody></table><div class="total">TOTAL: ${money(t.total)}</div>${leonV2PrintFinancingBlock(q,t)}<div class="box">Condiciones: propuesta sujeta a disponibilidad, validación comercial y condiciones de financiación. Vigencia configurable por administración.</div>${q.acceptance?`<div class="box" style="background:#ecfdf5"><b>ACEPTACIÓN DIGITAL</b><br>${esc(q.acceptance.name)} — ${esc(new Date(q.acceptance.acceptedAt).toLocaleString())}<br>${q.acceptance.signatureDataUrl?`<img src="${q.acceptance.signatureDataUrl}" style="height:50px;margin-top:6px;display:block">`:''}<span style="font-size:11px;color:#555">Firma trazada a mano por la persona (no es un proveedor certificado con validez legal notarial).</span></div>`:''}<div style="margin-top:70px;display:flex;justify-content:space-between"><div>________________________<br>Cliente</div><div>________________________<br>Consultor</div></div><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()};
 
   function buildCRM(){
     const old=document.querySelector('#internal-view > .max-w-7xl'); if(!old)return; old.innerHTML=`<div class="leon-v2-shell"><div class="flex flex-col lg:flex-row justify-between gap-4 mb-6"><div><div class="v2-pill bg-white"><i class="fa-solid fa-shield-halved text-brand-600"></i><span id="v2-role-pill">Administrador</span></div><h2 class="text-3xl md:text-4xl font-black text-slate-900 mt-3" id="v2-greeting">Buenos días 👋</h2><p class="text-sm text-slate-500 mt-1">Tu espacio comercial se adapta automáticamente a tus permisos.</p><div id="v2-db-status" class="mt-2"></div></div><div class="flex items-center gap-3"><div class="relative"><button onclick="leonV2ToggleNotifications()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Notificaciones"><i class="fa-solid fa-bell"></i><span id="v2-notif-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-glass-lg z-50 max-h-96 overflow-y-auto"></div></div><div class="relative"><button onclick="leonV2ToggleChat()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Chat interno"><i class="fa-solid fa-comments"></i><span id="v2-chat-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-chat-panel" class="hidden fixed right-4 bottom-4 top-24 sm:top-auto sm:h-[520px] w-[92vw] sm:w-96 max-w-[92vw] bg-white border border-slate-200 rounded-2xl shadow-glass-lg z-50 flex flex-col overflow-hidden"><div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50"><b class="text-sm"><i class="fa-solid fa-comments text-brand-500 mr-2"></i>Chat del equipo</b><button onclick="leonV2ToggleChat(true)" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div><div id="v2-chat-messages" class="flex-grow overflow-y-auto p-4"></div><div id="v2-chat-gif-preview" class="hidden px-4 pb-1"></div><div class="border-t border-slate-100 p-3"><div class="flex gap-1 mb-2 flex-wrap">${['😀','😂','👍','🎉','🔥','❤️','😢','🙏','👏','💡'].map(em=>`<button type="button" onclick="leonV2InsertChatEmoji('${em}')" class="text-lg hover:scale-125 transition">${em}</button>`).join('')}<label class="ml-1 cursor-pointer text-slate-400 hover:text-brand-600 text-sm px-1" title="Adjuntar GIF/imagen"><i class="fa-solid fa-image"></i><input type="file" id="v2-chat-gif-file" accept="image/*" class="hidden" onchange="handleChatGifFile(event)"></label></div><form onsubmit="leonV2SendChatMessage(event)" class="flex gap-2"><input id="v2-chat-input" placeholder="Escribe un mensaje..." class="flex-grow px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black"><i class="fa-solid fa-paper-plane"></i></button></form></div></div></div><button onclick="leonV2OpenSection('clients')" class="px-4 py-3 rounded-xl border bg-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-2"></i>Buscar cliente</button><button onclick="logoutUser()" class="px-4 py-3 rounded-xl bg-red-50 text-red-600 text-xs font-black"><i class="fa-solid fa-right-from-bracket mr-2"></i>Salir</button></div></div><div class="grid lg:grid-cols-[230px_1fr] gap-6 v2-layout"><aside class="v2-nav h-fit"><div class="px-3 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Workspace</div><div id="v2-nav"></div></aside><section id="v2-main" class="min-w-0"></section></div></div>`;renderNav();renderDashboard();leonV2RefreshNotifications();if(typeof window.leonV2UpdateDbStatusBadge==='function')window.leonV2UpdateDbStatusBadge();
   }
-  const navItems=[['dashboard','fa-chart-pie','Dashboard'],['clients','fa-address-card','Clientes'],['pipeline','fa-filter-circle-dollar','Pipeline'],['ventas','fa-cash-register','Ventas'],['historial','fa-clock-rotate-left','Historial'],['catalog','fa-boxes-stacked','Catálogo'],['proposals','fa-file-signature','Propuestas'],['payroll','fa-sitemap','Comisiones'],['empleados','fa-users-gear','Empleados'],['tickets','fa-ticket','Tickets'],['projects','fa-helmet-safety','Proyectos'],['reports','fa-chart-line','Reportes'],['branding','fa-pen-ruler','Sitio Web'],['users','fa-user-shield','Usuarios'],['trash','fa-trash-can','Papelera'],['audit','fa-clipboard-list','Auditoría'],['settings','fa-gear','Configuración']];
-  window.leonV2OpenSection=sec=>{document.querySelectorAll('#v2-nav button').forEach(b=>b.classList.toggle('active',b.dataset.sec===sec));({dashboard:renderDashboard,clients:renderClients,pipeline:renderPipeline,ventas:renderVentas,historial:renderHistorialSection,catalog:renderCatalog,proposals:renderProposals,payroll:renderPayroll,empleados:renderEmpleados,tickets:renderTickets,projects:renderProjects,reports:renderReports,branding:renderBranding,users:renderUsers,trash:renderTrash,audit:renderAudit,settings:renderSettings}[sec]||renderDashboard)()};
+  const navItems=[['dashboard','fa-chart-pie','Dashboard'],['clients','fa-address-card','Clientes'],['pipeline','fa-filter-circle-dollar','Pipeline'],['ventas','fa-cash-register','Ventas'],['historial','fa-clock-rotate-left','Historial'],['catalog','fa-boxes-stacked','Catálogo'],['roofintel','fa-house-chimney-crack','Roof Intelligence'],['proposals','fa-file-signature','Propuestas'],['payroll','fa-sitemap','Comisiones'],['empleados','fa-users-gear','Empleados'],['tickets','fa-ticket','Tickets'],['projects','fa-helmet-safety','Proyectos'],['reports','fa-chart-line','Reportes'],['branding','fa-pen-ruler','Sitio Web'],['users','fa-user-shield','Usuarios'],['trash','fa-trash-can','Papelera'],['audit','fa-clipboard-list','Auditoría'],['settings','fa-gear','Configuración']];
+  window.leonV2OpenSection=sec=>{document.querySelectorAll('#v2-nav button').forEach(b=>b.classList.toggle('active',b.dataset.sec===sec));({dashboard:renderDashboard,clients:renderClients,pipeline:renderPipeline,ventas:renderVentas,historial:renderHistorialSection,catalog:renderCatalog,roofintel:renderRoofIntel,proposals:renderProposals,payroll:renderPayroll,empleados:renderEmpleados,tickets:renderTickets,projects:renderProjects,reports:renderReports,branding:renderBranding,users:renderUsers,trash:renderTrash,audit:renderAudit,settings:renderSettings}[sec]||renderDashboard)()};
   function renderNav(){const role=state.currentUser?.role||'Administrador';document.getElementById('v2-role-pill').textContent=role;document.getElementById('v2-nav').innerHTML=navItems.map(([s,i,t])=>`<button data-sec="${s}" onclick="leonV2OpenSection('${s}')"><i class="fa-solid ${i} w-4"></i>${t}</button>`).join('');document.querySelector('#v2-nav button')?.classList.add('active')}
   function kpi(title,val,sub,icon){return `<div class="v2-card v2-kpi p-5"><div class="text-[10px] font-black uppercase tracking-widest text-slate-500">${title}</div><div class="text-3xl font-black text-slate-900 mt-2">${val}</div><div class="text-xs text-brand-600 font-bold mt-2">${sub}</div><i class="fa-solid ${icon} absolute right-5 top-5 text-xl text-brand-300"></i></div>`}
 
@@ -4483,15 +4856,18 @@
     if(t.type==='client')state.clients.push(t.data);
     else if(t.type==='product')state.products.push(t.data);
     else if(t.type==='category')state.categories.push(t.data);
+    else if(t.type==='property'){ if(!state.properties)state.properties=[]; state.properties.push(t.data); }
     state.trash.splice(idx,1);
     leonV2Audit('Restaurado de papelera', t.type+': '+t.label);
     showToast(t.label+' restaurado.','success');
     renderTrashList();
     if(typeof renderAdminProductsList==='function')renderAdminProductsList();
+    if(document.getElementById('v2-properties-grid'))renderPropertiesGrid();
     if(typeof window.leonV2SyncCollection==='function'){
       if(t.type==='client')window.leonV2SyncCollection('clients');
       else if(t.type==='product')window.leonV2SyncCollection('products');
       else if(t.type==='category')window.leonV2SyncCollection('categories');
+      else if(t.type==='property')window.leonV2SyncCollection('properties');
     }
     if(typeof window.leonV2DbDelete==='function')window.leonV2DbDelete('trash', trashId);
   };
@@ -4579,7 +4955,7 @@
   };
 
   function renderPipeline(){
-    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-4 mb-5"><div><h3 class="text-xl font-black text-slate-900">Pipeline de Cotizaciones</h3><p class="text-xs text-slate-500 mt-1">Propuestas activas — acepta, rechaza o revisa cada una.</p></div><div class="flex gap-2"><button onclick="leonV2OpenManualSale()" class="px-4 py-3 rounded-xl bg-white border border-brand-200 text-brand-700 text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-cash-register mr-2"></i>Venta manual</button><button onclick="openNewQuoteModal()" class="px-4 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-2"></i>Nueva Cotización</button></div></div><div class="flex flex-wrap items-end gap-3 mb-5 p-3 bg-brand-50/50 border border-brand-100 rounded-xl"><div><label class="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Desde</label><input type="date" id="quotes-date-start" onchange="renderQuotesList()" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 text-xs outline-none"></div><div><label class="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Hasta</label><input type="date" id="quotes-date-end" onchange="renderQuotesList()" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 text-xs outline-none"></div><button onclick="document.getElementById('quotes-date-start').value='';document.getElementById('quotes-date-end').value='';renderQuotesList();" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-brand-600 text-[10px] font-bold uppercase tracking-wider transition"><i class="fa-solid fa-filter-circle-xmark mr-1"></i>Limpiar</button></div><div class="overflow-x-auto"><table class="w-full v2-table"><thead><tr><th>Cliente</th><th>Origen</th><th>Total</th><th>Estado</th><th class="text-right">Acción</th></tr></thead><tbody id="quotes-table-body"></tbody></table></div></div>`;
+    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-4 mb-5"><div><h3 class="text-xl font-black text-slate-900">Pipeline de Cotizaciones</h3><p class="text-xs text-slate-500 mt-1">Propuestas activas — acepta, rechaza o revisa cada una.</p></div><div class="flex flex-wrap gap-2"><button onclick="leonV2OpenRoofSealWizard()" class="px-4 py-3 rounded-xl bg-white border border-brand-200 text-brand-700 text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-house-chimney-crack mr-2"></i>Sellado de Techo</button><button onclick="leonV2OpenManualSale()" class="px-4 py-3 rounded-xl bg-white border border-brand-200 text-brand-700 text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-cash-register mr-2"></i>Venta manual</button><button onclick="openNewQuoteModal()" class="px-4 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-2"></i>Nueva Cotización</button></div></div><div class="flex flex-wrap items-end gap-3 mb-5 p-3 bg-brand-50/50 border border-brand-100 rounded-xl"><div><label class="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Desde</label><input type="date" id="quotes-date-start" onchange="renderQuotesList()" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 text-xs outline-none"></div><div><label class="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Hasta</label><input type="date" id="quotes-date-end" onchange="renderQuotesList()" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 text-xs outline-none"></div><button onclick="document.getElementById('quotes-date-start').value='';document.getElementById('quotes-date-end').value='';renderQuotesList();" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-brand-600 text-[10px] font-bold uppercase tracking-wider transition"><i class="fa-solid fa-filter-circle-xmark mr-1"></i>Limpiar</button></div><div class="overflow-x-auto"><table class="w-full v2-table"><thead><tr><th>Cliente</th><th>Origen</th><th>Total</th><th>Estado</th><th class="text-right">Acción</th></tr></thead><tbody id="quotes-table-body"></tbody></table></div></div>`;
     renderQuotesList();
   }
 
@@ -4663,6 +5039,24 @@
     const totalInput=document.getElementById('ms-total');
     if(totalInput) totalInput.value=total.toFixed(2);
   }
+  // Ajusta el inventario de UNA línea de venta completa: el producto principal, y también cada
+  // componente que su variante trae incluido (ej. el panel solar dentro de "Batería + Panel Solar")
+  // — cada uno multiplicado por la cantidad del combo incluido y la cantidad de la línea vendida.
+  // sign=-1 para descontar (venta), sign=+1 para devolver (venta anulada). Usado en los 3 puntos
+  // donde el sistema toca inventario, así el comportamiento de bundles queda en un solo lugar.
+  function leonV2AdjustItemStock(item, sign){
+    if(!item)return;
+    if(item.id){
+      const p=(state.products||[]).find(x=>x.id===item.id);
+      if(p&&typeof p.stock==='number')p.stock=Math.max(0,p.stock+sign*item.qty);
+    }
+    (Array.isArray(item.includes)?item.includes:[]).forEach(inc=>{
+      if(!inc||!inc.productId)return;
+      const cp=(state.products||[]).find(x=>x.id===inc.productId);
+      if(cp&&typeof cp.stock==='number')cp.stock=Math.max(0,cp.stock+sign*(inc.qty||1)*item.qty);
+    });
+  }
+  window.leonV2AdjustItemStock=leonV2AdjustItemStock;
   window.leonV2SubmitManualSale=function(e){
     e.preventDefault();
     const vendorId=document.getElementById('ms-vendor').value;
@@ -4692,7 +5086,7 @@
     };
     if(!state.quotesHistory)state.quotesHistory=[];
     state.quotesHistory.unshift(q);
-    (q.items||[]).forEach(item=>{ if(!item.id)return; const p=(state.products||[]).find(x=>x.id===item.id); if(p&&typeof p.stock==='number')p.stock=Math.max(0,p.stock-item.qty); });
+    (q.items||[]).forEach(item=>leonV2AdjustItemStock(item,-1));
     leonV2GenerateCommissions(q);
     leonV2CreateProject(q);
     leonV2UpsertClient(q,'Venta manual registrada — '+q.id);
@@ -4714,7 +5108,7 @@
     const relatedCommissions=(state.commissions||[]).filter(c=>c.quoteId===q.id);
     if(relatedCommissions.some(c=>c.status==='Pagada')){ showToast('Esta venta ya tiene una comisión pagada — resuélvelo primero con el vendedor antes de anular la venta.','error'); return }
     q.status='Anulada';
-    (q.items||[]).forEach(item=>{ if(!item.id)return; const p=(state.products||[]).find(x=>x.id===item.id); if(p&&typeof p.stock==='number')p.stock+=item.qty; });
+    (q.items||[]).forEach(item=>leonV2AdjustItemStock(item,1));
     relatedCommissions.forEach(c=>{ const prev=c.status; c.status='Rechazada'; c.statusHistory=(c.statusHistory||[]); c.statusHistory.push({from:prev,to:'Rechazada',at:new Date().toISOString(),by:(state.currentUser&&state.currentUser.name)||'Sistema'}); });
     leonV2Audit('Venta anulada', q.clientName+' — '+q.id+' · '+money(leonV2ComputeTotal(q).total));
     if(typeof window.leonV2SyncCollection==='function'){window.leonV2SyncCollection('quotesHistory');window.leonV2SyncCollection('products');window.leonV2SyncCollection('commissions');}
@@ -4822,6 +5216,766 @@
     renderUsersList();
   }
 
+  // ============================================================================
+  // LEON ROOF INTELLIGENCE — Fase 1: Property Profile + Roof Assessment (medición
+  // por polígono) + Integrations Center. Extiende el sistema existente sin tocar
+  // catálogo/cotizaciones/clientes — properties y roofAssessments son colecciones
+  // nuevas que sincronizan igual que cualquier otra (ver FB_LIST_COLLECTIONS).
+  // Fases siguientes (no incluidas todavía, ver hoja de ruta entregada al cliente):
+  // inventario de equipos, checklist de condición + Roof Score, motor de precios y
+  // reparaciones, propuesta extendida de 8 páginas, garantía/inspección final.
+  // ============================================================================
+
+  // ---------- Integrations Center: estado REAL de cada proveedor externo, sin inventar nada ----------
+  // Nunca marcamos "Conectado" un proveedor que necesite una clave/API secreta: esa clave viviría
+  // en el código fuente de este archivo, visible para cualquiera que abra el navegador (F12) — por
+  // eso Maps/Solar/Bing/OpenSolar quedan honestamente en amarillo/rojo hasta que exista un backend
+  // real que la resguarde. La arquitectura de proveedor (ImageryProvider) ya está lista: el día que
+  // haya backend, solo hace falta agregar el proveedor real aquí y reemplazar leonV2RoofApplyImagerySource.
+  const ROOF_INTEGRATIONS = [
+    {name:'Google Maps / Vista Satelital', desc:'Ubicar la propiedad en mapa y ver imagen satelital automáticamente.', status:'yellow', note:'Requiere una API key de Google Maps resguardada en un backend — no puede vivir en este archivo. Mientras tanto: pega el enlace de Google Maps de la propiedad, o sube una captura de pantalla de la vista satélite como imagen de trabajo.'},
+    {name:'Google Solar API', desc:'Medición automática de techo y estimado solar desde satélite.', status:'yellow', note:'Requiere backend + cuenta paga de Google. Hoy la medición se hace de forma manual con la herramienta de polígono de abajo — 100% funcional, sin depender de esta API.'},
+    {name:'Bing Maps / Azure Maps', desc:'Proveedor alterno de imagen satelital.', status:'red', note:'No configurado todavía. Arquitectura de proveedor lista para conectarlo el día que haya backend y clave.'},
+    {name:'OpenSolar', desc:'Diseño solar avanzado e integración de propuestas.', status:'red', note:'No configurado — pendiente de cuenta/API de OpenSolar.'},
+    {name:'Almacenamiento de fotos y documentos', desc:'Guardar fotos de inspección, imágenes de techo y documentos.', status: window.__fbDb?'green':'yellow', note: window.__fbDb?'Conectado — usa la misma base de datos Firestore en tiempo real del resto del sistema.':'Sin conexión a la base de datos ahora mismo (modo solo local en esta pestaña).'},
+    {name:'Correo automático', desc:'Enviar propuestas y notificaciones por correo sin intervención manual.', status:'red', note:'Requiere una Cloud Function o un servicio de correo (SendGrid, etc.) — no existe backend en esta demo.'},
+    {name:'Generación de PDF', desc:'Propuestas y reportes descargables en PDF.', status:'green', note:'Conectado — real, vía impresión del navegador (Guardar como PDF), sin depender de ningún servicio externo pago.'},
+    {name:'Firma digital', desc:'Captura de firma del cliente/técnico en pantalla.', status:'green', note:'Conectado — real, firma trazada a mano guardada como imagen (no es un proveedor certificado con validez legal notarial como DocuSign).'}
+  ];
+  function leonV2RoofIntegrationBadge(status){
+    const map={green:['bg-emerald-50 border-emerald-100 text-emerald-700','🟢 Conectado'],yellow:['bg-amber-50 border-amber-100 text-amber-700','🟡 Falta configuración'],red:['bg-red-50 border-red-100 text-red-700','🔴 Desconectado']};
+    const [cls,label]=map[status]||map.red;
+    return `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-black uppercase tracking-wide whitespace-nowrap ${cls}">${label}</span>`;
+  }
+  function leonV2RoofIntegrationsHtml(){
+    return ROOF_INTEGRATIONS.map(p=>`<div class="p-4 rounded-xl border border-slate-200 bg-white"><div class="flex items-start justify-between gap-2"><b class="text-sm text-slate-900">${esc(p.name)}</b>${leonV2RoofIntegrationBadge(p.status)}</div><p class="text-[11px] text-slate-500 mt-1">${esc(p.desc)}</p><p class="text-[10px] text-slate-400 mt-2 leading-relaxed">${esc(p.note)}</p></div>`).join('');
+  }
+
+  // ---------- Property Profile ----------
+  function leonV2PropertyAssessments(propertyId){
+    return (state.roofAssessments||[]).filter(a=>a.propertyId===propertyId).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  }
+  function renderRoofIntel(){
+    const main=document.getElementById('v2-main'); if(!main)return;
+    main.innerHTML=`<div class="v2-card p-6 mb-6"><div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="text-xl font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-house-chimney-crack text-brand-500"></i> Roof Intelligence</h3><p class="text-xs text-slate-500 mt-1">Perfil de propiedad, evaluación de techo y medición real por polígono — integrado al mismo cliente y propuesta del CRM.</p></div><div class="flex flex-wrap gap-2"><button onclick="leonV2OpenRoofSealWizard()" class="px-4 py-3 rounded-xl border border-brand-200 text-brand-700 text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-calculator mr-2"></i>Propuesta de Sellado de Techo</button><button onclick="leonV2OpenPropertyModal()" class="px-4 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-plus mr-2"></i>Nueva propiedad</button></div></div></div><div id="v2-properties-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>`;
+    renderPropertiesGrid();
+  }
+  function renderPropertiesGrid(){
+    const grid=document.getElementById('v2-properties-grid'); if(!grid)return;
+    const props=state.properties||[];
+    grid.innerHTML = props.length ? props.map(p=>{
+      const assessments=leonV2PropertyAssessments(p.id);
+      const latest=assessments[0];
+      return `<div class="v2-card p-5 cursor-pointer hover:border-brand-300 transition" onclick="leonV2OpenPropertyDetail('${p.id}')">
+        <div class="flex items-start justify-between gap-2"><div><b class="text-sm text-slate-900">${esc(p.address)}</b><div class="text-[11px] text-slate-500 mt-0.5">${esc(p.municipio||'')}</div></div><span class="v2-pill">${esc(p.propertyType||'Residencial')}</span></div>
+        ${p.clientName?`<div class="text-[11px] text-slate-500 mt-2"><i class="fa-solid fa-user mr-1"></i>${esc(p.clientName)}</div>`:''}
+        <div class="text-[11px] text-slate-500 mt-2"><i class="fa-solid fa-house-chimney-crack mr-1"></i>${assessments.length} evaluación${assessments.length===1?'':'es'} de techo${latest&&latest.totalAreaFt2?` · ${Math.round(latest.totalAreaFt2).toLocaleString('en-US')} ft² últ.`:''}</div>
+      </div>`;
+    }).join('') : '<div class="v2-empty col-span-full">No hay propiedades todavía. Crea la primera con "Nueva propiedad".</div>';
+  }
+  function leonV2PropertyModalHtml(id){
+    const p = id ? (state.properties||[]).find(x=>x.id===id) : null;
+    const clientsOpts = (state.clients||[]).map(c=>`<option value="${c.id}" ${p&&p.clientId===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
+    return `<div class="flex items-center justify-between mb-5"><h3 class="text-lg font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-house-chimney-crack text-brand-500"></i> ${p?'Editar propiedad':'Nueva propiedad'}</h3><button onclick="leonV2Close('leon-v2-property-modal')" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+    <form onsubmit="leonV2SaveProperty(event${p?`,'${p.id}'`:''})" class="space-y-4">
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Cliente (opcional)</label><select id="prop-client" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="">Sin vincular</option>${clientsOpts}</select></div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Dirección</label><input id="prop-address" required value="${esc(p?p.address:'')}" placeholder="Calle, número, urbanización" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Municipio</label><input id="prop-municipio" value="${esc(p?p.municipio||'':'')}" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Tipo de propiedad</label><select id="prop-type" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option ${p&&p.propertyType==='Residencial'?'selected':''}>Residencial</option><option ${p&&p.propertyType==='Comercial'?'selected':''}>Comercial</option><option ${p&&p.propertyType==='Industrial'?'selected':''}>Industrial</option></select></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Enlace de ubicación (Google Maps)</label><input id="prop-location-url" value="${esc(p?p.locationUrl||'':'')}" placeholder="https://maps.google.com/..." class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+      </div>
+      <div>
+        <button type="button" onclick="leonV2PropertyUseLocation()" class="text-[11px] font-black uppercase text-brand-600 hover:text-brand-700"><i class="fa-solid fa-location-crosshairs mr-1"></i>Usar mi ubicación actual (GPS del navegador)</button>
+        <div id="prop-geo-status" class="text-[10px] text-slate-400 mt-1"></div>
+        <input type="hidden" id="prop-lat" value="${p&&p.lat!=null?p.lat:''}"><input type="hidden" id="prop-lng" value="${p&&p.lng!=null?p.lng:''}">
+      </div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Notas</label><textarea id="prop-notes" rows="2" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none">${esc(p?p.notes||'':'')}</textarea></div>
+      <div class="flex gap-3 pt-2"><button type="button" onclick="leonV2Close('leon-v2-property-modal')" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-500">Cancelar</button><button type="submit" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase">Guardar</button></div>
+    </form>`;
+  }
+  window.leonV2OpenPropertyModal=id=>{ document.getElementById('v2-property-modal-content').innerHTML=leonV2PropertyModalHtml(id); open('leon-v2-property-modal'); };
+  // Usa navigator.geolocation (API real del navegador, sin clave ni backend) — el usuario debe
+  // conceder permiso; si lo niega o el navegador no lo soporta, se avisa y se sigue funcionando
+  // con el enlace de Google Maps pegado a mano.
+  window.leonV2PropertyUseLocation=()=>{
+    const statusEl=document.getElementById('prop-geo-status'); if(!statusEl)return;
+    if(!navigator.geolocation){ statusEl.textContent='Este navegador no soporta ubicación GPS. Pega el enlace de Google Maps manualmente.'; return; }
+    statusEl.textContent='Buscando ubicación...';
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const lat=pos.coords.latitude.toFixed(6), lng=pos.coords.longitude.toFixed(6);
+      const latEl=document.getElementById('prop-lat'), lngEl=document.getElementById('prop-lng');
+      if(latEl)latEl.value=lat; if(lngEl)lngEl.value=lng;
+      const urlInput=document.getElementById('prop-location-url');
+      if(urlInput && !urlInput.value) urlInput.value=`https://www.google.com/maps?q=${lat},${lng}`;
+      statusEl.textContent=`Ubicación capturada: ${lat}, ${lng}`;
+    }, err=>{ statusEl.textContent='No se pudo obtener la ubicación ('+(err&&err.message?err.message:'permiso denegado')+'). Puedes pegar el enlace de Google Maps manualmente.'; }, {timeout:8000});
+  };
+  window.leonV2SaveProperty=(e,id)=>{
+    e.preventDefault();
+    const clientId=document.getElementById('prop-client').value||null;
+    const client=clientId?(state.clients||[]).find(c=>c.id===clientId):null;
+    const address=document.getElementById('prop-address').value.trim();
+    if(!address){ showToast('La dirección es obligatoria.','error'); return; }
+    const latVal=document.getElementById('prop-lat').value, lngVal=document.getElementById('prop-lng').value;
+    const payload={
+      clientId, clientName: client?client.name:'',
+      address, municipio:document.getElementById('prop-municipio').value.trim(),
+      propertyType:document.getElementById('prop-type').value,
+      locationUrl:document.getElementById('prop-location-url').value.trim(),
+      lat: latVal?Number(latVal):null, lng: lngVal?Number(lngVal):null,
+      notes:document.getElementById('prop-notes').value.trim()
+    };
+    if(!state.properties) state.properties=[];
+    if(id){
+      const p=state.properties.find(x=>x.id===id); if(!p)return;
+      Object.assign(p,payload); p.updatedAt=new Date().toISOString();
+      leonV2Audit('Propiedad editada', p.address);
+      showToast('Propiedad actualizada.','success');
+    } else {
+      const p={id:'prop-'+Date.now()+'-'+Math.floor(Math.random()*999), ...payload, createdAt:new Date().toISOString(), createdBy:(state.currentUser&&state.currentUser.name)||'Sistema'};
+      state.properties.unshift(p);
+      leonV2Audit('Propiedad creada', p.address);
+      showToast('Propiedad creada.','success');
+    }
+    leonV2Close('leon-v2-property-modal');
+    if(document.getElementById('v2-properties-grid')) renderPropertiesGrid();
+    if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('properties');
+  };
+  function leonV2PropertyDetailHtml(id){
+    const p=(state.properties||[]).find(x=>x.id===id); if(!p) return '<div class="v2-empty">Propiedad no encontrada.</div>';
+    const assessments=leonV2PropertyAssessments(id);
+    return `<div class="flex items-start justify-between mb-5"><div><h3 class="text-lg font-black text-slate-900">${esc(p.address)}</h3><p class="text-xs text-slate-500 mt-1">${esc(p.municipio||'')} · ${esc(p.propertyType||'Residencial')}${p.clientName?' · '+esc(p.clientName):''}</p></div><button onclick="leonV2Close('leon-v2-property-detail')" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+    <div class="flex flex-wrap gap-2 mb-5">
+      ${p.locationUrl?`<a href="${esc(p.locationUrl)}" target="_blank" rel="noopener" class="v2-tab"><i class="fa-solid fa-map-location-dot mr-1"></i>Ver en mapa</a>`:''}
+      <button onclick="leonV2Close('leon-v2-property-detail');leonV2OpenPropertyModal('${p.id}')" class="v2-tab"><i class="fa-solid fa-pen mr-1"></i>Editar</button>
+      ${leonV2Can('deleteProperty')?`<button onclick="leonV2DeleteProperty('${p.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-trash mr-1"></i>Eliminar</button>`:''}
+    </div>
+    ${p.notes?`<div class="p-3 rounded-xl bg-slate-50 text-xs text-slate-600 mb-5">${esc(p.notes)}</div>`:''}
+    <div class="flex items-center justify-between mb-3"><h4 class="text-sm font-black text-slate-900">Evaluaciones de techo</h4><div class="flex gap-2"><button onclick="leonV2OpenRoofSealWizard('${p.id}')" class="px-3 py-2 rounded-lg border border-brand-200 text-brand-700 text-[10px] font-black uppercase"><i class="fa-solid fa-calculator mr-1"></i>Propuesta de Sellado de Techo</button><button onclick="leonV2NewRoofAssessment('${p.id}')" class="px-3 py-2 rounded-lg bg-gradient-to-r from-brand-600 to-brand-400 text-white text-[10px] font-black uppercase"><i class="fa-solid fa-plus mr-1"></i>Nueva evaluación</button></div></div>
+    <div class="space-y-2">${assessments.length?assessments.map(a=>`<div class="p-4 rounded-xl border border-slate-200 flex items-center justify-between gap-3 cursor-pointer hover:border-brand-300" onclick="leonV2OpenRoofAssessment('${a.id}')"><div><b class="text-sm text-slate-900">${esc(new Date(a.createdAt).toLocaleDateString())}</b><div class="text-[11px] text-slate-500">${a.totalAreaFt2?Math.round(a.totalAreaFt2).toLocaleString('en-US')+' ft² total':'Sin medir todavía'}${a.totalWorkableAreaFt2?' · '+Math.round(a.totalWorkableAreaFt2).toLocaleString('en-US')+' ft² trabajable':''}</div></div><span class="v2-status ${a.status==='Completada'?'bg-emerald-50 text-emerald-700':'bg-amber-50 text-amber-700'}">${esc(a.status)}</span></div>`).join(''):'<div class="v2-empty">Sin evaluaciones todavía.</div>'}</div>`;
+  }
+  window.leonV2OpenPropertyDetail=id=>{ document.getElementById('v2-property-detail-content').innerHTML=leonV2PropertyDetailHtml(id); open('leon-v2-property-detail'); };
+  window.leonV2DeleteProperty=id=>{
+    if(!leonV2Can('deleteProperty')){ showToast('Solo un administrador puede eliminar propiedades.','error'); return; }
+    const idx=(state.properties||[]).findIndex(x=>x.id===id); if(idx===-1)return;
+    const p=state.properties[idx];
+    state.properties.splice(idx,1);
+    if(typeof window.leonV2DbDelete==='function')window.leonV2DbDelete('properties', id);
+    leonV2SoftDelete('property', p, p.address);
+    leonV2Close('leon-v2-property-detail');
+    if(document.getElementById('v2-properties-grid'))renderPropertiesGrid();
+    showToast('Propiedad movida a la papelera.','success');
+  };
+
+  // ---------- Roof Assessment: workspace de imagen + medición real por polígono ----------
+  // Estado del lienzo activo — vive fuera de `state` a propósito: son coordenadas de trabajo del
+  // dibujo (no se guardan hasta pulsar "Guardar evaluación"), igual que v2ProductMediaState arriba.
+  let v2RoofCanvasState = null;
+  // Construye y guarda un registro de evaluación de techo vacío para una propiedad — factor común
+  // entre "Nueva evaluación" (Roof Intelligence) y el asistente de Propuesta de Sellado de Techo,
+  // así ambos caminos crean exactamente el mismo tipo de registro real en state.roofAssessments.
+  function leonV2CreateRoofAssessmentRecord(propertyId){
+    if(!state.roofAssessments) state.roofAssessments=[];
+    const a={
+      id:'roof-'+Date.now()+'-'+Math.floor(Math.random()*999),
+      propertyId, status:'Borrador',
+      createdAt:new Date().toISOString(), createdBy:(state.currentUser&&state.currentUser.name)||'Sistema',
+      imagery:{source:null,url:''}, calibration:{pxPerFt:null, refFt:null},
+      sections:[], obstructionAreaFt2:0, totalAreaFt2:0, totalWorkableAreaFt2:0,
+      equipment:[], condition:{}, roofScore:null, photos:[], confidence:'declared'
+    };
+    state.roofAssessments.unshift(a);
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('roofAssessments');
+    return a;
+  }
+  window.leonV2NewRoofAssessment=propertyId=>{
+    const property=(state.properties||[]).find(x=>x.id===propertyId); if(!property){showToast('Propiedad no encontrada.','error');return;}
+    const a=leonV2CreateRoofAssessmentRecord(propertyId);
+    leonV2Audit('Evaluación de techo creada', property.address);
+    leonV2Close('leon-v2-property-detail');
+    window.leonV2OpenRoofAssessment(a.id);
+  };
+  window.leonV2OpenRoofAssessment=id=>{
+    const a=(state.roofAssessments||[]).find(x=>x.id===id); if(!a){showToast('Evaluación no encontrada.','error');return;}
+    const property=(state.properties||[]).find(x=>x.id===a.propertyId);
+    document.getElementById('v2-roof-assessment-content').innerHTML=leonV2RoofAssessmentWorkspaceHtml(a,property);
+    open('leon-v2-roof-assessment');
+    v2RoofCanvasState={ assessmentId:a.id, mode:'idle', calibClicks:[], currentPoints:[], sections:[], img:null, canvasEl:null, pxPerFt:null, refFt:null };
+    if(a.imagery && a.imagery.url) leonV2RoofLoadImageToCanvas(a.imagery.url);
+    leonV2RoofRenderSectionsList();
+  };
+  function leonV2RoofAssessmentWorkspaceHtml(a,property){
+    const hasImg = a.imagery && a.imagery.url;
+    return `<div class="p-5 border-b border-slate-100 flex items-center justify-between gap-3">
+      <div><h3 class="text-base font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-ruler-combined text-brand-500"></i> Evaluación de techo</h3><p class="text-[11px] text-slate-500 mt-0.5">${property?esc(property.address):''}</p></div>
+      <button onclick="leonV2Close('leon-v2-roof-assessment')" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <div class="grid lg:grid-cols-[1.6fr_1fr] gap-0">
+      <div class="p-5 border-r border-slate-100">
+        <div id="v2-roof-imagery-panel" class="${hasImg?'hidden':''}">${leonV2RoofImagerySourceTabsHtml()}</div>
+        <div id="v2-roof-canvas-wrap" class="${hasImg?'':'hidden'}">
+          <div class="flex flex-wrap gap-2 mb-2">
+            <button type="button" onclick="leonV2RoofStartCalibration()" class="v2-tab"><i class="fa-solid fa-ruler mr-1"></i>Calibrar escala</button>
+            <button type="button" onclick="leonV2RoofStartSection()" class="v2-tab"><i class="fa-solid fa-draw-polygon mr-1"></i>Nueva sección</button>
+            <button type="button" onclick="leonV2RoofUndoPoint()" class="v2-tab"><i class="fa-solid fa-rotate-left mr-1"></i>Deshacer punto</button>
+            <button type="button" onclick="leonV2RoofCloseSection()" class="v2-tab"><i class="fa-solid fa-check mr-1"></i>Cerrar sección</button>
+            <button type="button" onclick="leonV2RoofChangeImagery()" class="v2-tab"><i class="fa-solid fa-image mr-1"></i>Cambiar imagen</button>
+          </div>
+          <div id="v2-roof-status" class="text-[11px] text-slate-500 mb-2 min-h-[16px]"></div>
+          <canvas id="v2-roof-canvas" onclick="leonV2RoofCanvasClick(event)" class="w-full h-auto rounded-xl border border-slate-200 bg-slate-50 cursor-crosshair block"></canvas>
+        </div>
+      </div>
+      <div class="p-5 max-h-[70vh] overflow-y-auto">
+        <h4 class="text-xs font-black uppercase text-slate-500 mb-3">Secciones medidas</h4>
+        <div id="v2-roof-sections-list" class="space-y-2"></div>
+        <div class="mt-5 p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-3">
+          <div class="flex justify-between text-xs"><span class="text-slate-500">Área total</span><b id="v2-roof-total-area">0 ft²</b></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Obstrucciones / equipos (ft², se resta del total)</label><input type="number" min="0" step="0.1" id="v2-roof-obstruction" value="${a.obstructionAreaFt2||0}" oninput="leonV2RoofUpdateObstruction()" class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm outline-none"></div>
+          <div class="flex justify-between text-xs pt-2 border-t border-slate-200"><span class="text-slate-600 font-bold">Área trabajable</span><b id="v2-roof-workable-area" class="text-brand-600">0 ft²</b></div>
+          <p class="text-[10px] text-slate-400 leading-relaxed">Área total = suma de todas las secciones medidas. Área trabajable = área total menos obstrucciones/equipos que ocupan espacio del techo (inventario detallado de equipos: próxima fase).</p>
+        </div>
+        <button onclick="leonV2SaveRoofAssessment()" class="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-floppy-disk mr-2"></i>Guardar evaluación</button>
+      </div>
+    </div>`;
+  }
+  // Misma convención de doble entrada (subir archivo o pegar URL con "+") ya usada en galería de
+  // fotos del producto y variantes — sin API de mapas, la imagen de trabajo es siempre una que el
+  // usuario aporta (captura satelital, foto de dron, o foto normal), nunca inventada.
+  function leonV2RoofImagerySourceTabsHtml(){
+    return `<div class="p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/60 space-y-3">
+      <p class="text-[11px] text-slate-500">Sube una foto o captura del techo (por ejemplo, una captura de pantalla de Google Maps en vista satélite, una foto de dron, o una foto normal desde el suelo) para medir sobre ella.</p>
+      <div class="flex flex-wrap gap-2 items-center">
+        <input type="file" id="v2-roof-img-file" accept="image/*" class="hidden" onchange="handleRoofImgFile(event)">
+        <button type="button" onclick="document.getElementById('v2-roof-img-file').click()" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-[11px] font-black uppercase"><i class="fa-solid fa-upload mr-1"></i>Subir imagen</button>
+        <span id="v2-roof-img-status" class="text-[10px] text-slate-400"></span>
+      </div>
+      <div class="flex gap-2"><input type="text" id="v2-roof-img-url" placeholder="o pega la URL de una imagen" class="flex-grow px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none"><button type="button" onclick="leonV2RoofSetImageUrl()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-black">+</button></div>
+    </div>`;
+  }
+  window.leonV2RoofChangeImagery=()=>{
+    const panel=document.getElementById('v2-roof-imagery-panel'); const wrap=document.getElementById('v2-roof-canvas-wrap');
+    if(panel){ panel.classList.remove('hidden'); panel.innerHTML=leonV2RoofImagerySourceTabsHtml(); }
+    if(wrap) wrap.classList.add('hidden');
+  };
+  window.handleRoofImgFile=function(event){
+    const file=event.target.files[0]; if(!file)return;
+    const statusEl=document.getElementById('v2-roof-img-status');
+    if(statusEl) statusEl.textContent='Optimizando imagen...';
+    compressImageFile(file,1600,0.85).then(result=>{
+      leonV2RoofApplyImagerySource('manual', result.dataUrl);
+    }).catch(err=>{ console.error(err); if(statusEl) statusEl.textContent='No se pudo procesar la imagen.'; showToast('No se pudo procesar la imagen.','error'); });
+  };
+  window.leonV2RoofSetImageUrl=()=>{
+    const input=document.getElementById('v2-roof-img-url'); const url=(input&&input.value||'').trim(); if(!url)return;
+    leonV2RoofApplyImagerySource('url', url);
+  };
+  function leonV2RoofApplyImagerySource(source,url){
+    if(!v2RoofCanvasState)return;
+    const a=(state.roofAssessments||[]).find(x=>x.id===v2RoofCanvasState.assessmentId); if(!a)return;
+    a.imagery={source,url};
+    const panel=document.getElementById('v2-roof-imagery-panel'); if(panel){ panel.innerHTML=''; panel.classList.add('hidden'); }
+    const wrap=document.getElementById('v2-roof-canvas-wrap'); if(wrap) wrap.classList.remove('hidden');
+    leonV2RoofLoadImageToCanvas(url);
+  }
+  function leonV2RoofLoadImageToCanvas(url){
+    const canvas=document.getElementById('v2-roof-canvas'); if(!canvas||!v2RoofCanvasState)return;
+    const img=new Image();
+    img.onload=()=>{
+      const maxW=880, maxH=560;
+      const w=img.naturalWidth||1, h=img.naturalHeight||1;
+      const scale=Math.min(maxW/w, maxH/h, 1);
+      canvas.width=Math.max(1,Math.round(w*scale));
+      canvas.height=Math.max(1,Math.round(h*scale));
+      v2RoofCanvasState.img=img; v2RoofCanvasState.canvasEl=canvas;
+      const a=(state.roofAssessments||[]).find(x=>x.id===v2RoofCanvasState.assessmentId);
+      v2RoofCanvasState.sections=(a&&a.sections)?JSON.parse(JSON.stringify(a.sections)):[];
+      v2RoofCanvasState.pxPerFt=(a&&a.calibration&&a.calibration.pxPerFt)||null;
+      v2RoofCanvasState.refFt=(a&&a.calibration&&a.calibration.refFt)||null;
+      leonV2RoofRedrawCanvas();
+      leonV2RoofRenderSectionsList();
+      const statusEl=document.getElementById('v2-roof-status');
+      if(statusEl) statusEl.textContent = v2RoofCanvasState.pxPerFt ? 'Escala calibrada: '+v2RoofCanvasState.pxPerFt.toFixed(1)+' px = 1 ft.' : 'Calibra la escala antes de medir (botón "Calibrar escala").';
+    };
+    img.onerror=()=>{ showToast('No se pudo cargar esa imagen. Revisa la URL o intenta subir el archivo.','error'); };
+    img.src=url;
+  }
+  function leonV2RoofRedrawCanvas(){
+    const st=v2RoofCanvasState; if(!st||!st.canvasEl||!st.img)return;
+    const canvas=st.canvasEl, ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(st.img,0,0,canvas.width,canvas.height);
+    (st.sections||[]).forEach(sec=>{
+      leonV2RoofDrawPolygon(ctx, sec.points, 'rgba(24,147,245,0.9)', 'rgba(24,147,245,0.18)', true);
+      if(sec.points&&sec.points.length){
+        const cx=sec.points.reduce((s,p)=>s+p.x,0)/sec.points.length;
+        const cy=sec.points.reduce((s,p)=>s+p.y,0)/sec.points.length;
+        ctx.fillStyle='#0b3d63'; ctx.font='bold 12px Arial'; ctx.textAlign='center';
+        ctx.fillText(sec.name+(sec.areaFt2?' · '+Math.round(sec.areaFt2)+' ft²':''), cx, cy);
+      }
+    });
+    if(st.mode==='drawing' && st.currentPoints.length) leonV2RoofDrawPolygon(ctx, st.currentPoints, '#f59e0b', 'rgba(245,158,11,0.15)', false);
+    if(st.mode==='calibrating' && st.calibClicks.length){
+      ctx.fillStyle='#dc2626';
+      st.calibClicks.forEach(p=>{ ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill(); });
+      if(st.calibClicks.length===2){
+        ctx.strokeStyle='#dc2626'; ctx.lineWidth=2; ctx.beginPath();
+        ctx.moveTo(st.calibClicks[0].x, st.calibClicks[0].y); ctx.lineTo(st.calibClicks[1].x, st.calibClicks[1].y); ctx.stroke();
+      }
+    }
+  }
+  function leonV2RoofDrawPolygon(ctx, points, stroke, fill, closed){
+    if(!points||!points.length)return;
+    ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
+    for(let i=1;i<points.length;i++) ctx.lineTo(points[i].x, points[i].y);
+    if(closed) ctx.closePath();
+    if(fill){ ctx.fillStyle=fill; ctx.fill(); }
+    ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle=stroke;
+    points.forEach(p=>{ ctx.beginPath(); ctx.arc(p.x,p.y,3.5,0,Math.PI*2); ctx.fill(); });
+  }
+  // El canvas se muestra a w-full (CSS) pero su tamaño interno de dibujo es fijo (canvas.width/height
+  // calculados al cargar la imagen) — por eso el clic hay que convertirlo de coordenadas CSS a
+  // coordenadas internas con este factor de escala, mismo patrón que la galería de variantes.
+  window.leonV2RoofCanvasClick=function(event){
+    const st=v2RoofCanvasState; if(!st||!st.canvasEl)return;
+    const canvas=st.canvasEl, rect=canvas.getBoundingClientRect();
+    const scaleX=canvas.width/rect.width, scaleY=canvas.height/rect.height;
+    const x=(event.clientX-rect.left)*scaleX, y=(event.clientY-rect.top)*scaleY;
+    if(st.mode==='calibrating'){
+      if(st.calibClicks.length>=2) st.calibClicks=[];
+      st.calibClicks.push({x,y});
+      leonV2RoofRedrawCanvas();
+      if(st.calibClicks.length===2) leonV2RoofShowCalibrationInput();
+    } else if(st.mode==='drawing'){
+      st.currentPoints.push({x,y});
+      leonV2RoofRedrawCanvas();
+    }
+  };
+  window.leonV2RoofStartCalibration=()=>{
+    const st=v2RoofCanvasState; if(!st||!st.img){showToast('Carga una imagen primero.','error');return;}
+    st.mode='calibrating'; st.calibClicks=[];
+    const statusEl=document.getElementById('v2-roof-status');
+    if(statusEl) statusEl.innerHTML='Haz clic en 2 puntos de un objeto de largo <b>conocido</b> en la imagen (ej. el ancho de un carro ≈ 6 ft, una puerta ≈ 3 ft).';
+    leonV2RoofRedrawCanvas();
+  };
+  // Sin prompt()/confirm() nativos en este sistema (convención establecida) — el input de pies se
+  // inyecta como formulario en línea dentro del área de estado, igual que otros flujos del CRM.
+  function leonV2RoofShowCalibrationInput(){
+    const statusEl=document.getElementById('v2-roof-status'); if(!statusEl)return;
+    statusEl.innerHTML='Distancia real entre esos 2 puntos: <input type="number" min="0.1" step="0.1" id="v2-roof-calib-ft" placeholder="pies" class="w-24 px-2 py-1 rounded-lg border border-slate-200 text-xs mx-2"><button onclick="leonV2RoofConfirmCalibration()" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-[10px] font-black uppercase">Confirmar</button>';
+  }
+  window.leonV2RoofConfirmCalibration=()=>{
+    const st=v2RoofCanvasState; if(!st||st.calibClicks.length<2)return;
+    const ftInput=document.getElementById('v2-roof-calib-ft');
+    const ft=Number(ftInput&&ftInput.value);
+    if(!ft||ft<=0){ showToast('Escribe una distancia en pies mayor que 0.','error'); return; }
+    const [p1,p2]=st.calibClicks;
+    const pxDist=Math.hypot(p2.x-p1.x, p2.y-p1.y);
+    st.pxPerFt=pxDist/ft; st.refFt=ft; st.mode='idle'; st.calibClicks=[];
+    leonV2RoofRecalcAllSections();
+    leonV2RoofRedrawCanvas();
+    leonV2RoofRenderSectionsList();
+    const statusEl=document.getElementById('v2-roof-status');
+    if(statusEl) statusEl.textContent='Escala calibrada: '+st.pxPerFt.toFixed(1)+' px = 1 ft.';
+  };
+  window.leonV2RoofStartSection=()=>{
+    const st=v2RoofCanvasState; if(!st||!st.img){showToast('Carga una imagen primero.','error');return;}
+    if(!st.pxPerFt){ showToast('Calibra la escala antes de medir una sección.','error'); return; }
+    st.mode='drawing'; st.currentPoints=[];
+    const statusEl=document.getElementById('v2-roof-status');
+    if(statusEl) statusEl.textContent='Haz clic para marcar cada esquina de la sección del techo. Cuando termines, pulsa "Cerrar sección".';
+    leonV2RoofRedrawCanvas();
+  };
+  window.leonV2RoofUndoPoint=()=>{
+    const st=v2RoofCanvasState; if(!st)return;
+    if(st.mode==='drawing' && st.currentPoints.length) st.currentPoints.pop();
+    leonV2RoofRedrawCanvas();
+  };
+  window.leonV2RoofCloseSection=()=>{
+    const st=v2RoofCanvasState; if(!st)return;
+    if(st.mode!=='drawing' || st.currentPoints.length<3){ showToast('Marca al menos 3 puntos antes de cerrar la sección.','error'); return; }
+    const areaPx=leonV2ShoelaceAreaPx(st.currentPoints);
+    const periPx=leonV2PerimeterPx(st.currentPoints);
+    const areaFt2 = st.pxPerFt ? areaPx/(st.pxPerFt*st.pxPerFt) : 0;
+    const periFt = st.pxPerFt ? periPx/st.pxPerFt : 0;
+    const sec={ id:'sec-'+Date.now()+'-'+Math.floor(Math.random()*999), name:'Sección '+(st.sections.length+1), points:st.currentPoints.slice(), areaFt2, perimeterFt:periFt };
+    st.sections.push(sec);
+    st.currentPoints=[]; st.mode='idle';
+    leonV2RoofRedrawCanvas();
+    leonV2RoofRenderSectionsList();
+    const statusEl=document.getElementById('v2-roof-status');
+    if(statusEl) statusEl.textContent=sec.name+' guardada: '+Math.round(areaFt2)+' ft².';
+  };
+  window.leonV2RoofRemoveSection=id=>{
+    const st=v2RoofCanvasState; if(!st)return;
+    st.sections=(st.sections||[]).filter(s=>s.id!==id);
+    leonV2RoofRedrawCanvas();
+    leonV2RoofRenderSectionsList();
+  };
+  // Recalcula área/perímetro de TODAS las secciones ya cerradas cuando la calibración cambia (los
+  // puntos en píxeles no cambian, pero la conversión px→ft sí) — evita que una recalibración deje
+  // secciones viejas con números que ya no corresponden a la escala real.
+  function leonV2RoofRecalcAllSections(){
+    const st=v2RoofCanvasState; if(!st||!st.pxPerFt)return;
+    (st.sections||[]).forEach(sec=>{
+      sec.areaFt2=leonV2ShoelaceAreaPx(sec.points)/(st.pxPerFt*st.pxPerFt);
+      sec.perimeterFt=leonV2PerimeterPx(sec.points)/st.pxPerFt;
+    });
+  }
+  // Fórmula del área del polígono (Shoelace / Gauss) — matemática real de geometría, no un cálculo
+  // simulado: suma de x_i*y_i+1 − x_i+1*y_i sobre todos los vértices, valor absoluto entre 2.
+  function leonV2ShoelaceAreaPx(points){
+    if(!points||points.length<3)return 0;
+    let sum=0;
+    for(let i=0;i<points.length;i++){ const p1=points[i], p2=points[(i+1)%points.length]; sum += (p1.x*p2.y - p2.x*p1.y); }
+    return Math.abs(sum)/2;
+  }
+  function leonV2PerimeterPx(points){
+    if(!points||points.length<2)return 0;
+    let sum=0;
+    for(let i=0;i<points.length;i++){ const p1=points[i], p2=points[(i+1)%points.length]; sum += Math.hypot(p2.x-p1.x, p2.y-p1.y); }
+    return sum;
+  }
+  function leonV2RoofRenderSectionsList(){
+    const st=v2RoofCanvasState; const box=document.getElementById('v2-roof-sections-list'); if(!box)return;
+    const sections=(st&&st.sections)||[];
+    box.innerHTML = sections.length ? sections.map(sec=>`<div class="p-3 rounded-xl border border-slate-200 flex items-center justify-between gap-2"><div><b class="text-xs text-slate-900">${esc(sec.name)}</b><div class="text-[10px] text-slate-500">${Math.round(sec.areaFt2||0).toLocaleString('en-US')} ft² · perímetro ${Math.round(sec.perimeterFt||0)} ft</div></div><button onclick="leonV2RoofRemoveSection('${sec.id}')" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-trash text-xs"></i></button></div>`).join('') : '<div class="v2-empty">Sin secciones medidas todavía.</div>';
+    const totalArea = sections.reduce((s,x)=>s+(x.areaFt2||0),0);
+    const obsInput=document.getElementById('v2-roof-obstruction');
+    const obstruction = obsInput ? (Number(obsInput.value)||0) : 0;
+    const workable = Math.max(0, totalArea-obstruction);
+    const totalEl=document.getElementById('v2-roof-total-area'); if(totalEl) totalEl.textContent=Math.round(totalArea).toLocaleString('en-US')+' ft²';
+    const workEl=document.getElementById('v2-roof-workable-area'); if(workEl) workEl.textContent=Math.round(workable).toLocaleString('en-US')+' ft²';
+    // Si esta misma herramienta de medición está embebida dentro del asistente de Propuesta de
+    // Sellado de Techo (mismos IDs de canvas, reutilizados a propósito), refresca también el precio
+    // en vivo de cada plan cada vez que cambian los pies² medidos u obstrucciones.
+    if(typeof leonV2RoofSealRefreshPricing==='function' && document.getElementById('v2-roofseal-plans-list')) leonV2RoofSealRefreshPricing();
+  }
+  window.leonV2RoofUpdateObstruction=()=>{ leonV2RoofRenderSectionsList(); };
+  window.leonV2SaveRoofAssessment=()=>{
+    const st=v2RoofCanvasState; if(!st){showToast('No hay una evaluación abierta.','error');return;}
+    const a=(state.roofAssessments||[]).find(x=>x.id===st.assessmentId); if(!a)return;
+    const sections=(st.sections||[]).map(s=>({id:s.id,name:s.name,points:s.points,areaFt2:s.areaFt2,perimeterFt:s.perimeterFt}));
+    const totalArea=sections.reduce((s,x)=>s+(x.areaFt2||0),0);
+    const obsInput=document.getElementById('v2-roof-obstruction');
+    const obstruction = obsInput ? (Number(obsInput.value)||0) : (a.obstructionAreaFt2||0);
+    a.sections=sections;
+    a.calibration={pxPerFt:st.pxPerFt||null, refFt:st.refFt||null};
+    a.obstructionAreaFt2=obstruction;
+    a.totalAreaFt2=totalArea;
+    a.totalWorkableAreaFt2=Math.max(0,totalArea-obstruction);
+    a.status = sections.length ? 'Completada' : 'Borrador';
+    a.updatedAt=new Date().toISOString();
+    leonV2Audit('Evaluación de techo guardada', sections.length+' secciones · '+Math.round(totalArea)+' ft²');
+    showToast('Evaluación guardada.','success');
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('roofAssessments');
+  };
+
+  // ============================================================================
+  // SELLADO DE TECHO — calculadora pública + asistente profesional de propuestas.
+  // Un equipo del catálogo con roofSealing.enabled=true (o cada una de sus variantes) se convierte
+  // en un "plan" cuyo precio se interpreta como $/pie². Reutiliza al 100% la infraestructura ya
+  // real de propuestas (state.cart→leonV2SubmitClient, o el mismo formato de cotización que
+  // handleVendorQuoteSubmit) y la herramienta de medición por polígono de Roof Intelligence — nada
+  // de esto duplica lógica ya construida y verificada.
+  // ============================================================================
+
+  // Expande un producto marcado como plan de Sellado de Techo en 1 plan por variante (o 1 solo
+  // plan si no tiene variantes) — cada variante = un nivel distinto (ej. Standard/Premium/Elite),
+  // cada uno con su propio $/pie².
+  function leonV2RoofSealingPlansForProduct(product){
+    if(!product || !product.roofSealing || !product.roofSealing.enabled) return [];
+    const rs=product.roofSealing;
+    const variants=Array.isArray(product.variants)?product.variants:[];
+    if(variants.length){
+      return variants.map(v=>({productId:product.id, variantId:v.id, name:product.name+' — '+v.label, pricePerFt2:v.price, warrantyYears:rs.warrantyYears||0, materials:rs.materials||'', image:(v.images&&v.images[0])||product.image}));
+    }
+    return [{productId:product.id, variantId:null, name:product.name, pricePerFt2:product.price, warrantyYears:rs.warrantyYears||0, materials:rs.materials||'', image:product.image}];
+  }
+  // Todos los planes de Sellado de Techo de TODO el catálogo — usado por el asistente interno, que
+  // debe mostrar solo estos equipos (nunca el resto del catálogo general).
+  function leonV2AllRoofSealingPlans(){
+    return (state.products||[]).filter(p=>p.roofSealing&&p.roofSealing.enabled&&!p.oculto).flatMap(p=>leonV2RoofSealingPlansForProduct(p));
+  }
+
+  // ---------- Calculadora pública (desde un producto específico del catálogo público) ----------
+  let v2RoofSealCalc = null;
+  window.leonV2OpenRoofSealCalc=function(productId){
+    const product=(state.products||[]).find(p=>p.id===productId); if(!product){showToast('Equipo no encontrado.','error');return;}
+    const plans=leonV2RoofSealingPlansForProduct(product);
+    if(!plans.length){ showToast('Este equipo no tiene un plan de Sellado de Techo configurado todavía.','error'); return; }
+    v2RoofSealCalc={product, plans, selectedIdx:0, sqft:0};
+    document.getElementById('v2-roofseal-public-content').innerHTML=leonV2RoofSealCalcHtml();
+    open('leon-v2-roofseal-public');
+  };
+  function leonV2RoofSealCalcHtml(){
+    const c=v2RoofSealCalc; if(!c)return'';
+    const plan=c.plans[c.selectedIdx];
+    const total=(Number(c.sqft)||0)*plan.pricePerFt2;
+    return `<div class="flex items-center justify-between mb-5"><h3 class="text-lg font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-calculator text-brand-500"></i> Calculadora de Sellado de Techo</h3><button onclick="leonV2Close('leon-v2-roofseal-public')" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+    ${c.plans.length>1?`<div class="flex flex-wrap gap-2 mb-4">${c.plans.map((p,i)=>`<button type="button" onclick="leonV2RoofSealCalcSelectPlan(${i})" class="px-3 py-2 rounded-lg border text-xs font-black ${i===c.selectedIdx?'bg-brand-600 text-white border-brand-600':'border-slate-200 text-slate-600'}">${esc(p.name.replace(c.product.name+' — ',''))}</button>`).join('')}</div>`:''}
+    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 mb-4">
+      <div class="flex justify-between"><span>Precio por pie²</span><b>${money(plan.pricePerFt2)}</b></div>
+      ${plan.warrantyYears?`<div class="flex justify-between mt-1"><span>Garantía</span><b>${plan.warrantyYears} años</b></div>`:''}
+      ${plan.materials?`<div class="mt-2 text-slate-500">${esc(plan.materials)}</div>`:''}
+    </div>
+    <label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Pies cuadrados de tu techo</label>
+    <input type="number" min="0" step="1" id="v2-roofseal-sqft" value="${c.sqft||''}" placeholder="Ej. 1500" oninput="leonV2RoofSealCalcUpdateSqft(this.value)" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-lg font-black outline-none">
+    <p class="text-[10px] text-slate-400 mt-1">¿No sabes tus pies cuadrados exactos? No hay problema — un técnico puede medirlo con precisión al visitar tu propiedad, y el precio final se confirma en la propuesta.</p>
+    <div class="mt-4 p-4 rounded-xl bg-brand-50 border border-brand-100 flex justify-between items-center"><span class="text-xs font-bold text-brand-800">Estimado</span><b class="text-2xl text-brand-700">${money(total)}</b></div>
+    <button onclick="leonV2RoofSealCalcContinue()" class="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-file-signature mr-2"></i>Solicitar esta propuesta</button>`;
+  }
+  window.leonV2RoofSealCalcSelectPlan=(i)=>{ if(!v2RoofSealCalc)return; v2RoofSealCalc.selectedIdx=i; document.getElementById('v2-roofseal-public-content').innerHTML=leonV2RoofSealCalcHtml(); };
+  // Actualiza solo el número del total (no todo el HTML) para no perder el foco del input mientras
+  // la persona escribe los pies².
+  window.leonV2RoofSealCalcUpdateSqft=(val)=>{
+    if(!v2RoofSealCalc)return;
+    v2RoofSealCalc.sqft=Number(val)||0;
+    const plan=v2RoofSealCalc.plans[v2RoofSealCalc.selectedIdx];
+    const total=v2RoofSealCalc.sqft*plan.pricePerFt2;
+    const box=document.querySelector('#v2-roofseal-public-content .text-2xl.text-brand-700');
+    if(box) box.textContent=money(total);
+  };
+  // Convierte la selección en una línea real del carrito (mismo state.cart que usa todo el resto
+  // del catálogo) y sigue el flujo normal de "generar propuesta" — así el PDF, el portal del
+  // cliente, la firma digital y el pipeline funcionan exactamente igual que cualquier otra.
+  window.leonV2RoofSealCalcContinue=()=>{
+    const c=v2RoofSealCalc; if(!c)return;
+    const sqftInput=document.getElementById('v2-roofseal-sqft');
+    const sqft=sqftInput?Number(sqftInput.value)||0:0;
+    if(sqft<=0){ showToast('Escribe los pies cuadrados de tu techo.','warning'); return; }
+    const plan=c.plans[c.selectedIdx];
+    if(!state.cart) state.cart=[];
+    state.cart=state.cart.filter(x=>!x.roofSealingPlan); // una sola línea de sellado de techo por propuesta
+    state.cart.push({
+      id:plan.productId, cartLineId:plan.productId+'::roofseal'+(plan.variantId?('::'+plan.variantId):''),
+      name:plan.name, price:plan.pricePerFt2, qty:Math.round(sqft), category:'Sellado de Techo', image:plan.image,
+      variantId:plan.variantId||null,
+      roofSealingPlan:{productId:plan.productId, variantId:plan.variantId, planLabel:plan.name, pricePerFt2:plan.pricePerFt2, sqft:Math.round(sqft), warrantyYears:plan.warrantyYears, materials:plan.materials}
+    });
+    if(typeof updateCartUI==='function')updateCartUI();
+    leonV2Close('leon-v2-roofseal-public');
+    leonV2ChooseFlow('cotizacion');
+  };
+
+  // ---------- Asistente profesional interno (panel de control → Roof Intelligence / Pipeline) ----------
+  let v2RoofSealWizard = null;
+  window.leonV2OpenRoofSealWizard=function(propertyId){
+    let property = propertyId ? (state.properties||[]).find(x=>x.id===propertyId) : null;
+    let placeholderProperty=false;
+    if(!property){
+      if(!state.properties) state.properties=[];
+      property={id:'prop-'+Date.now()+'-'+Math.floor(Math.random()*999), clientId:null, clientName:'', address:'(pendiente)', municipio:'', propertyType:'Residencial', locationUrl:'', lat:null, lng:null, notes:'', createdAt:new Date().toISOString(), createdBy:(state.currentUser&&state.currentUser.name)||'Sistema', _placeholder:true};
+      state.properties.unshift(property);
+      placeholderProperty=true;
+    }
+    // Si esta propiedad ya tiene una medición de techo previa, la usamos para prellenar los pies²
+    // (sin bloquear medir de nuevo — el botón "Cambiar imagen" sigue disponible en la herramienta).
+    const priorAssessments=leonV2PropertyAssessments(property.id).filter(x=>x.totalWorkableAreaFt2>0);
+    const prefillSqft=priorAssessments.length?priorAssessments[0].totalWorkableAreaFt2:null;
+    const prefillNote=priorAssessments.length?('Prellenado desde una evaluación de techo previa de esta propiedad ('+Math.round(prefillSqft).toLocaleString('en-US')+' ft², '+new Date(priorAssessments[0].createdAt).toLocaleDateString()+'). Puedes medir de nuevo arriba si prefieres.'):null;
+    const client=property.clientId?(state.clients||[]).find(c=>c.id===property.clientId):null;
+    const a=leonV2CreateRoofAssessmentRecord(property.id);
+    v2RoofSealWizard={ propertyId:property.id, assessmentId:a.id, placeholderProperty,
+      client:{name:client?client.name:(property.clientName||''), email:client?client.email:'', phone:client?client.phone:''},
+      selectedPlan:null, prefillSqft, prefillNote };
+    v2RoofCanvasState={ assessmentId:a.id, mode:'idle', calibClicks:[], currentPoints:[], sections:[], img:null, canvasEl:null, pxPerFt:null, refFt:null };
+    document.getElementById('v2-roofseal-pro-content').innerHTML=leonV2RoofSealWizardHtml();
+    open('leon-v2-roofseal-pro');
+    leonV2Close('leon-v2-property-detail');
+  };
+  function leonV2RoofSealWizardHtml(){
+    const w=v2RoofSealWizard; if(!w)return'';
+    const property=(state.properties||[]).find(x=>x.id===w.propertyId);
+    const a=(state.roofAssessments||[]).find(x=>x.id===w.assessmentId);
+    return `<div class="p-5 border-b border-slate-100 flex items-center justify-between gap-3">
+      <div><h3 class="text-base font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-house-chimney-crack text-brand-500"></i> Propuesta de Sellado de Techo</h3><p class="text-[11px] text-slate-500 mt-0.5">Medición real + planes del catálogo + cliente, todo en un solo lugar.</p></div>
+      <button onclick="leonV2Close('leon-v2-roofseal-pro')" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <div class="grid lg:grid-cols-2 gap-0 max-h-[78vh] overflow-y-auto">
+      <div class="p-5 border-r border-slate-100 space-y-6">
+        <div>
+          <h4 class="text-xs font-black uppercase text-slate-500 mb-3"><i class="fa-solid fa-user mr-1"></i>1. Cliente</h4>
+          <div class="space-y-3">
+            <input id="rs-client-name" required placeholder="Nombre completo *" value="${esc(w.client.name||'')}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none">
+            <div class="grid sm:grid-cols-2 gap-3">
+              <input id="rs-client-email" type="email" required placeholder="Correo *" value="${esc(w.client.email||'')}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none">
+              <input id="rs-client-phone" placeholder="Teléfono" value="${esc(w.client.phone||'')}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none">
+            </div>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <input id="rs-client-address" required placeholder="Dirección *" value="${esc(property&&!property._placeholder?property.address:'')}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none">
+              <input id="rs-client-municipio" placeholder="Municipio" value="${esc(property?property.municipio||'':'')}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none">
+            </div>
+          </div>
+        </div>
+        <div>
+          <h4 class="text-xs font-black uppercase text-slate-500 mb-3"><i class="fa-solid fa-ruler-combined mr-1"></i>2. Medición del techo (mapa interactivo)</h4>
+          ${leonV2RoofSealMeasureSectionHtml(a)}
+          <div class="mt-4">
+            <label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">O escribe los pies² trabajables directamente</label>
+            <input type="number" min="0" step="1" id="v2-roofseal-manual-sqft" value="${w.prefillSqft?Math.round(w.prefillSqft):''}" oninput="leonV2RoofSealRefreshPricing()" placeholder="Ej. 1847" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none">
+            ${w.prefillNote?`<p class="text-[10px] text-slate-400 mt-1">${esc(w.prefillNote)}</p>`:''}
+          </div>
+        </div>
+      </div>
+      <div class="p-5 space-y-6">
+        <div>
+          <h4 class="text-xs font-black uppercase text-slate-500 mb-3"><i class="fa-solid fa-layer-group mr-1"></i>3. Selecciona el plan (solo equipos de Sellado de Techo del catálogo)</h4>
+          <div id="v2-roofseal-plans-wrap">${leonV2RoofSealPlansHtml()}</div>
+        </div>
+        <div>
+          <h4 class="text-xs font-black uppercase text-slate-500 mb-3"><i class="fa-solid fa-file-invoice-dollar mr-1"></i>4. Resumen</h4>
+          <div id="v2-roofseal-summary">${leonV2RoofSealSummaryHtml()}</div>
+        </div>
+        <button onclick="leonV2GenerateRoofSealProposal()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-file-signature mr-2"></i>Generar propuesta profesional</button>
+      </div>
+    </div>`;
+  }
+  // Reutiliza EXACTAMENTE la misma herramienta de imagen + polígono de Roof Intelligence (mismos
+  // IDs de canvas/estado — seguro porque este modal y el de Roof Assessment nunca están abiertos a
+  // la vez) — sin el botón "Guardar evaluación" propio, porque aquí ese guardado ocurre al generar
+  // la propuesta (ver leonV2GenerateRoofSealProposal), no antes.
+  function leonV2RoofSealMeasureSectionHtml(a){
+    const hasImg = a && a.imagery && a.imagery.url;
+    return `<div id="v2-roof-imagery-panel" class="${hasImg?'hidden':''}">${leonV2RoofImagerySourceTabsHtml()}</div>
+    <div id="v2-roof-canvas-wrap" class="${hasImg?'':'hidden'}">
+      <div class="flex flex-wrap gap-2 mb-2">
+        <button type="button" onclick="leonV2RoofStartCalibration()" class="v2-tab"><i class="fa-solid fa-ruler mr-1"></i>Calibrar escala</button>
+        <button type="button" onclick="leonV2RoofStartSection()" class="v2-tab"><i class="fa-solid fa-draw-polygon mr-1"></i>Nueva sección</button>
+        <button type="button" onclick="leonV2RoofUndoPoint()" class="v2-tab"><i class="fa-solid fa-rotate-left mr-1"></i>Deshacer punto</button>
+        <button type="button" onclick="leonV2RoofCloseSection()" class="v2-tab"><i class="fa-solid fa-check mr-1"></i>Cerrar sección</button>
+        <button type="button" onclick="leonV2RoofChangeImagery()" class="v2-tab"><i class="fa-solid fa-image mr-1"></i>Cambiar imagen</button>
+      </div>
+      <div id="v2-roof-status" class="text-[11px] text-slate-500 mb-2 min-h-[16px]"></div>
+      <canvas id="v2-roof-canvas" onclick="leonV2RoofCanvasClick(event)" class="w-full h-auto rounded-xl border border-slate-200 bg-slate-50 cursor-crosshair block"></canvas>
+    </div>
+    <div class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-100">
+      <div class="flex justify-between text-xs mb-2"><span class="text-slate-500">Área medida (dibujo)</span><b id="v2-roof-total-area">0 ft²</b></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Obstrucciones / equipos (ft²)</label><input type="number" min="0" step="0.1" id="v2-roof-obstruction" value="${a&&a.obstructionAreaFt2||0}" oninput="leonV2RoofUpdateObstruction()" class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm outline-none"></div>
+      <div class="flex justify-between text-xs pt-2 mt-2 border-t border-slate-200"><span class="text-slate-600 font-bold">Área trabajable (dibujo)</span><b id="v2-roof-workable-area" class="text-brand-600">0 ft²</b></div>
+    </div>
+    <div id="v2-roof-sections-list" class="space-y-2 mt-3"></div>`;
+  }
+  // Pies² a usar en el precio ahora mismo: el campo manual gana si tiene un valor > 0 (por si no
+  // hay foto todavía, o el técnico ya conoce el número); si no, el área trabajable del dibujo.
+  function leonV2RoofSealCurrentSqft(){
+    const manual=document.getElementById('v2-roofseal-manual-sqft');
+    const manualVal=manual?Number(manual.value)||0:0;
+    if(manualVal>0) return manualVal;
+    const st=v2RoofCanvasState; if(!st) return 0;
+    const totalArea=(st.sections||[]).reduce((s,x)=>s+(x.areaFt2||0),0);
+    const obsInput=document.getElementById('v2-roof-obstruction');
+    const obstruction=obsInput?Number(obsInput.value)||0:0;
+    return Math.max(0,totalArea-obstruction);
+  }
+  function leonV2RoofSealPlansHtml(){
+    const plans=leonV2AllRoofSealingPlans();
+    if(!plans.length){
+      return '<div class="v2-empty">Todavía no hay ningún plan de Sellado de Techo creado en el catálogo. Ve a Catálogo → Nuevo Equipo y marca la casilla "Este equipo es un plan de Sellado de Techo" para crear el primero.</div>';
+    }
+    const sqft=leonV2RoofSealCurrentSqft();
+    const sel=v2RoofSealWizard&&v2RoofSealWizard.selectedPlan;
+    const plansHtml=plans.map(p=>{
+      const isSel=sel&&sel.productId===p.productId&&sel.variantId===p.variantId;
+      const price=(isSel&&sel.priceOverride!=null)?sel.priceOverride:p.pricePerFt2;
+      const total=sqft*price;
+      return `<div onclick="leonV2RoofSealSelectPlanCard('${p.productId}',${p.variantId?`'${p.variantId}'`:'null'})" class="p-4 rounded-xl border-2 cursor-pointer transition ${isSel?'border-brand-500 bg-brand-50/40':'border-slate-200 hover:border-brand-200'}">
+        <div class="flex justify-between items-start gap-2"><b class="text-sm text-slate-900">${esc(p.name)}</b>${isSel?'<i class="fa-solid fa-circle-check text-brand-600"></i>':''}</div>
+        <div class="text-xs text-slate-500 mt-1">${money(p.pricePerFt2)}/pie²${p.warrantyYears?' · '+p.warrantyYears+' años de garantía':''}</div>
+        ${p.materials?`<div class="text-[10px] text-slate-400 mt-1 line-clamp-2">${esc(p.materials)}</div>`:''}
+        <div class="text-lg font-black text-brand-600 mt-2">${sqft?money(total):'—'}</div>
+      </div>`;
+    }).join('');
+    const selInfo=sel?plans.find(p=>p.productId===sel.productId&&p.variantId===sel.variantId):null;
+    return `<div id="v2-roofseal-plans-list" class="grid sm:grid-cols-2 gap-3">${plansHtml}</div>${selInfo?`<div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Ajustar precio por pie² para esta propuesta</label><input type="number" min="0" step="0.01" id="v2-roofseal-price-override" value="${sel.priceOverride!=null?sel.priceOverride:''}" placeholder="${selInfo.pricePerFt2}" oninput="leonV2RoofSealOverridePrice(this.value)" class="w-40 px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none"></div>`:''}`;
+  }
+  function leonV2RoofSealSummaryHtml(){
+    const w=v2RoofSealWizard; if(!w)return'';
+    const sqft=leonV2RoofSealCurrentSqft();
+    const sel=w.selectedPlan;
+    const plans=leonV2AllRoofSealingPlans();
+    const planInfo=sel?plans.find(p=>p.productId===sel.productId&&p.variantId===sel.variantId):null;
+    const price=sel&&sel.priceOverride!=null?sel.priceOverride:(planInfo?planInfo.pricePerFt2:0);
+    const total=sqft*price;
+    return `<div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-2">
+      <div class="flex justify-between"><span class="text-slate-500">Pies² a sellar</span><b>${sqft?Math.round(sqft).toLocaleString('en-US'):'—'}</b></div>
+      <div class="flex justify-between"><span class="text-slate-500">Plan</span><b>${planInfo?esc(planInfo.name):'Sin seleccionar'}</b></div>
+      <div class="flex justify-between"><span class="text-slate-500">Precio por pie²</span><b>${planInfo?money(price):'—'}</b></div>
+      <div class="flex justify-between pt-2 border-t border-slate-200"><span class="font-bold text-slate-700">Total estimado</span><b class="text-lg text-brand-600">${money(total)}</b></div>
+    </div>`;
+  }
+  window.leonV2RoofSealSelectPlanCard=(productId,variantId)=>{ if(!v2RoofSealWizard)return; v2RoofSealWizard.selectedPlan={productId,variantId:variantId||null,priceOverride:null}; leonV2RoofSealRefreshPricing(); };
+  window.leonV2RoofSealOverridePrice=(val)=>{ if(!v2RoofSealWizard||!v2RoofSealWizard.selectedPlan)return; v2RoofSealWizard.selectedPlan.priceOverride=(val===''||val==null)?null:Number(val); leonV2RoofSealRefreshPricing(); };
+  // Refresca SOLO el panel de planes y el resumen (columna derecha) — nunca toca la herramienta de
+  // medición (columna izquierda), así no se pierde la imagen/canvas ya cargado mientras se ajusta
+  // el precio o se dibuja una sección nueva.
+  function leonV2RoofSealRefreshPricing(){
+    const plansBox=document.getElementById('v2-roofseal-plans-wrap'); if(plansBox) plansBox.innerHTML=leonV2RoofSealPlansHtml();
+    const summaryBox=document.getElementById('v2-roofseal-summary'); if(summaryBox) summaryBox.innerHTML=leonV2RoofSealSummaryHtml();
+  }
+  // Se expone en window porque el input de "pies² manuales" del asistente lo llama desde su propio
+  // atributo oninput="..." (ámbito global del navegador), igual que otros handlers de esta sección.
+  window.leonV2RoofSealRefreshPricing=leonV2RoofSealRefreshPricing;
+  window.leonV2GenerateRoofSealProposal=function(){
+    const w=v2RoofSealWizard; if(!w){showToast('No hay una propuesta en curso.','error');return;}
+    const name=(document.getElementById('rs-client-name').value||'').trim();
+    const email=(document.getElementById('rs-client-email').value||'').trim();
+    const phone=(document.getElementById('rs-client-phone').value||'').trim();
+    const address=(document.getElementById('rs-client-address').value||'').trim();
+    const municipio=(document.getElementById('rs-client-municipio').value||'').trim();
+    if(!name||!email){ showToast('Escribe el nombre y correo del cliente.','warning'); return; }
+    if(!address){ showToast('Escribe la dirección de la propiedad.','warning'); return; }
+    const sqft=leonV2RoofSealCurrentSqft();
+    if(!sqft||sqft<=0){ showToast('Mide el techo (o escribe los pies² directamente) antes de generar la propuesta.','warning'); return; }
+    const sel=w.selectedPlan;
+    if(!sel){ showToast('Selecciona un plan de Sellado de Techo.','warning'); return; }
+    const plans=leonV2AllRoofSealingPlans();
+    const planInfo=plans.find(p=>p.productId===sel.productId&&p.variantId===sel.variantId);
+    if(!planInfo){ showToast('El plan seleccionado ya no está disponible.','error'); return; }
+    const price=sel.priceOverride!=null?sel.priceOverride:planInfo.pricePerFt2;
+
+    // Si se dibujó una medición nueva en el mapa, la guarda de verdad en el historial de la
+    // propiedad (mismo camino que "Guardar evaluación" en Roof Intelligence).
+    if(v2RoofCanvasState && v2RoofCanvasState.sections && v2RoofCanvasState.sections.length) leonV2SaveRoofAssessment();
+
+    // Completa los datos reales de la propiedad (si esta propuesta creó una temporal al abrir el asistente).
+    const property=(state.properties||[]).find(x=>x.id===w.propertyId);
+    if(property){ property.address=address; property.municipio=municipio||property.municipio; delete property._placeholder; }
+
+    const roundedSqft=Math.round(sqft);
+    const item={
+      id:planInfo.productId, cartLineId:planInfo.productId+'::roofseal'+(planInfo.variantId?('::'+planInfo.variantId):''),
+      name:planInfo.name, price, qty:roundedSqft, category:'Sellado de Techo', image:planInfo.image,
+      variantId:planInfo.variantId||null,
+      roofSealingPlan:{productId:planInfo.productId, variantId:planInfo.variantId, planLabel:planInfo.name, pricePerFt2:price, sqft:roundedSqft, warrantyYears:planInfo.warrantyYears, materials:planInfo.materials, propertyId:w.propertyId, assessmentId:w.assessmentId}
+    };
+    const q={
+      id:'L-'+Math.floor(10000+Math.random()*89999),
+      clientName:name, clientCompany:'', clientEmail:email, clientPhone:phone,
+      clientMunicipio:municipio, clientAddress:address, clientLocationUrl:property?property.locationUrl||'':'',
+      items:[item], total:item.price*item.qty,
+      status:'Propuesta generada', paymentType:'Por definir', financingProvider:null, financingRate:0, financingMonths:0,
+      vendorName:(state.currentUser&&state.currentUser.name)||null, vendorEmail:(state.currentUser&&state.currentUser.email)||null,
+      origin:'Asistido', source:'Roof Intelligence',
+      createdAt:new Date().toISOString().slice(0,10), version:1,
+      discount:0, installationFee:0, transportFee:0, taxRate:11.5,
+      propertyId:w.propertyId, roofAssessmentId:w.assessmentId
+    };
+    state.quotes.unshift(q);
+    leonV2UpsertClient(q,'Propuesta de Sellado de Techo '+q.id+' generada — '+roundedSqft+' ft²');
+    const client=findClient(email);
+    if(client && property){ property.clientId=client.id; property.clientName=client.name; if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('properties'); }
+    leonV2Audit('Propuesta de Sellado de Techo creada', q.id+' · '+q.clientName+' · '+roundedSqft+' ft²');
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('quotes');
+    leonV2Close('leon-v2-roofseal-pro');
+    showToast('Propuesta '+q.id+' generada.','success');
+    v2RoofSealWizard=null;
+    setTimeout(()=>leonV2OpenPortal(q),250);
+  };
+
   function renderSettings(){
     const role=state.currentUser?.role||'Administrador';
     const isAdmin=role==='Administrador';
@@ -4831,7 +5985,8 @@
         <label class="px-4 py-3 rounded-xl border border-slate-200 text-xs font-black uppercase tracking-wider text-slate-600 hover:border-brand-300 hover:text-brand-600 cursor-pointer"><i class="fa-solid fa-upload mr-2"></i>Restaurar desde archivo<input type="file" accept="application/json" class="hidden" onchange="handleBackupFileSelect(event)"></label>
       </div>
       <div class="p-3 rounded-xl bg-red-50 border border-red-100 text-[11px] text-red-800 mt-4"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Restaurar reemplaza todos los datos actuales — no se puede deshacer. Pide confirmación antes de aplicar.</div>
-    </div>`:''}
+    </div>
+    <div class="v2-card p-6 mb-6"><h3 class="font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-plug-circle-bolt text-brand-500"></i> Integrations Center</h3><p class="text-xs text-slate-500 mt-1">Estado real de cada proveedor externo que usa (o podría usar) Roof Intelligence. Nunca se muestra "Conectado" a menos que de verdad funcione hoy, sin backend — los que requieren clave/API secreta se marcan honestamente como pendientes, porque una clave nunca debe vivir en este archivo (viaja en el código fuente que cualquiera puede ver).</p><div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">${leonV2RoofIntegrationsHtml()}</div></div>`:''}
     <div class="grid lg:grid-cols-2 gap-6"><div class="v2-card p-6"><h3 class="font-black text-slate-900">Simular Rol (solo demo)</h3><p class="text-xs text-slate-500 mt-1">Cambia de rol para revisar cómo se ve el sistema desde cada perfil, sin cerrar sesión.</p><select id="v2-role-selector" onchange="changeRoleSimulated(this.value)" class="w-full mt-4 px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="Administrador">Administrador</option><option value="Vendedor">Vendedor</option><option value="Call Center">Call Center</option><option value="Nuevo Consultor">Nuevo Consultor</option><option value="Técnico">Técnico</option></select></div><div class="v2-card p-6"><h3 class="font-black text-slate-900">Seguridad — estado real</h3><div class="space-y-3 mt-4 text-xs"><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>Acceso staff:</b> hoy es un candado de demostración en el navegador (clave compartida), no autenticación real. Para producción hace falta un proveedor real (Firebase Authentication o backend con sesiones/JWT) que valide credenciales en un servidor, nunca en el navegador.</div><div class="p-3 ${window.__fbDb?'bg-emerald-50 border border-emerald-100 text-emerald-800':'bg-amber-50 border border-amber-100 text-amber-800'} rounded-xl">${window.__fbDb?'<b>Almacenamiento:</b> conectado a Firestore (Firebase) en tiempo real — los cambios se guardan de verdad y se ven en todos los dispositivos del equipo, no solo en esta pestaña.'+(window.__fbOfflineReady?' Además hay caché offline activo: si se pierde internet, la app sigue leyendo y encolando cambios en este dispositivo, y los sincroniza solos en cuanto vuelve la señal.':''):'<b>Almacenamiento:</b> sin conexión a la base de datos ahora mismo — todo vive en memoria de esta pestaña (variable <code>state</code>) y no sobrevive un refresco.'} La seguridad de esos datos depende de las reglas de Firestore configuradas en la consola de Firebase, no de esta pantalla.</div><div class="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800"><b>Compresión de imágenes:</b> real, vía canvas — recodifica los píxeles, no es una animación falsa.</div><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>Identificación (SSN/ID/Pasaporte):</b> se enmascara antes de guardarse y solo se conservan los últimos 4 caracteres — no hay cifrado real porque no hay servidor. Para datos reales, la identificación completa no debe tocar el navegador sin cifrado en tránsito y en reposo.</div><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>PIN / segundo factor:</b> real como flujo (correo + clave, luego PIN de 5 dígitos por usuario, con bloqueo tras 5 fallos)${window.__fbDb?' y el registro de accesos + los bloqueos ya se guardan en la base de datos compartida — visibles desde cualquier dispositivo.':', pero sin conexión a la base de datos ahora mismo el bloqueo vive solo en esta pestaña.'} Aún falta lo que ninguna base de datos por sí sola resuelve: el PIN se muestra en pantalla al crearlo en vez de llegar por correo (hace falta una Cloud Function que envíe el correo), y la validación de la clave sigue pasando por el navegador en vez de un proveedor de autenticación real (Firebase Authentication). Ver el registro de accesos abajo.</div></div></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-key text-brand-500"></i> Accesos y PIN (segundo factor)</h3><p class="text-xs text-slate-500 mt-1">Quién intentó iniciar sesión, cuándo, y si el PIN fue correcto — para detectar accesos sospechosos.</p><div id="v2-lockouts" class="flex flex-wrap gap-2 mt-4"></div><div id="v2-security-log" class="overflow-x-auto mt-4"></div></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900">Estados del Pipeline</h3><p class="text-xs text-slate-500 mt-1">Los estados que aparecen en el selector de cada propuesta activa. Agrega o quita los que tu operación necesite.</p><div id="v2-status-list" class="flex flex-wrap gap-2 mt-4"></div><form onsubmit="leonV2AddPipelineStatus(event)" class="flex gap-2 mt-4"><input id="v2-new-status" placeholder="Nuevo estado, ej. Pendiente de inspección" class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Agregar</button></form></div></div>`;
     const sel=document.getElementById('v2-role-selector'); if(sel) sel.value=role;
     renderPipelineStatusList();
@@ -4934,7 +6089,7 @@
     setTimeout(()=>document.getElementById('login-pin')?.focus(),50);
   };
   window.updateRoleUI=function(role){buildCRM();document.getElementById('v2-role-pill').textContent=role;document.getElementById('v2-greeting').textContent='Hola, '+(state.currentUser?.name||'equipo')+' 👋';applyRolePermissions(role)};
-  function applyRolePermissions(role){const restricted={Administrador:navItems.map(x=>x[0]),Vendedor:['dashboard','clients','pipeline','ventas','historial','catalog','proposals','payroll','tickets','projects','reports'],['Nuevo Consultor']:['dashboard','clients','ventas','catalog','proposals','payroll','tickets'],['Call Center']:['dashboard','clients','pipeline','ventas','historial','tickets'],['Técnico']:['dashboard','projects','tickets']}; const allowed=restricted[role]||restricted.Vendedor; document.querySelectorAll('#v2-nav button').forEach(b=>{b.style.display=allowed.includes(b.dataset.sec)?'flex':'none'}); document.getElementById('v2-main').dataset.role=role; const activeBtn=document.querySelector('#v2-nav button.active'); if(activeBtn&&!allowed.includes(activeBtn.dataset.sec)){leonV2OpenSection('dashboard')}}
+  function applyRolePermissions(role){const restricted={Administrador:navItems.map(x=>x[0]),Vendedor:['dashboard','clients','pipeline','ventas','historial','catalog','roofintel','proposals','payroll','tickets','projects','reports'],['Nuevo Consultor']:['dashboard','clients','ventas','catalog','roofintel','proposals','payroll','tickets'],['Call Center']:['dashboard','clients','pipeline','ventas','historial','tickets'],['Técnico']:['dashboard','roofintel','projects','tickets']}; const allowed=restricted[role]||restricted.Vendedor; document.querySelectorAll('#v2-nav button').forEach(b=>{b.style.display=allowed.includes(b.dataset.sec)?'flex':'none'}); document.getElementById('v2-main').dataset.role=role; const activeBtn=document.querySelector('#v2-nav button.active'); if(activeBtn&&!allowed.includes(activeBtn.dataset.sec)){leonV2OpenSection('dashboard')}}
   // Add a detail button to existing product cards using state/product names when possible.
   function enhanceCatalog(){const p=products();document.querySelectorAll('#catalogo .group').forEach(card=>{if(card.dataset.v2done)return;const title=card.querySelector('h3,h4');if(!title)return;const prod=p.find(x=>x.name===title.textContent.trim());if(!prod)return;card.dataset.v2done='1';const btn=document.createElement('button');btn.className='mt-2 w-full py-2 rounded-lg border border-brand-200 text-brand-700 text-[10px] font-black uppercase';btn.innerHTML='<i class="fa-solid fa-circle-info mr-1"></i> Ver detalle / video';btn.onclick=()=>leonV2OpenProduct(prod.id);card.appendChild(btn)})}
   const origSwitch=window.switchView;window.switchView=function(view){origSwitch(view);if(view==='internal'&&state.currentUser){window.updateRoleUI(state.currentUser.role)}else if(view==='public'){setTimeout(enhanceCatalog,300)}};
@@ -4960,10 +6115,7 @@
     origMoveToHistory(id, finalStatus);
     if(!q)return;
     if(finalStatus==='Aceptada'){
-      (q.items||[]).forEach(item=>{
-        const p=(state.products||[]).find(x=>x.id===item.id);
-        if(p&&typeof p.stock==='number')p.stock=Math.max(0,p.stock-item.qty);
-      });
+      (q.items||[]).forEach(item=>leonV2AdjustItemStock(item,-1));
       if(typeof renderAdminProductsList==='function')renderAdminProductsList();
       if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('products');
       leonV2GenerateCommissions(q);
