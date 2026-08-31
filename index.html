@@ -922,6 +922,7 @@
                     </div>
                     <button type="button" onclick="addItemToVendorQuote()" class="bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-lg text-xs font-bold uppercase transition-all duration-300 shadow shrink-0">Añadir</button>
                 </div>
+                <div id="nq-roofseal-note" class="hidden mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-100 text-[11px] text-amber-800"><i class="fa-solid fa-circle-info mr-1"></i>Los equipos de <b>Sellado de Techo</b> no aparecen aquí porque su precio es por pie² — úsalos desde <b>Pipeline → Sellado de Techo</b>, que calcula el total correcto según los pies cuadrados del techo.</div>
                 <div id="nq-items-list" class="space-y-2 min-h-[60px] border border-dashed border-brand-200 rounded-xl p-3 text-xs text-slate-400 text-center">Sin equipos añadidos.</div>
                 <div class="flex justify-between items-center bg-brand-50/60 border border-brand-100 rounded-xl px-5 py-4">
                     <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Total</span>
@@ -1060,7 +1061,17 @@
             // mejor con Firestore y con el resto de este archivo). {id, propertyId, clientId,
             // clientName, version, status, createdAt, createdBy, imagerySource, sections[], equipment[],
             // condition, roofScore, photos[], pricingPlanId, pricingSnapshot, repairs[], charges[]}
-            roofAssessments: []
+            roofAssessments: [],
+            // ===================== INVITACIONES DE EMPLEADO (autoservicio) =====================
+            // Un administrador invita a alguien (nombre/correo/rol propuestos) → se genera un token →
+            // esa persona abre el enlace (?invite=TOKEN, ver leonV2CheckInviteLink) sin necesitar
+            // sesión, llena su propio perfil/ID/cláusulas/firma/contraseña → queda 'completado' →
+            // un administrador revisa y aprueba (crea la cuenta real en state.users) o rechaza.
+            // {id, token, name, email, role, invitedBy, invitedAt, status:'pendiente'|'completado'|
+            // 'aprobado'|'rechazado', phone, address, idType, idNumber, idPhotoUrl, emergencyName,
+            // emergencyPhone, password, signatureDataUrl, signedAt, clausesAcceptedAt, submittedAt,
+            // rejectReason, resolvedAt}
+            employeeInvites: []
         };
         // `let` bindings at script top-level do NOT become `window` properties (unlike plain
         // `function`/`var` declarations) — the LEON V2 block below checks `window.state` before
@@ -1528,6 +1539,8 @@
             const role = document.getElementById('new-user-role').value;
             const supEl = document.getElementById('new-user-supervisor');
             const supervisorId = (supEl && supEl.value) ? supEl.value : null;
+            const passEl = document.getElementById('new-user-pass');
+            const password = passEl ? passEl.value : '';
             if (state.users.some(u => u.email.toLowerCase() === email.toLowerCase())) { showToast('Ya existe un usuario con ese correo.', 'error'); return; }
             // PIN de 5 dígitos tipo "número de empleado" — segundo factor real que se pide DESPUÉS
             // de la clave al iniciar sesión (ver handleLoginSubmit / handlePinSubmit). En producción
@@ -1535,22 +1548,26 @@
             // sin backend, se genera en el navegador y se muestra una sola vez al Administrador para
             // que se lo entregue al empleado.
             const pin = String(Math.floor(10000 + Math.random() * 90000));
-            const newUser = { id: 'u-' + Date.now(), name, email, role, supervisorId, pin, photoUrl: '', phone: '', address: '', contract: null };
+            // La contraseña que se escribe aquí ahora SÍ es la clave real de acceso de esta persona
+            // (ver handleLoginSubmit) — cada empleado creado por este formulario o por "Agregar
+            // empleado" en Empleados tiene su propia clave, ya no comparten la clave demo única.
+            const newUser = { id: 'u-' + Date.now(), name, email, role, supervisorId, pin, password, photoUrl: '', phone: '', address: '', contract: null };
             state.users.push(newUser);
             if (typeof window.leonV2SyncCollection === 'function') window.leonV2SyncCollection('users');
             renderUsersList();
             showToast(`Usuario ${name} registrado como ${role}.`, 'success');
-            leonV2ShowPinAssigned(newUser);
+            leonV2ShowPinAssigned(newUser, {showPassword:true});
             e.target.reset();
         }
         // Muestra el PIN recién asignado UNA vez, en pantalla — sustituye (en esta demo sin backend)
         // al correo automático que en producción enviaría este código. No queda guardado en ningún
         // lugar más que en el registro del propio usuario (state.users[].pin).
-        function leonV2ShowPinAssigned(u) {
+        function leonV2ShowPinAssigned(u, opts) {
             const box = document.getElementById('new-user-pin-box');
             if (!box) return;
+            const showPassword = opts && opts.showPassword;
             box.classList.remove('hidden');
-            box.innerHTML = `<i class="fa-solid fa-key mr-1"></i> PIN de acceso asignado a <b>${u.name}</b>: <span class="font-mono text-base tracking-widest">${u.pin}</span><br><span class="text-[10px] font-normal">Compártelo de forma segura con el empleado — lo necesitará junto a su clave para entrar. En producción llegaría automáticamente por correo desde el servidor.</span>`;
+            box.innerHTML = `<i class="fa-solid fa-key mr-1"></i> PIN de acceso asignado a <b>${u.name}</b>: <span class="font-mono text-base tracking-widest">${u.pin}</span>${showPassword && u.password ? `<br>Contraseña: <span class="font-mono text-base tracking-widest">${u.password}</span>` : ''}<br><span class="text-[10px] font-normal">Compártelo de forma segura con el empleado — los necesitará para entrar (correo + contraseña, luego PIN). En producción llegarían automáticamente por correo desde el servidor.</span>`;
         }
 
         function renderUsersList() {
@@ -1933,7 +1950,14 @@
             state.vendorQuoteItems = [];
             document.querySelector('#new-quote-modal form').reset();
             const select = document.getElementById('nq-product-select');
-            select.innerHTML = state.products.filter(p => !p.agotado).map(p => `<option value="${p.id}">${p.name} — $${p.price.toLocaleString()}</option>`).join('');
+            // Los equipos de Sellado de Techo NO se listan aquí: su precio es $/pie², no un precio
+            // fijo, y este selector genérico multiplica precio × cantidad como si fuera un producto
+            // normal (daría un total sin sentido, ej. "$3.50" en vez de calcular por pies cuadrados).
+            // El asistente dedicado (Pipeline → Sellado de Techo) sí hace ese cálculo correctamente.
+            const hasRoofSeal = state.products.some(p => p.roofSealing && p.roofSealing.enabled && !p.agotado);
+            const roofSealNote = document.getElementById('nq-roofseal-note');
+            if (roofSealNote) roofSealNote.classList.toggle('hidden', !hasRoofSeal);
+            select.innerHTML = state.products.filter(p => !p.agotado && !(p.roofSealing && p.roofSealing.enabled)).map(p => `<option value="${p.id}">${p.name} — $${p.price.toLocaleString()}</option>`).join('');
             renderVendorQuoteItems();
             const modal = document.getElementById('new-quote-modal');
             modal.classList.remove('hidden');
@@ -1951,6 +1975,7 @@
             const qty = parseInt(document.getElementById('nq-product-qty').value) || 1;
             const product = state.products.find(p => p.id === productId);
             if (!product) return;
+            if (product.roofSealing && product.roofSealing.enabled) { showToast('Este equipo es de Sellado de Techo (precio por pie²) — úsalo desde Pipeline → Sellado de Techo.', 'warning'); return; }
             const existing = state.vendorQuoteItems.find(i => i.id === productId);
             // Se excluyen images/video por la misma razón que en addToCart: no hacen falta en la
             // línea de la cotización y pueden pasar el límite de 1MB por documento de Firestore.
@@ -3103,6 +3128,14 @@
 
 <!-- LEON V2: Contrato de Vendedor — perfil, datos personales y de pago del empleado -->
 <div id="leon-v2-vendor-contract" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-3xl"><div id="v2-vendor-contract-content"></div></div></div>
+<!-- LEON V2: Agregar empleado directamente (admin) — perfil completo, credenciales, ID -->
+<div id="leon-v2-add-employee" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-2xl"><div id="v2-add-employee-content"></div></div></div>
+<!-- LEON V2: Invitar empleado (autoservicio) — admin genera el enlace -->
+<div id="leon-v2-invite-employee" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-lg"><div id="v2-invite-employee-content"></div></div></div>
+<!-- LEON V2: revisar una invitación completada por el empleado, antes de aprobarla -->
+<div id="leon-v2-invite-review" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-2xl"><div id="v2-invite-review-content"></div></div></div>
+<!-- LEON V2: onboarding público (autoservicio) — se abre solo cuando la URL trae ?invite=TOKEN -->
+<div id="leon-v2-employee-onboarding" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-2xl"><div id="v2-employee-onboarding-content"></div></div></div>
 
 <!-- LEON ROOF INTELLIGENCE: modal de propiedad (crear/editar) -->
 <div id="leon-v2-property-modal" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-xl"><div id="v2-property-modal-content"></div></div></div>
@@ -3553,7 +3586,8 @@
     voidSale:['Administrador'],
     unlockLogin:['Administrador'],
     systemBackup:['Administrador'],
-    deleteProperty:['Administrador']
+    deleteProperty:['Administrador'],
+    deleteQuote:['Administrador']
   };
   function leonV2Can(action){
     const role=state.currentUser&&state.currentUser.role;
@@ -3731,7 +3765,7 @@
   // auditLog y securityLog NO están aquí: son bitácoras que solo crecen (unshift), y reescribir
   // las 500 entradas completas en cada evento sería carísimo — esas dos usan leonV2DbAppendLog
   // (un documento nuevo por evento) más abajo, en vez de leonV2SyncCollection.
-  const FB_LIST_COLLECTIONS = ['categories','products','users','quotes','quotesHistory','clients','trash','commissions','tickets','projects','followupTasks','properties','roofAssessments'];
+  const FB_LIST_COLLECTIONS = ['categories','products','users','quotes','quotesHistory','clients','trash','commissions','tickets','projects','followupTasks','properties','roofAssessments','employeeInvites'];
   // chatMessages vive como bitácora (un documento nuevo por mensaje, ver leonV2DbAppendLog) — igual
   // que auditLog/securityLog, así reescribir el historial completo no cuesta una escritura enorme
   // cada vez que alguien manda un mensaje.
@@ -4325,6 +4359,17 @@
     const old=document.querySelector('#internal-view > .max-w-7xl'); if(!old)return; old.innerHTML=`<div class="leon-v2-shell"><div class="flex flex-col lg:flex-row justify-between gap-4 mb-6"><div><div class="v2-pill bg-white"><i class="fa-solid fa-shield-halved text-brand-600"></i><span id="v2-role-pill">Administrador</span></div><h2 class="text-3xl md:text-4xl font-black text-slate-900 mt-3" id="v2-greeting">Buenos días 👋</h2><p class="text-sm text-slate-500 mt-1">Tu espacio comercial se adapta automáticamente a tus permisos.</p><div id="v2-db-status" class="mt-2"></div></div><div class="flex items-center gap-3"><div class="relative"><button onclick="leonV2ToggleNotifications()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Notificaciones"><i class="fa-solid fa-bell"></i><span id="v2-notif-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-glass-lg z-50 max-h-96 overflow-y-auto"></div></div><div class="relative"><button onclick="leonV2ToggleChat()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Chat interno"><i class="fa-solid fa-comments"></i><span id="v2-chat-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-chat-panel" class="hidden fixed right-4 bottom-4 top-24 sm:top-auto sm:h-[520px] w-[92vw] sm:w-96 max-w-[92vw] bg-white border border-slate-200 rounded-2xl shadow-glass-lg z-50 flex flex-col overflow-hidden"><div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50"><b class="text-sm"><i class="fa-solid fa-comments text-brand-500 mr-2"></i>Chat del equipo</b><button onclick="leonV2ToggleChat(true)" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div><div id="v2-chat-messages" class="flex-grow overflow-y-auto p-4"></div><div id="v2-chat-gif-preview" class="hidden px-4 pb-1"></div><div class="border-t border-slate-100 p-3"><div class="flex gap-1 mb-2 flex-wrap">${['😀','😂','👍','🎉','🔥','❤️','😢','🙏','👏','💡'].map(em=>`<button type="button" onclick="leonV2InsertChatEmoji('${em}')" class="text-lg hover:scale-125 transition">${em}</button>`).join('')}<label class="ml-1 cursor-pointer text-slate-400 hover:text-brand-600 text-sm px-1" title="Adjuntar GIF/imagen"><i class="fa-solid fa-image"></i><input type="file" id="v2-chat-gif-file" accept="image/*" class="hidden" onchange="handleChatGifFile(event)"></label></div><form onsubmit="leonV2SendChatMessage(event)" class="flex gap-2"><input id="v2-chat-input" placeholder="Escribe un mensaje..." class="flex-grow px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black"><i class="fa-solid fa-paper-plane"></i></button></form></div></div></div><button onclick="leonV2OpenSection('clients')" class="px-4 py-3 rounded-xl border bg-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-2"></i>Buscar cliente</button><button onclick="logoutUser()" class="px-4 py-3 rounded-xl bg-red-50 text-red-600 text-xs font-black"><i class="fa-solid fa-right-from-bracket mr-2"></i>Salir</button></div></div><div class="grid lg:grid-cols-[230px_1fr] gap-6 v2-layout"><aside class="v2-nav h-fit"><div class="px-3 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Workspace</div><div id="v2-nav"></div></aside><section id="v2-main" class="min-w-0"></section></div></div>`;renderNav();renderDashboard();leonV2RefreshNotifications();if(typeof window.leonV2UpdateDbStatusBadge==='function')window.leonV2UpdateDbStatusBadge();
   }
   const navItems=[['dashboard','fa-chart-pie','Dashboard'],['clients','fa-address-card','Clientes'],['pipeline','fa-filter-circle-dollar','Pipeline'],['ventas','fa-cash-register','Ventas'],['historial','fa-clock-rotate-left','Historial'],['catalog','fa-boxes-stacked','Catálogo'],['roofintel','fa-house-chimney-crack','Roof Intelligence'],['proposals','fa-file-signature','Propuestas'],['payroll','fa-sitemap','Comisiones'],['empleados','fa-users-gear','Empleados'],['tickets','fa-ticket','Tickets'],['projects','fa-helmet-safety','Proyectos'],['reports','fa-chart-line','Reportes'],['branding','fa-pen-ruler','Sitio Web'],['users','fa-user-shield','Usuarios'],['trash','fa-trash-can','Papelera'],['audit','fa-clipboard-list','Auditoría'],['settings','fa-gear','Configuración']];
+  // Qué secciones del panel puede ver cada rol — única fuente de verdad (antes vivía inline dentro
+  // de applyRolePermissions). También se usa para el bloque de "Permisos del sistema" del contrato
+  // de empleado (leonV2ContractPermissionsHtml), así el contrato firmado siempre coincide con el
+  // acceso real que el sistema le da a esa persona — nunca una lista aparte que se pueda desviar.
+  const ROLE_ACCESS={
+    Administrador: navItems.map(x=>x[0]),
+    Vendedor: ['dashboard','clients','pipeline','ventas','historial','catalog','roofintel','proposals','payroll','tickets','projects','reports'],
+    ['Nuevo Consultor']: ['dashboard','clients','ventas','catalog','roofintel','proposals','payroll','tickets'],
+    ['Call Center']: ['dashboard','clients','pipeline','ventas','historial','tickets'],
+    ['Técnico']: ['dashboard','roofintel','projects','tickets']
+  };
   window.leonV2OpenSection=sec=>{document.querySelectorAll('#v2-nav button').forEach(b=>b.classList.toggle('active',b.dataset.sec===sec));({dashboard:renderDashboard,clients:renderClients,pipeline:renderPipeline,ventas:renderVentas,historial:renderHistorialSection,catalog:renderCatalog,roofintel:renderRoofIntel,proposals:renderProposals,payroll:renderPayroll,empleados:renderEmpleados,tickets:renderTickets,projects:renderProjects,reports:renderReports,branding:renderBranding,users:renderUsers,trash:renderTrash,audit:renderAudit,settings:renderSettings}[sec]||renderDashboard)()};
   function renderNav(){const role=state.currentUser?.role||'Administrador';document.getElementById('v2-role-pill').textContent=role;document.getElementById('v2-nav').innerHTML=navItems.map(([s,i,t])=>`<button data-sec="${s}" onclick="leonV2OpenSection('${s}')"><i class="fa-solid ${i} w-4"></i>${t}</button>`).join('');document.querySelector('#v2-nav button')?.classList.add('active')}
   function kpi(title,val,sub,icon){return `<div class="v2-card v2-kpi p-5"><div class="text-[10px] font-black uppercase tracking-widest text-slate-500">${title}</div><div class="text-3xl font-black text-slate-900 mt-2">${val}</div><div class="text-xs text-brand-600 font-bold mt-2">${sub}</div><i class="fa-solid ${icon} absolute right-5 top-5 text-xl text-brand-300"></i></div>`}
@@ -4850,6 +4895,25 @@
     showToast('Cliente movido a la papelera. Se puede restaurar durante 30 días.','success');
     if(document.getElementById('v2-main').innerHTML.includes('Expediente 360'))renderClients();
   };
+  // Elimina una propuesta/cotización (activa o de historial) — igual que clientes/productos/
+  // propiedades, va a la papelera 30 días antes de borrarse en definitiva (leonV2SoftDelete).
+  // Busca en las dos listas posibles porque una propuesta puede estar activa (state.quotes) o ya
+  // resuelta (state.quotesHistory, ver moveQuoteToHistory) — leonV2RestoreTrash la devuelve a la
+  // lista correcta según su status.
+  window.leonV2DeleteQuote=id=>{
+    if(!leonV2Can('deleteQuote')){ showToast('Solo un administrador puede eliminar propuestas.','error'); return }
+    let idx=(state.quotes||[]).findIndex(x=>x.id===id);
+    let list=state.quotes, listKey='quotes';
+    if(idx===-1){ idx=(state.quotesHistory||[]).findIndex(x=>x.id===id); list=state.quotesHistory; listKey='quotesHistory'; }
+    if(idx===-1){ showToast('No se encontró la propuesta.','error'); return }
+    const q=list[idx];
+    list.splice(idx,1);
+    if(typeof window.leonV2DbDelete==='function')window.leonV2DbDelete(listKey, id);
+    leonV2SoftDelete('quote', q, q.id+' — '+(q.clientName||'Sin nombre'));
+    showToast('Propuesta movida a la papelera. Se puede restaurar durante 30 días.','success');
+    if(typeof renderProposals==='function' && document.getElementById('v2-main').innerHTML.includes('Editor de documento, PDF, precio'))renderProposals();
+    if(typeof renderQuotesList==='function')renderQuotesList();
+  };
   function renderTrash(){
     document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center mb-5"><div><h3 class="text-xl font-black">Papelera</h3><p class="text-xs text-slate-500 mt-1">Nada se borra al instante — todo pasa por aquí 30 días antes de eliminarse en definitiva.</p></div></div><div id="v2-trash-list"></div></div>`;
     renderTrashList();
@@ -4866,6 +4930,10 @@
     else if(t.type==='product')state.products.push(t.data);
     else if(t.type==='category')state.categories.push(t.data);
     else if(t.type==='property'){ if(!state.properties)state.properties=[]; state.properties.push(t.data); }
+    // Una propuesta restaurada vuelve a la lista de donde salió: si ya tenía resolvedAt (se había
+    // movido con moveQuoteToHistory al aceptarse/rechazarse/anularse) va a quotesHistory, si no
+    // estaba activa en el pipeline (state.quotes) — mismo criterio que usa moveQuoteToHistory.
+    else if(t.type==='quote'){ if(t.data.resolvedAt){ if(!state.quotesHistory)state.quotesHistory=[]; state.quotesHistory.unshift(t.data); } else { if(!state.quotes)state.quotes=[]; state.quotes.unshift(t.data); } }
     state.trash.splice(idx,1);
     leonV2Audit('Restaurado de papelera', t.type+': '+t.label);
     showToast(t.label+' restaurado.','success');
@@ -4877,6 +4945,7 @@
       else if(t.type==='product')window.leonV2SyncCollection('products');
       else if(t.type==='category')window.leonV2SyncCollection('categories');
       else if(t.type==='property')window.leonV2SyncCollection('properties');
+      else if(t.type==='quote')window.leonV2SyncCollection(t.data.resolvedAt?'quotesHistory':'quotes');
     }
     if(typeof window.leonV2DbDelete==='function')window.leonV2DbDelete('trash', trashId);
   };
@@ -5016,7 +5085,8 @@
       </div>
       <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100">
         <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600">Equipos (opcional — del catálogo)</h4>
-        <div class="flex gap-2 mt-2"><select id="ms-product-select" class="flex-grow border border-slate-200 rounded-xl px-3 py-2.5 text-sm">${(state.products||[]).map(p=>`<option value="${p.id}">${esc(p.name)} — ${money(p.price)}</option>`).join('')}</select><input type="number" id="ms-product-qty" value="1" min="1" class="w-20 border border-slate-200 rounded-xl px-3 py-2.5 text-sm"><button type="button" onclick="leonV2AddManualSaleItem()" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black">+</button></div>
+        <div class="flex gap-2 mt-2"><select id="ms-product-select" class="flex-grow border border-slate-200 rounded-xl px-3 py-2.5 text-sm">${(state.products||[]).filter(p=>!(p.roofSealing&&p.roofSealing.enabled)).map(p=>`<option value="${p.id}">${esc(p.name)} — ${money(p.price)}</option>`).join('')}</select><input type="number" id="ms-product-qty" value="1" min="1" class="w-20 border border-slate-200 rounded-xl px-3 py-2.5 text-sm"><button type="button" onclick="leonV2AddManualSaleItem()" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black">+</button></div>
+        ${(state.products||[]).some(p=>p.roofSealing&&p.roofSealing.enabled)?`<div class="mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-100 text-[11px] text-amber-800"><i class="fa-solid fa-circle-info mr-1"></i>Los equipos de <b>Sellado de Techo</b> no aparecen aquí (su precio es por pie²) — para esos, escribe el monto total a mano o usa el asistente en Pipeline → Sellado de Techo.</div>`:''}
         <div id="ms-items-list" class="mt-3 space-y-2 text-xs text-slate-400">Sin equipos añadidos — no es obligatorio, puedes usar solo el monto total.</div>
       </div>
       <div><label class="text-[10px] font-black uppercase text-slate-500">Monto total de la venta</label><input id="ms-total" type="number" min="0" step="0.01" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 text-lg font-black" placeholder="0.00"><p class="text-[10px] text-slate-400 mt-1">Se llena solo si añades equipos del catálogo — igual puedes escribirlo o ajustarlo a mano (descuentos, paquete, etc.).</p></div>
@@ -5031,6 +5101,7 @@
     const sel=document.getElementById('ms-product-select');
     const qty=parseInt(document.getElementById('ms-product-qty').value)||1;
     const product=(state.products||[]).find(p=>p.id===sel.value); if(!product)return;
+    if(product.roofSealing&&product.roofSealing.enabled){ showToast('Este equipo es de Sellado de Techo (precio por pie²) — escribe el monto total a mano o usa el asistente en Pipeline → Sellado de Techo.','warning'); return; }
     const {images,video,...productForSale}=product;
     const existing=manualSaleItems.find(i=>i.id===product.id);
     if(existing)existing.qty+=qty; else manualSaleItems.push({...productForSale,qty});
@@ -5131,7 +5202,7 @@
     renderHistorial();
   }
 
-  function renderProposals(){const qs=(state.quotes||[]).concat(state.quotesHistory||[]);document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center"><div><h3 class="text-xl font-black">Propuestas & Cotizaciones</h3><p class="text-xs text-slate-500">Editor de documento, PDF, precio (CPQ) y portal del cliente por propuesta.</p></div></div><div class="overflow-x-auto mt-5">${qs.length?`<table class="w-full v2-table"><thead><tr><th>ID</th><th>Cliente</th><th>Origen</th><th>Consultor</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${qs.map(q=>`<tr><td><b>${esc(q.id)}</b><div class="text-[10px] text-slate-400">v${q.version||1} · ${esc(q.createdAt||'')}</div></td><td>${esc(q.clientName)}</td><td>${esc(q.origin||'Autogestionado')}</td><td>${esc(q.vendorName||'Pendiente')}</td><td><b>${money(leonV2ComputeTotal(q).total)}</b></td><td><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></td><td class="flex gap-1 flex-wrap">${state.quotes.includes(q)?`<button onclick="leonV2OpenPricing('${q.id}')" class="v2-tab"><i class="fa-solid fa-calculator"></i></button>`:''}<button onclick="leonV2OpenEditor('${q.id}')" class="v2-tab active">Editar</button><button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab">PDF</button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button></td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay propuestas todavía. Se crean desde el catálogo público o desde Pipeline → Nueva Cotización.</div>'}</div></div>`}
+  function renderProposals(){const qs=(state.quotes||[]).concat(state.quotesHistory||[]);document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center"><div><h3 class="text-xl font-black">Propuestas & Cotizaciones</h3><p class="text-xs text-slate-500">Editor de documento, PDF, precio (CPQ) y portal del cliente por propuesta.</p></div></div><div class="overflow-x-auto mt-5">${qs.length?`<table class="w-full v2-table"><thead><tr><th>ID</th><th>Cliente</th><th>Origen</th><th>Consultor</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${qs.map(q=>`<tr><td><b>${esc(q.id)}</b><div class="text-[10px] text-slate-400">v${q.version||1} · ${esc(q.createdAt||'')}</div></td><td>${esc(q.clientName)}</td><td>${esc(q.origin||'Autogestionado')}</td><td>${esc(q.vendorName||'Pendiente')}</td><td><b>${money(leonV2ComputeTotal(q).total)}</b></td><td><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></td><td class="flex gap-1 flex-wrap">${state.quotes.includes(q)?`<button onclick="leonV2OpenPricing('${q.id}')" class="v2-tab"><i class="fa-solid fa-calculator"></i></button>`:''}<button onclick="leonV2OpenEditor('${q.id}')" class="v2-tab active">Editar</button><button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab">PDF</button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button>${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2DeleteQuote('${q.id}')" class="v2-tab" style="color:#dc2626" title="Eliminar propuesta"><i class="fa-solid fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay propuestas todavía. Se crean desde el catálogo público o desde Pipeline → Nueva Cotización.</div>'}</div></div>`}
 
   function renderCatalog(){
     document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex items-center justify-between mb-6 flex-wrap gap-3"><div><h3 class="text-xl font-black text-slate-900">Gestión de Catálogo</h3><p class="text-xs text-slate-500 mt-1">Añade, edita o elimina equipos. La imagen admite URL o archivo local (se comprime automáticamente).</p></div><div class="flex gap-2"><button onclick="leonV2PrintCatalogPdf()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-file-pdf mr-1"></i>Descargar catálogo (PDF)</button><button onclick="leonV2EmailCatalog()" class="bg-white border border-slate-200 hover:border-brand-400 text-slate-600 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-envelope mr-1"></i>Enviar por correo</button><button onclick="openCategoryModal()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-tags mr-1"></i>Categorías</button><button onclick="openProductModal()" class="bg-gradient-to-r from-brand-600 to-brand-400 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-1"></i>Añadir Equipo</button></div></div><div id="admin-products-list" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div><div class="text-center mt-6 hidden" id="admin-products-load-more-wrap"><button onclick="loadMoreAdminProducts()" class="bg-white border-2 border-brand-200 hover:border-brand-500 text-brand-700 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition">Cargar más <i class="fa-solid fa-chevron-down ml-1"></i></button></div></div>`;
@@ -5221,7 +5292,7 @@
   }
 
   function renderUsers(){
-    document.getElementById('v2-main').innerHTML=`<div class="grid lg:grid-cols-[1fr_1.4fr] gap-6"><div class="v2-card p-6"><h3 class="text-lg font-black text-slate-900 mb-5 flex items-center gap-2"><i class="fa-solid fa-user-plus text-brand-500"></i> Nuevo Staff</h3><form id="create-user-form" onsubmit="handleCreateUser(event)" class="space-y-4"><input type="text" id="new-user-name" required placeholder="Nombre Completo" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><input type="email" id="new-user-email" required placeholder="Correo @leonsolutions.com" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><select id="new-user-role" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="Administrador">Administrador</option><option value="Vendedor">Vendedor</option><option value="Call Center">Call Center</option><option value="Nuevo Consultor">Nuevo Consultor</option><option value="Técnico">Técnico</option></select><select id="new-user-supervisor" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="">Sin supervisor (tope del árbol)</option>${state.users.map(s=>`<option value="${s.id}">${s.name} — ${s.role}</option>`).join('')}</select><input type="password" id="new-user-pass" required placeholder="Contraseña Temporal" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><button type="submit" class="w-full bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black py-3 rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-brand-500/25">Registrar Usuario</button></form><div id="new-user-pin-box" class="hidden mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800"></div><div class="mt-4 p-3 rounded-xl bg-slate-50 text-[10px] text-slate-500 font-mono leading-relaxed">La contraseña temporal es solo un campo de referencia en esta demo — no se envía a ningún servidor. El acceso real usa la clave demo única de Configuración → Seguridad. Cada usuario también recibe un PIN de 5 dígitos (segundo factor) — ver más abajo.</div></div><div class="v2-card p-6"><h3 class="text-lg font-black text-slate-900 mb-5 flex items-center gap-2"><i class="fa-solid fa-users text-brand-500"></i> Directorio de Staff</h3><div id="users-list-container" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div></div></div>`;
+    document.getElementById('v2-main').innerHTML=`<div class="grid lg:grid-cols-[1fr_1.4fr] gap-6"><div class="v2-card p-6"><h3 class="text-lg font-black text-slate-900 mb-5 flex items-center gap-2"><i class="fa-solid fa-user-plus text-brand-500"></i> Nuevo Staff</h3><form id="create-user-form" onsubmit="handleCreateUser(event)" class="space-y-4"><input type="text" id="new-user-name" required placeholder="Nombre Completo" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><input type="email" id="new-user-email" required placeholder="Correo @leonsolutions.com" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><select id="new-user-role" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="Administrador">Administrador</option><option value="Vendedor">Vendedor</option><option value="Call Center">Call Center</option><option value="Nuevo Consultor">Nuevo Consultor</option><option value="Técnico">Técnico</option></select><select id="new-user-supervisor" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="">Sin supervisor (tope del árbol)</option>${state.users.map(s=>`<option value="${s.id}">${s.name} — ${s.role}</option>`).join('')}</select><input type="password" id="new-user-pass" required placeholder="Contraseña Temporal" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><button type="submit" class="w-full bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black py-3 rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-brand-500/25">Registrar Usuario</button></form><div id="new-user-pin-box" class="hidden mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800"></div><div class="mt-4 p-3 rounded-xl bg-slate-50 text-[10px] text-slate-500 font-mono leading-relaxed">Esta contraseña sí es la clave real de acceso de esta persona — cada empleado tiene la suya, no se comparte. Se guarda en texto plano (no hay backend con cifrado real en esta demo), así que trátala con el mismo cuidado que cualquier otra credencial. Cada usuario también recibe un PIN de 5 dígitos (segundo factor) — ver más abajo. Para un flujo más completo (con foto de ID, cláusulas y firma), usa "Agregar empleado" o "Invitar empleado" desde la sección Empleados.</div></div><div class="v2-card p-6"><h3 class="text-lg font-black text-slate-900 mb-5 flex items-center gap-2"><i class="fa-solid fa-users text-brand-500"></i> Directorio de Staff</h3><div id="users-list-container" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div></div></div>`;
     renderUsersList();
   }
 
@@ -5999,7 +6070,7 @@
       <div class="p-3 rounded-xl bg-red-50 border border-red-100 text-[11px] text-red-800 mt-4"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Restaurar reemplaza todos los datos actuales — no se puede deshacer. Pide confirmación antes de aplicar.</div>
     </div>
     <div class="v2-card p-6 mb-6"><h3 class="font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-plug-circle-bolt text-brand-500"></i> Integrations Center</h3><p class="text-xs text-slate-500 mt-1">Estado real de cada proveedor externo que usa (o podría usar) Roof Intelligence. Nunca se muestra "Conectado" a menos que de verdad funcione hoy, sin backend — los que requieren clave/API secreta se marcan honestamente como pendientes, porque una clave nunca debe vivir en este archivo (viaja en el código fuente que cualquiera puede ver).</p><div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">${leonV2RoofIntegrationsHtml()}</div></div>`:''}
-    <div class="grid lg:grid-cols-2 gap-6"><div class="v2-card p-6"><h3 class="font-black text-slate-900">Simular Rol (solo demo)</h3><p class="text-xs text-slate-500 mt-1">Cambia de rol para revisar cómo se ve el sistema desde cada perfil, sin cerrar sesión.</p><select id="v2-role-selector" onchange="changeRoleSimulated(this.value)" class="w-full mt-4 px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="Administrador">Administrador</option><option value="Vendedor">Vendedor</option><option value="Call Center">Call Center</option><option value="Nuevo Consultor">Nuevo Consultor</option><option value="Técnico">Técnico</option></select></div><div class="v2-card p-6"><h3 class="font-black text-slate-900">Seguridad — estado real</h3><div class="space-y-3 mt-4 text-xs"><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>Acceso staff:</b> hoy es un candado de demostración en el navegador (clave compartida), no autenticación real. Para producción hace falta un proveedor real (Firebase Authentication o backend con sesiones/JWT) que valide credenciales en un servidor, nunca en el navegador.</div><div class="p-3 ${window.__fbDb?'bg-emerald-50 border border-emerald-100 text-emerald-800':'bg-amber-50 border border-amber-100 text-amber-800'} rounded-xl">${window.__fbDb?'<b>Almacenamiento:</b> conectado a Firestore (Firebase) en tiempo real — los cambios se guardan de verdad y se ven en todos los dispositivos del equipo, no solo en esta pestaña.'+(window.__fbOfflineReady?' Además hay caché offline activo: si se pierde internet, la app sigue leyendo y encolando cambios en este dispositivo, y los sincroniza solos en cuanto vuelve la señal.':''):'<b>Almacenamiento:</b> sin conexión a la base de datos ahora mismo — todo vive en memoria de esta pestaña (variable <code>state</code>) y no sobrevive un refresco.'} La seguridad de esos datos depende de las reglas de Firestore configuradas en la consola de Firebase, no de esta pantalla.</div><div class="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800"><b>Compresión de imágenes:</b> real, vía canvas — recodifica los píxeles, no es una animación falsa.</div><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>Identificación (SSN/ID/Pasaporte):</b> se enmascara antes de guardarse y solo se conservan los últimos 4 caracteres — no hay cifrado real porque no hay servidor. Para datos reales, la identificación completa no debe tocar el navegador sin cifrado en tránsito y en reposo.</div><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>PIN / segundo factor:</b> real como flujo (correo + clave, luego PIN de 5 dígitos por usuario, con bloqueo tras 5 fallos)${window.__fbDb?' y el registro de accesos + los bloqueos ya se guardan en la base de datos compartida — visibles desde cualquier dispositivo.':', pero sin conexión a la base de datos ahora mismo el bloqueo vive solo en esta pestaña.'} Aún falta lo que ninguna base de datos por sí sola resuelve: el PIN se muestra en pantalla al crearlo en vez de llegar por correo (hace falta una Cloud Function que envíe el correo), y la validación de la clave sigue pasando por el navegador en vez de un proveedor de autenticación real (Firebase Authentication). Ver el registro de accesos abajo.</div></div></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-key text-brand-500"></i> Accesos y PIN (segundo factor)</h3><p class="text-xs text-slate-500 mt-1">Quién intentó iniciar sesión, cuándo, y si el PIN fue correcto — para detectar accesos sospechosos.</p><div id="v2-lockouts" class="flex flex-wrap gap-2 mt-4"></div><div id="v2-security-log" class="overflow-x-auto mt-4"></div></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900">Estados del Pipeline</h3><p class="text-xs text-slate-500 mt-1">Los estados que aparecen en el selector de cada propuesta activa. Agrega o quita los que tu operación necesite.</p><div id="v2-status-list" class="flex flex-wrap gap-2 mt-4"></div><form onsubmit="leonV2AddPipelineStatus(event)" class="flex gap-2 mt-4"><input id="v2-new-status" placeholder="Nuevo estado, ej. Pendiente de inspección" class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Agregar</button></form></div></div>`;
+    <div class="grid lg:grid-cols-2 gap-6"><div class="v2-card p-6"><h3 class="font-black text-slate-900">Simular Rol (solo demo)</h3><p class="text-xs text-slate-500 mt-1">Cambia de rol para revisar cómo se ve el sistema desde cada perfil, sin cerrar sesión.</p><select id="v2-role-selector" onchange="changeRoleSimulated(this.value)" class="w-full mt-4 px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="Administrador">Administrador</option><option value="Vendedor">Vendedor</option><option value="Call Center">Call Center</option><option value="Nuevo Consultor">Nuevo Consultor</option><option value="Técnico">Técnico</option></select></div><div class="v2-card p-6"><h3 class="font-black text-slate-900">Seguridad — estado real</h3><div class="space-y-3 mt-4 text-xs"><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>Acceso staff:</b> cada empleado tiene su propia contraseña (la eligió al completar su invitación, o se la asignó el administrador en "Agregar empleado" / Usuarios) + un PIN de 5 dígitos — ya no es una sola clave compartida. Los usuarios sembrados de esta demo siguen usando la clave demo como respaldo. Pero la validación sigue pasando en el navegador, no es autenticación real de servidor todavía — para producción hace falta un proveedor real (Firebase Authentication o backend con sesiones/JWT) que valide credenciales en un servidor, nunca en el navegador, y las contraseñas deben guardarse con hash, nunca en texto plano como aquí.</div><div class="p-3 ${window.__fbDb?'bg-emerald-50 border border-emerald-100 text-emerald-800':'bg-amber-50 border border-amber-100 text-amber-800'} rounded-xl">${window.__fbDb?'<b>Almacenamiento:</b> conectado a Firestore (Firebase) en tiempo real — los cambios se guardan de verdad y se ven en todos los dispositivos del equipo, no solo en esta pestaña.'+(window.__fbOfflineReady?' Además hay caché offline activo: si se pierde internet, la app sigue leyendo y encolando cambios en este dispositivo, y los sincroniza solos en cuanto vuelve la señal.':''):'<b>Almacenamiento:</b> sin conexión a la base de datos ahora mismo — todo vive en memoria de esta pestaña (variable <code>state</code>) y no sobrevive un refresco.'} La seguridad de esos datos depende de las reglas de Firestore configuradas en la consola de Firebase, no de esta pantalla.</div><div class="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800"><b>Compresión de imágenes:</b> real, vía canvas — recodifica los píxeles, no es una animación falsa.</div><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>Identificación (SSN/ID/Pasaporte):</b> se enmascara antes de guardarse y solo se conservan los últimos 4 caracteres — no hay cifrado real porque no hay servidor. Para datos reales, la identificación completa no debe tocar el navegador sin cifrado en tránsito y en reposo.</div><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>PIN / segundo factor:</b> real como flujo (correo + clave, luego PIN de 5 dígitos por usuario, con bloqueo tras 5 fallos)${window.__fbDb?' y el registro de accesos + los bloqueos ya se guardan en la base de datos compartida — visibles desde cualquier dispositivo.':', pero sin conexión a la base de datos ahora mismo el bloqueo vive solo en esta pestaña.'} Aún falta lo que ninguna base de datos por sí sola resuelve: el PIN se muestra en pantalla al crearlo en vez de llegar por correo (hace falta una Cloud Function que envíe el correo), y la validación de la clave sigue pasando por el navegador en vez de un proveedor de autenticación real (Firebase Authentication). Ver el registro de accesos abajo.</div></div></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-key text-brand-500"></i> Accesos y PIN (segundo factor)</h3><p class="text-xs text-slate-500 mt-1">Quién intentó iniciar sesión, cuándo, y si el PIN fue correcto — para detectar accesos sospechosos.</p><div id="v2-lockouts" class="flex flex-wrap gap-2 mt-4"></div><div id="v2-security-log" class="overflow-x-auto mt-4"></div></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900">Estados del Pipeline</h3><p class="text-xs text-slate-500 mt-1">Los estados que aparecen en el selector de cada propuesta activa. Agrega o quita los que tu operación necesite.</p><div id="v2-status-list" class="flex flex-wrap gap-2 mt-4"></div><form onsubmit="leonV2AddPipelineStatus(event)" class="flex gap-2 mt-4"><input id="v2-new-status" placeholder="Nuevo estado, ej. Pendiente de inspección" class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Agregar</button></form></div></div>`;
     const sel=document.getElementById('v2-role-selector'); if(sel) sel.value=role;
     renderPipelineStatusList();
     renderSecurityAccessLog();
@@ -6081,7 +6152,12 @@
     const pass=document.getElementById('login-pass').value;
     const found=state.users.find(u=>u.email.toLowerCase()===email);
     if(!found){showToast('Usuario no encontrado. Use una cuenta creada por el administrador.','error');return}
-    if(pass!==DEMO_ACCESS_CODE){showToast('Clave incorrecta. Clave demo: '+DEMO_ACCESS_CODE,'error');return}
+    // Cada empleado creado con el sistema nuevo (Agregar empleado / invitación aprobada) tiene su
+    // propia contraseña real (found.password) — ya no comparten una sola clave. Los usuarios
+    // sembrados de esta demo, que nunca pasaron por ese flujo, siguen aceptando la clave demo como
+    // respaldo para no romper el acceso existente.
+    const expectedPass = found.password || DEMO_ACCESS_CODE;
+    if(pass!==expectedPass){showToast(found.password?'Clave incorrecta.':'Clave incorrecta. Clave demo: '+DEMO_ACCESS_CODE,'error');return}
     // Paso 1 superado (correo + clave demo). Paso 2: PIN de 5 dígitos del usuario (segundo factor) —
     // ver handlePinSubmit más arriba en el archivo, y el comentario junto a window.pendingPinUser.
     const lock=state.loginLockouts[found.email]||{failCount:0,locked:false};
@@ -6101,7 +6177,7 @@
     setTimeout(()=>document.getElementById('login-pin')?.focus(),50);
   };
   window.updateRoleUI=function(role){buildCRM();document.getElementById('v2-role-pill').textContent=role;document.getElementById('v2-greeting').textContent='Hola, '+(state.currentUser?.name||'equipo')+' 👋';applyRolePermissions(role)};
-  function applyRolePermissions(role){const restricted={Administrador:navItems.map(x=>x[0]),Vendedor:['dashboard','clients','pipeline','ventas','historial','catalog','roofintel','proposals','payroll','tickets','projects','reports'],['Nuevo Consultor']:['dashboard','clients','ventas','catalog','roofintel','proposals','payroll','tickets'],['Call Center']:['dashboard','clients','pipeline','ventas','historial','tickets'],['Técnico']:['dashboard','roofintel','projects','tickets']}; const allowed=restricted[role]||restricted.Vendedor; document.querySelectorAll('#v2-nav button').forEach(b=>{b.style.display=allowed.includes(b.dataset.sec)?'flex':'none'}); document.getElementById('v2-main').dataset.role=role; const activeBtn=document.querySelector('#v2-nav button.active'); if(activeBtn&&!allowed.includes(activeBtn.dataset.sec)){leonV2OpenSection('dashboard')}}
+  function applyRolePermissions(role){const allowed=ROLE_ACCESS[role]||ROLE_ACCESS.Vendedor; document.querySelectorAll('#v2-nav button').forEach(b=>{b.style.display=allowed.includes(b.dataset.sec)?'flex':'none'}); document.getElementById('v2-main').dataset.role=role; const activeBtn=document.querySelector('#v2-nav button.active'); if(activeBtn&&!allowed.includes(activeBtn.dataset.sec)){leonV2OpenSection('dashboard')}}
   // Add a detail button to existing product cards using state/product names when possible.
   function enhanceCatalog(){const p=products();document.querySelectorAll('#catalogo .group').forEach(card=>{if(card.dataset.v2done)return;const title=card.querySelector('h3,h4');if(!title)return;const prod=p.find(x=>x.name===title.textContent.trim());if(!prod)return;card.dataset.v2done='1';const btn=document.createElement('button');btn.className='mt-2 w-full py-2 rounded-lg border border-brand-200 text-brand-700 text-[10px] font-black uppercase';btn.innerHTML='<i class="fa-solid fa-circle-info mr-1"></i> Ver detalle / video';btn.onclick=()=>leonV2OpenProduct(prod.id);card.appendChild(btn)})}
   const origSwitch=window.switchView;window.switchView=function(view){origSwitch(view);if(view==='internal'&&state.currentUser){window.updateRoleUI(state.currentUser.role)}else if(view==='public'){setTimeout(enhanceCatalog,300)}};
@@ -6224,6 +6300,7 @@
   // Para operar pagos de verdad hace falta un procesador de pagos (ACH real) o un backend con
   // cifrado en reposo para el número completo — nunca el navegador ni Firestore tal cual.
   let vendorContractPhotoPending = null;
+  let vendorContractIdPhotoPending = null;
 
   // ===================== EMPLEADOS (panel centralizado, solo Administrador) =====================
   // Reúne lo que antes estaba repartido entre "Usuarios" y el árbol de comisiones: foto, contrato,
@@ -6338,11 +6415,316 @@
     if(document.getElementById('v2-main').innerHTML.includes('Nómina de comisiones'))renderEmpleados();
     if(typeof renderUsersList==='function')renderUsersList();
   };
+  // ================= AGREGAR EMPLEADO (directo, admin) =================
+  // Flujo completo desde Empleados mismo: crea la cuenta (con su propia contraseña real + PIN,
+  // ver credenciales por empleado en handleLoginSubmit) y de inmediato continúa al contrato
+  // (leonV2OpenVendorContract) ya con foto de ID lista para completar cláusulas + firma + pago,
+  // en vez de obligar a saltar a la sección Usuarios y luego buscar al empleado en Empleados.
+  let addEmployeeIdPhotoPending = null;
+  window.leonV2OpenAddEmployee = function(){
+    addEmployeeIdPhotoPending = null;
+    const roleOptions=['Administrador','Vendedor','Call Center','Nuevo Consultor','Técnico'];
+    document.getElementById('v2-add-employee-content').innerHTML = `<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2"><i class="fa-solid fa-user-plus"></i> AGREGAR EMPLEADO</div><h3 class="text-2xl font-black">Nuevo empleado</h3><p class="text-sm text-slate-500">Crea la cuenta y continúa directo al contrato (cláusulas, permisos y firma).</p></div><button onclick="leonV2Close('leon-v2-add-employee')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+    <form onsubmit="leonV2SubmitAddEmployee(event)" class="mt-6 space-y-4">
+      <div class="grid md:grid-cols-2 gap-4">
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Nombre completo *</label><input id="ae-name" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Correo *</label><input id="ae-email" type="email" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Rol</label><select id="ae-role" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3">${roleOptions.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Supervisor</label><select id="ae-supervisor" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="">Sin supervisor (tope del árbol)</option>${state.users.map(s=>`<option value="${s.id}">${esc(s.name)} — ${esc(s.role)}</option>`).join('')}</select></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Teléfono</label><input id="ae-phone" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="787-410-0694"></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Dirección</label><input id="ae-address" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Calle, urbanización, municipio"></div>
+      </div>
+      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-id-card mr-1"></i>Identificación</h4>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Tipo de identificación</label><select id="ae-idtype" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option>Licencia de conducir</option><option>ID Real / estatal</option><option>Pasaporte</option><option>Otro</option></select></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Número de identificación</label><input id="ae-idnumber" type="password" autocomplete="off" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Se enmascara al guardar"></div>
+        </div>
+        <div class="flex items-center gap-4 mt-4">
+          <div id="ae-idphoto-preview" class="w-20 h-14 rounded-lg border border-slate-200 bg-white overflow-hidden flex items-center justify-center shrink-0"><i class="fa-solid fa-id-card text-slate-300"></i></div>
+          <div><input type="file" id="ae-idphoto-file" accept="image/*" class="hidden" onchange="handleAddEmployeeIdPhotoUpload(event)"><button type="button" onclick="document.getElementById('ae-idphoto-file').click()" class="bg-ink-900 hover:bg-ink-800 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Foto del ID</button><p class="text-[10px] text-slate-400 mt-1">Foto clara del frente del documento.</p></div>
+        </div>
+      </div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Contraseña temporal *</label><input id="ae-password" type="password" required minlength="4" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="El empleado puede cambiarla después"><p class="text-[10px] text-slate-400 mt-1">Se muestra una sola vez al confirmar — compártela de forma segura.</p></div>
+      <button type="submit" class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase tracking-widest">Crear empleado y continuar al contrato</button>
+    </form>`;
+    open('leon-v2-add-employee');
+  };
+  window.handleAddEmployeeIdPhotoUpload=function(event){
+    const file = event.target.files[0]; if(!file) return;
+    if(!file.type.startsWith('image/')){ showToast('La foto debe ser una imagen.','error'); return; }
+    compressImageFile(file, 900, 0.85).then(result=>{
+      addEmployeeIdPhotoPending = result.dataUrl;
+      const prev = document.getElementById('ae-idphoto-preview');
+      if(prev) prev.innerHTML = `<img src="${result.dataUrl}" class="w-full h-full object-cover">`;
+      showToast('Foto del ID lista.','success');
+    }).catch(()=>showToast('No se pudo procesar la imagen.','error'));
+  };
+  window.leonV2SubmitAddEmployee = function(e){
+    e.preventDefault();
+    const name=document.getElementById('ae-name').value.trim();
+    const email=document.getElementById('ae-email').value.trim();
+    const role=document.getElementById('ae-role').value;
+    const supEl=document.getElementById('ae-supervisor');
+    const supervisorId=(supEl&&supEl.value)?supEl.value:null;
+    const phone=document.getElementById('ae-phone').value;
+    const address=document.getElementById('ae-address').value;
+    const idType=document.getElementById('ae-idtype').value;
+    const idNumberRaw=document.getElementById('ae-idnumber').value;
+    const password=document.getElementById('ae-password').value;
+    if(state.users.some(u=>u.email.toLowerCase()===email.toLowerCase())){ showToast('Ya existe un empleado con ese correo.','error'); return; }
+    const pin=String(Math.floor(10000+Math.random()*90000));
+    const newUser={ id:'u-'+Date.now(), name, email, role, supervisorId, pin, password, photoUrl:'', phone, address,
+      idType, idNumber: idNumberRaw?maskId(idNumberRaw):'', idPhotoUrl: addEmployeeIdPhotoPending||'',
+      contract:null, taxId:'', documents:[] };
+    state.users.push(newUser);
+    if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('users');
+    leonV2Audit('Empleado agregado', name+' — '+role);
+    if(typeof renderUsersList==='function') renderUsersList();
+    document.getElementById('v2-add-employee-content').innerHTML = `<div class="text-center py-4"><div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl mx-auto mb-3 border border-emerald-100"><i class="fa-solid fa-circle-check"></i></div><h3 class="text-lg font-black">Empleado creado</h3><p class="text-sm text-slate-500 mt-1">Comparte estas credenciales de forma segura con <b>${esc(name)}</b> — no se mostrarán de nuevo.</p>
+    <div class="mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800 text-left"><div>Correo: <b>${esc(email)}</b></div><div>Contraseña: <span class="font-mono text-base tracking-widest">${esc(password)}</span></div><div>PIN de acceso: <span class="font-mono text-base tracking-widest">${pin}</span></div></div>
+    <button onclick="leonV2Close('leon-v2-add-employee');leonV2OpenVendorContract('${newUser.id}')" class="w-full mt-5 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase tracking-widest">Continuar al contrato (cláusulas y firma) <i class="fa-solid fa-arrow-right ml-1"></i></button>
+    <button onclick="leonV2Close('leon-v2-add-employee')" class="w-full mt-2 py-2.5 text-xs font-bold text-slate-400 hover:text-slate-600 uppercase">Cerrar por ahora</button></div>`;
+  };
+
+  // ================= INVITAR EMPLEADO (autoservicio) =================
+  // El administrador solo propone nombre/correo/rol — el resto (teléfono, ID, cláusulas, firma,
+  // contraseña propia) lo llena la persona invitada desde el enlace público, sin necesitar sesión.
+  // Ver leonV2CheckInviteLink (detecta ?invite=TOKEN al cargar la página) y leonV2OpenInviteReview
+  // (aprobar/rechazar lo que la persona envió).
+  function leonV2GenInviteToken(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
+  function leonV2InviteLink(token){ return location.origin+location.pathname+'?invite='+token; }
+  // Copia al portapapeles con respaldo si navigator.clipboard no está disponible (http sin TLS,
+  // navegador viejo, etc.) — nunca deja el botón sin hacer nada.
+  window.leonV2CopyText=function(text){
+    const done=()=>showToast('Enlace copiado.','success');
+    const fail=()=>showToast('No se pudo copiar automáticamente — selecciona y copia el texto a mano.','error');
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done).catch(fail); return; }
+    try{ const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done(); }catch(err){ fail(); }
+  };
+  window.leonV2OpenInviteEmployee = function(){
+    const roleOptions=['Administrador','Vendedor','Call Center','Nuevo Consultor','Técnico'];
+    document.getElementById('v2-invite-employee-content').innerHTML = `<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2"><i class="fa-solid fa-envelope-open-text"></i> INVITAR EMPLEADO</div><h3 class="text-2xl font-black">Nueva invitación</h3><p class="text-sm text-slate-500">La persona completa su propio perfil, ID, cláusulas y firma desde un enlace.</p></div><button onclick="leonV2Close('leon-v2-invite-employee')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+    <form onsubmit="leonV2SubmitInviteEmployee(event)" class="mt-6 space-y-4">
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Nombre *</label><input id="ie-name" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Correo *</label><input id="ie-email" type="email" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Rol propuesto</label><select id="ie-role" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3">${roleOptions.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+      <button type="submit" class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase tracking-widest">Generar invitación</button>
+    </form>`;
+    open('leon-v2-invite-employee');
+  };
+  window.leonV2SubmitInviteEmployee = function(e){
+    e.preventDefault();
+    const name=document.getElementById('ie-name').value.trim();
+    const email=document.getElementById('ie-email').value.trim();
+    const role=document.getElementById('ie-role').value;
+    if(state.users.some(u=>u.email.toLowerCase()===email.toLowerCase())){ showToast('Ya existe un empleado con ese correo.','error'); return; }
+    if((state.employeeInvites||[]).some(i=>i.email.toLowerCase()===email.toLowerCase()&&i.status!=='rechazado')){ showToast('Ya hay una invitación activa para ese correo.','error'); return; }
+    const token=leonV2GenInviteToken();
+    const invite={ id:'inv-'+Date.now(), token, name, email, role, invitedBy:(state.currentUser&&state.currentUser.name)||'Administrador', invitedAt:new Date().toISOString(), status:'pendiente' };
+    if(!state.employeeInvites)state.employeeInvites=[];
+    state.employeeInvites.push(invite);
+    if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('employeeInvites');
+    leonV2Audit('Invitación de empleado enviada', name+' ('+email+') — '+role);
+    const link=leonV2InviteLink(token);
+    document.getElementById('v2-invite-employee-content').innerHTML = `<div class="text-center py-4"><div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl mx-auto mb-3 border border-emerald-100"><i class="fa-solid fa-link"></i></div><h3 class="text-lg font-black">Invitación generada</h3><p class="text-sm text-slate-500 mt-1">Comparte este enlace con <b>${esc(name)}</b> para que complete su perfil.</p>
+    <div class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-left"><input readonly value="${esc(link)}" onclick="this.select()" class="w-full bg-transparent text-xs font-mono outline-none"></div>
+    <div class="flex gap-2 mt-3"><button onclick="leonV2CopyText('${esc(link)}')" class="flex-grow py-3 rounded-xl bg-ink-900 text-white font-black text-xs uppercase tracking-widest"><i class="fa-solid fa-copy mr-1"></i>Copiar enlace</button><a href="mailto:${esc(email)}?subject=${encodeURIComponent('Invitación — LEON Home Solutions')}&body=${encodeURIComponent('Hola '+name+',\n\nCompleta tu perfil de empleado en este enlace:\n'+link)}" class="flex-grow py-3 rounded-xl border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest text-center"><i class="fa-solid fa-envelope mr-1"></i>Enviar por correo</a></div>
+    <button onclick="leonV2Close('leon-v2-invite-employee');renderEmpleados()" class="w-full mt-4 py-2.5 text-xs font-bold text-slate-400 hover:text-slate-600 uppercase">Cerrar</button></div>`;
+  };
+
+  // ================= ONBOARDING PÚBLICO (autoservicio, sin sesión) =================
+  // Se activa solo cuando la URL trae ?invite=TOKEN (ver leonV2CheckInviteLink, llamado una vez al
+  // cargar la página — ver el final de este script). Como la sincronización con Firestore es
+  // asíncrona, reintenta varias veces antes de decir que el enlace no es válido.
+  let v2OnboardingIdPhotoPending = null;
+  window.leonV2CheckInviteLink = function(attempt){
+    attempt = attempt || 0;
+    let token;
+    try { token = new URLSearchParams(window.location.search).get('invite'); } catch(err) { return; }
+    if(!token) return;
+    const invite = (state.employeeInvites||[]).find(i=>i.token===token);
+    if(invite){
+      if(invite.status==='pendiente'){ window.leonV2OpenEmployeeOnboarding(invite); return; }
+      if(invite.status==='completado'){ leonV2ShowOnboardingMessage('Ya enviaste tu información','Tu registro está esperando revisión de un administrador. Te avisarán cuando tu cuenta esté activa.','fa-hourglass-half'); return; }
+      if(invite.status==='aprobado'){ leonV2ShowOnboardingMessage('Esta invitación ya fue aprobada','Tu cuenta ya está activa — inicia sesión normalmente con tu correo y contraseña.','fa-circle-check'); return; }
+      if(invite.status==='rechazado'){ leonV2ShowOnboardingMessage('Invitación no disponible','Esta invitación ya no está activa. Contacta a tu administrador si crees que es un error.','fa-circle-xmark'); return; }
+      return;
+    }
+    // Todavía no llega por Firestore (o no hay conexión a la base de datos) — reintenta unas
+    // cuantas veces antes de asumir que el enlace no es válido.
+    if(attempt < 8){ setTimeout(()=>window.leonV2CheckInviteLink(attempt+1), 500); return; }
+    leonV2ShowOnboardingMessage('Enlace no encontrado','Este enlace de invitación no es válido, expiró, o todavía no ha terminado de sincronizar. Si acabas de recibirlo, espera un momento y actualiza la página.','fa-triangle-exclamation');
+  };
+  function leonV2ShowOnboardingMessage(title, body, icon){
+    document.getElementById('v2-employee-onboarding-content').innerHTML = `<div class="text-center py-6"><div class="w-14 h-14 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-2xl mx-auto mb-3"><i class="fa-solid ${icon}"></i></div><h3 class="text-lg font-black">${esc(title)}</h3><p class="text-sm text-slate-500 mt-2">${esc(body)}</p><button onclick="leonV2Close('leon-v2-employee-onboarding')" class="mt-5 px-6 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Entendido</button></div>`;
+    open('leon-v2-employee-onboarding');
+  }
+  window.leonV2OpenEmployeeOnboarding = function(invite){
+    v2OnboardingIdPhotoPending = null;
+    document.getElementById('v2-employee-onboarding-content').innerHTML = `<div class="text-center mb-4"><div class="v2-pill mb-2"><i class="fa-solid fa-house-chimney mr-1"></i>LEON HOME SOLUTIONS</div><h3 class="text-2xl font-black">Bienvenido/a, ${esc(invite.name)}</h3><p class="text-sm text-slate-500 mt-1">Completa tu perfil de empleado — esto lo revisará un administrador antes de activar tu cuenta.</p></div>
+    <form onsubmit="leonV2SubmitEmployeeOnboarding(event,'${esc(invite.token)}')" class="space-y-4">
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">Correo: <b class="text-slate-700">${esc(invite.email)}</b> · Rol propuesto: <b class="text-slate-700">${esc(invite.role)}</b></div>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Nombre completo *</label><input id="eo-name" required value="${esc(invite.name)}" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Teléfono *</label><input id="eo-phone" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="787-410-0694"></div>
+        <div class="md:col-span-2"><label class="text-[10px] font-black uppercase text-slate-500">Dirección *</label><input id="eo-address" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Calle, urbanización, municipio"></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Contacto de emergencia — nombre</label><input id="eo-emname" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Contacto de emergencia — teléfono</label><input id="eo-emphone" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+      </div>
+      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-id-card mr-1"></i>Identificación</h4>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Tipo de identificación</label><select id="eo-idtype" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option>Licencia de conducir</option><option>ID Real / estatal</option><option>Pasaporte</option><option>Otro</option></select></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Número de identificación *</label><input id="eo-idnumber" type="password" autocomplete="off" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Se enmascara al guardar"></div>
+        </div>
+        <div class="flex items-center gap-4 mt-4">
+          <div id="eo-idphoto-preview" class="w-20 h-14 rounded-lg border border-slate-200 bg-white overflow-hidden flex items-center justify-center shrink-0"><i class="fa-solid fa-id-card text-slate-300"></i></div>
+          <div><input type="file" id="eo-idphoto-file" accept="image/*" class="hidden" onchange="handleOnboardingIdPhotoUpload(event)"><button type="button" onclick="document.getElementById('eo-idphoto-file').click()" class="bg-ink-900 hover:bg-ink-800 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Foto del ID *</button><p class="text-[10px] text-slate-400 mt-1">Foto clara del frente del documento — obligatoria.</p></div>
+        </div>
+      </div>
+      <div class="p-4 rounded-2xl bg-white border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-file-contract mr-1"></i>Cláusulas del contrato</h4>
+        <div class="max-h-64 overflow-y-auto pr-1">${leonV2ContractClausesHtml()}</div>
+      </div>
+      <div class="p-4 rounded-2xl bg-white border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-shield-halved mr-1"></i>Permisos del sistema</h4>
+        ${leonV2ContractPermissionsHtml(invite.role)}
+      </div>
+      <label class="flex items-start gap-2 text-xs text-slate-600 p-3 rounded-xl bg-slate-50 border border-slate-200"><input type="checkbox" id="eo-clauses-accept" required class="mt-0.5">He leído y acepto las cláusulas de este contrato. *</label>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block"><i class="fa-solid fa-signature mr-1"></i>Firma *</label>${leonV2SignaturePadHtml('eo-signature')}</div>
+      <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-key mr-1"></i>Elige tu contraseña de acceso</h4>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Contraseña *</label><input id="eo-password" type="password" required minlength="4" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Confirmar contraseña *</label><input id="eo-password2" type="password" required minlength="4" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2">Esta será tu clave real de acceso al sistema, junto a un PIN de 5 dígitos que te asignará el administrador al aprobar tu cuenta.</p>
+      </div>
+      <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase tracking-widest">Enviar mi información</button>
+    </form>`;
+    open('leon-v2-employee-onboarding');
+    leonV2InitSignaturePad('eo-signature');
+  };
+  window.handleOnboardingIdPhotoUpload=function(event){
+    const file = event.target.files[0]; if(!file) return;
+    if(!file.type.startsWith('image/')){ showToast('La foto debe ser una imagen.','error'); return; }
+    compressImageFile(file, 900, 0.85).then(result=>{
+      v2OnboardingIdPhotoPending = result.dataUrl;
+      const prev = document.getElementById('eo-idphoto-preview');
+      if(prev) prev.innerHTML = `<img src="${result.dataUrl}" class="w-full h-full object-cover">`;
+      showToast('Foto del ID lista.','success');
+    }).catch(()=>showToast('No se pudo procesar la imagen.','error'));
+  };
+  window.leonV2SubmitEmployeeOnboarding = function(e, token){
+    e.preventDefault();
+    const invite=(state.employeeInvites||[]).find(i=>i.token===token);
+    if(!invite){ showToast('No se encontró la invitación.','error'); return; }
+    if(!v2OnboardingIdPhotoPending){ showToast('Debes subir una foto de tu identificación.','error'); return; }
+    if(!document.getElementById('eo-clauses-accept').checked){ showToast('Debes aceptar las cláusulas del contrato.','error'); return; }
+    const signature = typeof leonV2GetSignatureDataUrl==='function' ? leonV2GetSignatureDataUrl('eo-signature') : null;
+    if(!signature){ showToast('Debes firmar antes de enviar.','error'); return; }
+    const pass=document.getElementById('eo-password').value;
+    const pass2=document.getElementById('eo-password2').value;
+    if(pass!==pass2){ showToast('Las contraseñas no coinciden.','error'); return; }
+    invite.name = document.getElementById('eo-name').value.trim() || invite.name;
+    invite.phone = document.getElementById('eo-phone').value;
+    invite.address = document.getElementById('eo-address').value;
+    invite.emergencyName = document.getElementById('eo-emname').value;
+    invite.emergencyPhone = document.getElementById('eo-emphone').value;
+    invite.idType = document.getElementById('eo-idtype').value;
+    invite.idNumber = maskId(document.getElementById('eo-idnumber').value);
+    invite.idPhotoUrl = v2OnboardingIdPhotoPending;
+    invite.signatureDataUrl = signature;
+    invite.signedAt = new Date().toISOString();
+    invite.clausesAcceptedAt = new Date().toISOString();
+    invite.password = pass;
+    invite.status = 'completado';
+    invite.submittedAt = new Date().toISOString();
+    if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('employeeInvites');
+    document.getElementById('v2-employee-onboarding-content').innerHTML = `<div class="text-center py-6"><div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl mx-auto mb-3 border border-emerald-100"><i class="fa-solid fa-circle-check"></i></div><h3 class="text-lg font-black">¡Gracias, ${esc(invite.name)}!</h3><p class="text-sm text-slate-500 mt-2">Tu información fue enviada. Un administrador la revisará y activará tu cuenta pronto — te avisarán por los medios que use tu empresa.</p><button onclick="leonV2Close('leon-v2-employee-onboarding')" class="mt-5 px-6 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Entendido</button></div>`;
+  };
+
+  // ================= PANEL DE INVITACIONES (Empleados) =================
+  // Muestra invitaciones que aún no se resolvieron: 'pendiente' (enlace enviado, esperando que la
+  // persona lo complete) y 'completado' (la persona ya envió todo, esperando que un administrador
+  // apruebe o rechace). Las resueltas ('aprobado'/'rechazado') no se listan aquí — su rastro queda
+  // en Auditoría. Solo visible para Administrador (mismo criterio que los botones de la cabecera).
+  window.leonV2RefreshEmpInvitesPanel = function(){
+    const box = document.getElementById('v2-emp-invites-panel'); if(!box) return;
+    if(!state.currentUser || state.currentUser.role!=='Administrador'){ box.innerHTML=''; return; }
+    const invites = state.employeeInvites||[];
+    const pending = invites.filter(i=>i.status==='pendiente');
+    const completed = invites.filter(i=>i.status==='completado');
+    if(!pending.length && !completed.length){ box.innerHTML=''; return; }
+    box.innerHTML = `<div class="v2-card p-5 bg-brand-50/30 border border-brand-100">
+      <h4 class="font-black text-sm mb-3"><i class="fa-solid fa-envelope-open-text text-brand-500 mr-2"></i>Invitaciones</h4>
+      ${completed.length?`<div class="space-y-2 mb-3">${completed.map(i=>`<div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-white border border-amber-200 flex-wrap"><div class="min-w-0"><b class="text-sm">${esc(i.name)}</b> <span class="text-[10px] text-amber-700 font-black uppercase ml-1">Esperando revisión</span><div class="text-[11px] text-slate-400 truncate">${esc(i.email)} · ${esc(i.role)}</div></div><button onclick="leonV2OpenInviteReview('${i.id}')" class="v2-tab active shrink-0"><i class="fa-solid fa-magnifying-glass mr-1"></i>Revisar</button></div>`).join('')}</div>`:''}
+      ${pending.length?`<div class="space-y-2">${pending.map(i=>`<div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-white border border-slate-200 flex-wrap"><div class="min-w-0"><b class="text-sm">${esc(i.name)}</b> <span class="text-[10px] text-slate-400 font-black uppercase ml-1">Pendiente de completar</span><div class="text-[11px] text-slate-400 truncate">${esc(i.email)} · ${esc(i.role)}</div></div><div class="flex gap-1 shrink-0"><button onclick="leonV2CopyText('${esc(leonV2InviteLink(i.token))}')" class="v2-tab"><i class="fa-solid fa-copy mr-1"></i>Copiar enlace</button><button onclick="leonV2CancelInvite('${i.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-ban mr-1"></i>Cancelar</button></div></div>`).join('')}</div>`:''}
+    </div>`;
+  };
+  window.leonV2CancelInvite = function(id){
+    const invite=(state.employeeInvites||[]).find(i=>i.id===id); if(!invite) return;
+    invite.status='rechazado'; invite.rejectReason='Cancelada por el administrador'; invite.resolvedAt=new Date().toISOString();
+    if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('employeeInvites');
+    leonV2Audit('Invitación cancelada', invite.name+' ('+invite.email+')');
+    showToast('Invitación cancelada.','success');
+    leonV2RefreshEmpInvitesPanel();
+  };
+  window.leonV2OpenInviteReview = function(id){
+    const i=(state.employeeInvites||[]).find(x=>x.id===id); if(!i) return;
+    document.getElementById('v2-invite-review-content').innerHTML = `<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2"><i class="fa-solid fa-magnifying-glass"></i> REVISAR INVITACIÓN</div><h3 class="text-2xl font-black">${esc(i.name)}</h3><p class="text-sm text-slate-500">${esc(i.email)} · ${esc(i.role)}</p></div><button onclick="leonV2Close('leon-v2-invite-review')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="mt-5 space-y-4">
+      <div class="grid md:grid-cols-2 gap-3 text-sm">
+        <div class="p-3 rounded-xl bg-slate-50"><div class="text-[10px] font-black uppercase text-slate-400">Teléfono</div>${esc(i.phone||'—')}</div>
+        <div class="p-3 rounded-xl bg-slate-50"><div class="text-[10px] font-black uppercase text-slate-400">Dirección</div>${esc(i.address||'—')}</div>
+        <div class="p-3 rounded-xl bg-slate-50"><div class="text-[10px] font-black uppercase text-slate-400">Contacto de emergencia</div>${esc(i.emergencyName||'—')} ${i.emergencyPhone?'· '+esc(i.emergencyPhone):''}</div>
+        <div class="p-3 rounded-xl bg-slate-50"><div class="text-[10px] font-black uppercase text-slate-400">Identificación</div>${esc(i.idType||'—')} ${i.idNumber?'· '+esc(i.idNumber):''}</div>
+      </div>
+      ${i.idPhotoUrl?`<div><div class="text-[10px] font-black uppercase text-slate-400 mb-1">Foto del ID</div><img src="${esc(i.idPhotoUrl)}" class="max-w-[240px] rounded-lg border border-slate-200"></div>`:''}
+      <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-800"><i class="fa-solid fa-check mr-1"></i>Cláusulas aceptadas${i.clausesAcceptedAt?' el '+esc(new Date(i.clausesAcceptedAt).toLocaleString()):''}.</div>
+      ${i.signatureDataUrl?`<div><div class="text-[10px] font-black uppercase text-slate-400 mb-1">Firma</div><img src="${esc(i.signatureDataUrl)}" class="h-16 border border-slate-200 rounded-lg bg-white"></div>`:''}
+      <div class="p-3 rounded-xl bg-slate-50 text-xs text-slate-500"><i class="fa-solid fa-key mr-1"></i>La persona ya definió su propia contraseña de acceso durante el registro.</div>
+      <div id="v2-invite-reject-box" class="hidden p-3 rounded-xl bg-red-50 border border-red-100 space-y-2"><label class="text-[10px] font-black uppercase text-red-700">Motivo del rechazo</label><input id="v2-invite-reject-reason" class="w-full border border-red-200 rounded-xl px-4 py-2.5 text-sm" placeholder="Opcional"><button onclick="leonV2ConfirmRejectInvite('${i.id}')" class="w-full py-2.5 rounded-xl bg-red-600 text-white text-xs font-black uppercase">Confirmar rechazo</button></div>
+      <div class="flex flex-wrap gap-3"><button onclick="leonV2ApproveInvite('${i.id}')" class="flex-grow py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-black text-xs uppercase tracking-widest"><i class="fa-solid fa-check mr-1"></i>Aprobar y crear cuenta</button><button onclick="document.getElementById('v2-invite-reject-box').classList.remove('hidden')" class="px-5 py-3 rounded-xl border border-red-200 text-red-600 font-black text-xs uppercase tracking-widest">Rechazar</button></div>
+    </div>`;
+    open('leon-v2-invite-review');
+  };
+  window.leonV2ApproveInvite = function(id){
+    const i=(state.employeeInvites||[]).find(x=>x.id===id); if(!i) return;
+    if(state.users.some(u=>u.email.toLowerCase()===i.email.toLowerCase())){ showToast('Ya existe un empleado con ese correo — revisa antes de aprobar de nuevo.','error'); return; }
+    const pin=String(Math.floor(10000+Math.random()*90000));
+    const newUser={ id:'u-'+Date.now(), name:i.name, email:i.email, role:i.role, supervisorId:null, pin, password:i.password,
+      photoUrl:'', phone:i.phone||'', address:i.address||'', idType:i.idType||'', idNumber:i.idNumber||'', idPhotoUrl:i.idPhotoUrl||'',
+      taxId:'', documents:[],
+      contract:{ signatureDataUrl:i.signatureDataUrl||null, signedAt:i.signedAt||null, clausesAcceptedAt:i.clausesAcceptedAt||null, effectiveDate:new Date().toISOString().slice(0,10), createdAt:new Date().toISOString().slice(0,10), updatedAt:new Date().toISOString().slice(0,10) } };
+    state.users.push(newUser);
+    i.status='aprobado'; i.resolvedAt=new Date().toISOString();
+    if(typeof window.leonV2SyncCollection==='function'){ window.leonV2SyncCollection('users'); window.leonV2SyncCollection('employeeInvites'); }
+    leonV2Audit('Invitación aprobada — cuenta creada', newUser.name+' — '+newUser.role);
+    leonV2Close('leon-v2-invite-review');
+    document.getElementById('v2-invite-review-content').innerHTML='';
+    showToast('Cuenta creada para '+newUser.name+'. PIN de acceso: '+pin+' (compártelo de forma segura — la contraseña ya la eligió el empleado).','success');
+    if(typeof renderUsersList==='function') renderUsersList();
+    renderEmpleados();
+  };
+  window.leonV2ConfirmRejectInvite = function(id){
+    const i=(state.employeeInvites||[]).find(x=>x.id===id); if(!i) return;
+    const reason=document.getElementById('v2-invite-reject-reason').value.trim();
+    i.status='rechazado'; i.rejectReason=reason||'Sin motivo especificado'; i.resolvedAt=new Date().toISOString();
+    if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('employeeInvites');
+    leonV2Audit('Invitación rechazada', i.name+' ('+i.email+')'+(reason?' — '+reason:''));
+    leonV2Close('leon-v2-invite-review');
+    showToast('Invitación rechazada.','success');
+    renderEmpleados();
+  };
+
   function renderEmpleados(){
     const years=leonV2AvailableCommissionYears();
     const currentYear=String(new Date().getFullYear());
     document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6">
-      <div class="flex justify-between items-center flex-wrap gap-3"><div><h3 class="text-xl font-black">Empleados</h3><p class="text-xs text-slate-500 mt-1">Vista central de todo el equipo — contratos, documentos y nómina, en un solo lugar.</p></div></div>
+      <div class="flex justify-between items-center flex-wrap gap-3"><div><h3 class="text-xl font-black">Empleados</h3><p class="text-xs text-slate-500 mt-1">Vista central de todo el equipo — contratos, documentos y nómina, en un solo lugar.</p></div><div class="flex gap-2 flex-wrap">${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2OpenInviteEmployee()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-envelope-open-text mr-1"></i>Invitar empleado</button><button onclick="leonV2OpenAddEmployee()" class="bg-gradient-to-r from-brand-600 to-brand-400 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-user-plus mr-1"></i>Agregar empleado</button>`:''}</div></div>
+      <div id="v2-emp-invites-panel" class="mt-5"></div>
       <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-5">${state.users.map(u=>`<div class="v2-card p-4">
         <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0">${u.photoUrl?`<img src="${esc(u.photoUrl)}" class="w-full h-full object-cover">`:`<i class="fa-solid fa-user text-slate-300"></i>`}</div><div class="min-w-0"><b class="text-sm block truncate">${esc(u.name)}</b><span class="text-[10px] text-slate-400 border border-slate-200 rounded px-1.5 py-0.5">${esc(u.role)}</span></div></div>
         <div class="text-xs text-slate-500 mt-3 space-y-1"><div><i class="fa-solid fa-envelope w-4 text-slate-400"></i> ${esc(u.email)}</div><div><i class="fa-solid fa-phone w-4 text-slate-400"></i> ${esc(u.phone||'—')}</div></div>
@@ -6359,11 +6741,66 @@
       </div>
     </div>`;
     leonV2RefreshEmpleadosPayroll();
+    if(typeof leonV2RefreshEmpInvitesPanel==='function') leonV2RefreshEmpInvitesPanel();
+  }
+
+  // ================= CLÁUSULAS Y PERMISOS DEL CONTRATO DE EMPLEADO =================
+  // Texto de referencia general — NO es asesoría legal. Antes de usarse formalmente con personal
+  // real, LEON Home Solutions debe hacer que un abogado laboral licenciado en Puerto Rico revise y
+  // ajuste estas cláusulas (clasificación de la relación, ley aplicable, etc.). Se muestra tanto en
+  // el modal del contrato como en el PDF, para que sea el mismo texto en los dos lugares siempre.
+  function leonV2ContractClausesHtml(){
+    return `<div class="p-3 rounded-xl bg-amber-50 border border-amber-100 text-[11px] text-amber-800 mb-3"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Esta es una plantilla de referencia general, no es asesoría legal. Antes de usarla formalmente, LEON Home Solutions debe hacer que un abogado laboral licenciado en Puerto Rico la revise y ajuste.</div>
+    <ol class="space-y-3 text-xs text-slate-600 list-decimal list-inside">
+      <li><b class="text-slate-800">Naturaleza de la relación.</b> Este contrato describe los términos entre LEON Home Solutions y la persona indicada arriba. La clasificación específica (empleado o contratista independiente) y las condiciones de terminación se rigen por la política vigente de la empresa y la ley aplicable en Puerto Rico.</li>
+      <li><b class="text-slate-800">Confidencialidad y no divulgación.</b> La persona se compromete a no divulgar información confidencial de clientes (nombres, direcciones, datos de contacto, información de pago) ni información comercial de la empresa (precios, comisiones, estrategias) a terceros, durante ni después de la relación.</li>
+      <li><b class="text-slate-800">Uso de sistemas y activos de la empresa.</b> El acceso al CRM, catálogo, propuestas y demás sistemas es para uso exclusivo del trabajo asignado. Cualquier equipo, credencial o material de la empresa debe devolverse o desactivarse al finalizar la relación.</li>
+      <li><b class="text-slate-800">Código de conducta.</b> Trato respetuoso a clientes y compañeros, cero tolerancia a discriminación o acoso, y cumplimiento de las políticas internas de la empresa.</li>
+      <li><b class="text-slate-800">Protección de datos de clientes.</b> El acceso a información de clientes (incluyendo identificación y datos de pago) es solo para fines legítimos del negocio — nunca para uso personal ni para compartir fuera de la empresa.</li>
+      <li><b class="text-slate-800">Permisos del sistema.</b> El acceso otorgado depende del rol asignado — ver el desglose exacto más abajo. Cambios de rol ajustan automáticamente ese acceso.</li>
+      <li><b class="text-slate-800">Terminación.</b> Cualquiera de las partes puede terminar la relación según la política de la empresa y la ley aplicable. Al terminar, se desactiva el acceso al sistema y se liquidan las comisiones pendientes conforme a las reglas vigentes al momento de cada venta.</li>
+      <li><b class="text-slate-800">Aceptación.</b> Firmar este documento confirma que la persona leyó y acepta los términos anteriores.</li>
+    </ol>`;
+  }
+  // Desglose real de acceso por rol, generado desde ROLE_ACCESS (la misma fuente que usa el panel
+  // para mostrar/ocultar secciones) — así el contrato firmado nunca dice algo distinto de lo que el
+  // sistema realmente permite.
+  function leonV2ContractPermissionsHtml(role){
+    const allowed=ROLE_ACCESS[role]||ROLE_ACCESS.Vendedor;
+    const allowedLabels=navItems.filter(n=>allowed.includes(n[0])).map(n=>n[2]);
+    const deniedLabels=navItems.filter(n=>!allowed.includes(n[0])).map(n=>n[2]);
+    return `<div class="grid sm:grid-cols-2 gap-3">
+      <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100"><div class="text-[10px] font-black uppercase text-emerald-700 mb-1"><i class="fa-solid fa-check mr-1"></i>Acceso permitido (${esc(role)})</div><div class="text-[11px] text-emerald-800">${allowedLabels.map(esc).join(', ')}</div></div>
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-200"><div class="text-[10px] font-black uppercase text-slate-500 mb-1"><i class="fa-solid fa-xmark mr-1"></i>Sin acceso</div><div class="text-[11px] text-slate-500">${deniedLabels.length?deniedLabels.map(esc).join(', '):'Ninguna — acceso completo'}</div></div>
+    </div>`;
+  }
+  // Versión en texto plano (sin HTML de Tailwind) de las cláusulas, para el PDF impreso — mismo
+  // contenido que leonV2ContractClausesHtml(), solo con markup simple compatible con impresión.
+  function leonV2ContractClausesPlainHtml(){
+    return `<p style="font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px">Plantilla de referencia general — no es asesoría legal. Debe revisarla un abogado laboral licenciado en Puerto Rico antes de usarse formalmente.</p>
+    <ol style="font-size:12px;color:#333;padding-left:18px">
+      <li style="margin-bottom:6px"><b>Naturaleza de la relación.</b> Se rige por la política vigente de la empresa y la ley aplicable en Puerto Rico.</li>
+      <li style="margin-bottom:6px"><b>Confidencialidad y no divulgación</b> de información de clientes y de la empresa.</li>
+      <li style="margin-bottom:6px"><b>Uso de sistemas y activos de la empresa</b> exclusivo para el trabajo asignado; devolución al finalizar.</li>
+      <li style="margin-bottom:6px"><b>Código de conducta</b> — trato respetuoso, cero tolerancia a discriminación o acoso.</li>
+      <li style="margin-bottom:6px"><b>Protección de datos de clientes</b> — acceso solo para fines legítimos del negocio.</li>
+      <li style="margin-bottom:6px"><b>Permisos del sistema</b> según el rol asignado (ver desglose).</li>
+      <li style="margin-bottom:6px"><b>Terminación</b> conforme a política de la empresa y ley aplicable; liquidación de comisiones pendientes.</li>
+      <li style="margin-bottom:6px"><b>Aceptación</b> — firmar confirma la lectura y aceptación de estos términos.</li>
+    </ol>`;
+  }
+  function leonV2ContractPermissionsPlainHtml(role){
+    const allowed=ROLE_ACCESS[role]||ROLE_ACCESS.Vendedor;
+    const allowedLabels=navItems.filter(n=>allowed.includes(n[0])).map(n=>n[2]);
+    const deniedLabels=navItems.filter(n=>!allowed.includes(n[0])).map(n=>n[2]);
+    return `<p style="font-size:12px;margin-top:4px"><b>Acceso permitido (${esc(role)}):</b> ${allowedLabels.map(esc).join(', ')}</p>
+    <p style="font-size:12px;color:#666">${deniedLabels.length?'<b>Sin acceso:</b> '+deniedLabels.map(esc).join(', '):'Acceso completo a todas las secciones.'}</p>`;
   }
 
   window.leonV2OpenVendorContract = function(userId){
     const u = state.users.find(x=>x.id===userId); if(!u) return;
     vendorContractPhotoPending = null;
+    vendorContractIdPhotoPending = null;
     const c = u.contract || {};
     const html = `<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2"><i class="fa-solid fa-file-signature"></i> CONTRATO DE VENDEDOR</div><h3 class="text-2xl font-black">${esc(u.name)}</h3><p class="text-sm text-slate-500">${esc(u.email)} · ${esc(u.role)}</p></div><button onclick="leonV2Close('leon-v2-vendor-contract')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
     <form onsubmit="leonV2SubmitVendorContract(event,'${u.id}')" class="mt-6 space-y-5">
@@ -6374,6 +6811,17 @@
       <div class="grid md:grid-cols-2 gap-4">
         <div><label class="text-[10px] font-black uppercase text-slate-500">Teléfono</label><input id="vc-phone" value="${esc(u.phone||'')}" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="787-410-0694"></div>
         <div><label class="text-[10px] font-black uppercase text-slate-500">Dirección</label><input id="vc-address" value="${esc(u.address||'')}" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Calle, urbanización, municipio"></div>
+      </div>
+      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-id-card mr-1"></i>Identificación</h4>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Tipo de identificación</label><select id="vc-idtype" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="Licencia de conducir" ${u.idType==='Licencia de conducir'?'selected':''}>Licencia de conducir</option><option value="ID Real / estatal" ${u.idType==='ID Real / estatal'?'selected':''}>ID Real / estatal</option><option value="Pasaporte" ${u.idType==='Pasaporte'?'selected':''}>Pasaporte</option><option value="Otro" ${u.idType==='Otro'?'selected':''}>Otro</option></select></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Número de identificación ${u.idNumber?`(actual: ${esc(u.idNumber)})`:''}</label><input id="vc-idnumber" type="password" autocomplete="off" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="${u.idNumber?'Dejar en blanco para no cambiar':'Se enmascara al guardar'}"></div>
+        </div>
+        <div class="flex items-center gap-4 mt-4">
+          <div id="vc-idphoto-preview" class="w-20 h-14 rounded-lg border border-slate-200 bg-white overflow-hidden flex items-center justify-center shrink-0">${u.idPhotoUrl?`<img src="${esc(u.idPhotoUrl)}" class="w-full h-full object-cover">`:`<i class="fa-solid fa-id-card text-slate-300"></i>`}</div>
+          <div><input type="file" id="vc-idphoto-file" accept="image/*" class="hidden" onchange="handleVendorIdPhotoUpload(event)"><button type="button" onclick="document.getElementById('vc-idphoto-file').click()" class="bg-ink-900 hover:bg-ink-800 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Foto del ID</button><p class="text-[10px] text-slate-400 mt-1">Foto clara del frente del documento.</p></div>
+        </div>
       </div>
       <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100">
         <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">Información de Pago</h4>
@@ -6391,6 +6839,15 @@
         <div><label class="text-[10px] font-black uppercase text-slate-500">Fecha efectiva del contrato</label><input id="vc-effective" type="date" value="${esc(c.effectiveDate||'')}" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
         <div><label class="text-[10px] font-black uppercase text-slate-500">Seguro Social / EIN ${u.taxId?`(actual: ${esc(u.taxId)})`:''}</label><input id="vc-taxid" type="password" autocomplete="off" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="${u.taxId?'Dejar en blanco para no cambiar':'Para el Formulario 480 — se enmascara al guardar'}"></div>
       </div>
+      <div class="p-4 rounded-2xl bg-white border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-file-contract mr-1"></i>Cláusulas del contrato</h4>
+        <div class="max-h-64 overflow-y-auto pr-1">${leonV2ContractClausesHtml()}</div>
+      </div>
+      <div class="p-4 rounded-2xl bg-white border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-shield-halved mr-1"></i>Permisos del sistema</h4>
+        ${leonV2ContractPermissionsHtml(u.role)}
+      </div>
+      <label class="flex items-start gap-2 text-xs text-slate-600 p-3 rounded-xl bg-slate-50 border border-slate-200"><input type="checkbox" id="vc-clauses-accept" class="mt-0.5" ${c.clausesAcceptedAt?'checked':''}>${c.clausesAcceptedAt?`He leído y acepto las cláusulas de este contrato. <span class="text-slate-400">(aceptado el ${esc(new Date(c.clausesAcceptedAt).toLocaleDateString())})</span>`:'He leído y acepto las cláusulas de este contrato. *'}</label>
       <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block"><i class="fa-solid fa-signature mr-1"></i>Firma del empleado ${c.signatureDataUrl?'(ya hay una firma guardada — firma de nuevo solo si quieres reemplazarla)':''}</label>${leonV2SignaturePadHtml('vc-signature')}${c.signatureDataUrl?`<div class="mt-2 text-[10px] text-slate-400">Firma actual guardada: <img src="${c.signatureDataUrl}" class="inline-block h-8 align-middle border border-slate-100 rounded ml-1"></div>`:''}</div>
       <div class="flex flex-wrap gap-3"><button type="submit" class="flex-grow py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase tracking-widest">Guardar contrato de vendedor</button>${u.contract?`<button type="button" onclick="leonV2PrintVendorContract('${u.id}')" class="px-5 py-3 rounded-xl bg-ink-900 text-white font-black text-xs uppercase tracking-widest"><i class="fa-solid fa-file-pdf mr-2"></i>Descargar PDF</button><button type="button" onclick="leonV2EmailVendorContract('${u.id}')" class="px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest"><i class="fa-solid fa-envelope mr-2"></i>Enviar por correo</button>`:''}</div>
     </form>`;
@@ -6419,7 +6876,13 @@
       <tr><td>Teléfono</td><td>${fmt(u.phone)}</td></tr>
       <tr><td>Dirección</td><td>${fmt(u.address)}</td></tr>
       <tr><td>Seguro Social / EIN</td><td>${fmt(u.taxId)}</td></tr>
+      <tr><td>Identificación</td><td>${fmt(u.idType)} ${u.idNumber?'· '+esc(u.idNumber):''}</td></tr>
     </table>
+    ${u.idPhotoUrl?`<div style="margin-top:10px"><img src="${u.idPhotoUrl}" style="max-width:260px;border:1px solid #ddd;border-radius:6px"></div>`:''}
+    <h2>Cláusulas del contrato</h2>
+    ${leonV2ContractClausesPlainHtml()}
+    <h2>Permisos del sistema</h2>
+    ${leonV2ContractPermissionsPlainHtml(u.role)}
     <h2>Condiciones de pago</h2>
     <table>
       <tr><td>Entidad bancaria</td><td>${fmt(c.bankName)}</td></tr>
@@ -6430,7 +6893,7 @@
       <tr><td>Día(s) de pago</td><td>${fmt(c.payDay)}</td></tr>
       <tr><td>Fecha efectiva</td><td>${fmt(c.effectiveDate)}</td></tr>
     </table>
-    <p class="note">Este documento resume los términos de pago acordados. Firmarlo confirma que el empleado revisó y acepta la información anterior.</p>
+    <p class="note">Este documento resume la información del contrato, cláusulas, permisos y términos de pago acordados. Firmarlo confirma que el empleado revisó y acepta lo anterior.${c.clausesAcceptedAt?' Cláusulas aceptadas el '+esc(new Date(c.clausesAcceptedAt).toLocaleDateString())+'.':''}</p>
     <div class="sig"><div>${c.signatureDataUrl?`<img src="${c.signatureDataUrl}" style="height:50px;display:block;margin-bottom:4px">`:''}Firma del empleado — ${fmt(u.name)}${c.signedAt?' · '+esc(new Date(c.signedAt).toLocaleDateString()):''}</div><div>Firma de LEON Solutions</div></div>
     <div class="sig"><div>Fecha</div><div>Fecha</div></div>
     <script>window.onload=()=>window.print()<\/script>
@@ -6447,17 +6910,33 @@
       showToast('Foto lista — se guarda al confirmar el contrato.','success');
     }).catch(()=>showToast('No se pudo procesar la imagen.','error'));
   }
+  window.handleVendorIdPhotoUpload=function(event){
+    const file = event.target.files[0]; if(!file) return;
+    if(!file.type.startsWith('image/')){ showToast('La foto debe ser una imagen.','error'); return; }
+    compressImageFile(file, 900, 0.85).then(result=>{
+      vendorContractIdPhotoPending = result.dataUrl;
+      const prev = document.getElementById('vc-idphoto-preview');
+      if(prev) prev.innerHTML = `<img src="${result.dataUrl}" class="w-full h-full object-cover">`;
+      showToast('Foto del ID lista — se guarda al confirmar el contrato.','success');
+    }).catch(()=>showToast('No se pudo procesar la imagen.','error'));
+  }
   window.leonV2SubmitVendorContract = function(e, userId){
     e.preventDefault();
     const u = state.users.find(x=>x.id===userId); if(!u) return;
+    const prevContract = u.contract || {};
+    const clausesCheckbox = document.getElementById('vc-clauses-accept');
+    if(clausesCheckbox && !clausesCheckbox.checked){ showToast('Debes marcar que aceptas las cláusulas del contrato antes de guardar.','error'); return; }
     u.phone = document.getElementById('vc-phone').value;
     u.address = document.getElementById('vc-address').value;
     if(vendorContractPhotoPending) u.photoUrl = vendorContractPhotoPending;
+    u.idType = document.getElementById('vc-idtype').value;
+    const idNumberRaw = document.getElementById('vc-idnumber').value;
+    if(idNumberRaw) u.idNumber = maskId(idNumberRaw);
+    if(vendorContractIdPhotoPending) u.idPhotoUrl = vendorContractIdPhotoPending;
     const taxIdRaw = document.getElementById('vc-taxid').value;
     if(taxIdRaw) u.taxId = maskId(taxIdRaw);
     const accountRaw = document.getElementById('vc-account').value;
     const routingRaw = document.getElementById('vc-routing').value;
-    const prevContract = u.contract || {};
     const newSignature = typeof leonV2GetSignatureDataUrl==='function' ? leonV2GetSignatureDataUrl('vc-signature') : null;
     u.contract = {
       bankName: document.getElementById('vc-bank').value,
@@ -6469,6 +6948,7 @@
       effectiveDate: document.getElementById('vc-effective').value,
       signatureDataUrl: newSignature || prevContract.signatureDataUrl || null,
       signedAt: newSignature ? new Date().toISOString() : (prevContract.signedAt || null),
+      clausesAcceptedAt: prevContract.clausesAcceptedAt || new Date().toISOString(),
       createdAt: prevContract.createdAt || new Date().toISOString().slice(0,10),
       updatedAt: new Date().toISOString().slice(0,10)
     };
@@ -6708,6 +7188,9 @@
   // cualquier re-render del catálogo público.
   const origRenderProducts=window.renderProducts;window.renderProducts=function(category){origRenderProducts(category);setTimeout(enhanceCatalog,50)};
   setTimeout(enhanceCatalog,800);
+  // Detecta ?invite=TOKEN en la URL (enlace de invitación de empleado) y, si aplica, abre el
+  // onboarding público — ver leonV2CheckInviteLink más arriba. Se dispara una sola vez al cargar.
+  setTimeout(()=>{ if(typeof window.leonV2CheckInviteLink==='function') window.leonV2CheckInviteLink(); }, 900);
 })();
 </script>
 
