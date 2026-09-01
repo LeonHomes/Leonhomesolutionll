@@ -1633,7 +1633,10 @@
             if (totalAmountEl) totalAmountEl.innerText = `$${state.quotes.reduce((sum, q) => sum + q.total, 0).toLocaleString()}`;
 
             if (tbody) {
-                const filtered = filterByDateRange(state.quotes, 'quotes-date-start', 'quotes-date-end');
+                // Cada vendedor ve solo SUS propuestas activas — igual que "Ventas" (renderVentas).
+                // Solo un Administrador ve el pipeline completo. Ver leonV2ScopedQuotes.
+                const scoped = (typeof window.leonV2ScopedQuotes === 'function') ? window.leonV2ScopedQuotes(state.quotes) : state.quotes;
+                const filtered = filterByDateRange(scoped, 'quotes-date-start', 'quotes-date-end');
                 if (filtered.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs font-mono">No hay propuestas activas en este rango de fechas.</td></tr>`;
                 } else {
@@ -2643,7 +2646,9 @@
             const badgeEl = document.getElementById('historial-count-badge');
             const loadMoreWrap = document.getElementById('historial-load-more-wrap');
             if (!tbody) return;
-            let filtered = filterByDateRange(state.quotesHistory, 'hist-date-start', 'hist-date-end');
+            // Cada vendedor ve solo SU historial — igual que Pipeline/Ventas. Ver leonV2ScopedQuotes.
+            const scopedHist = (typeof window.leonV2ScopedQuotes === 'function') ? window.leonV2ScopedQuotes(state.quotesHistory) : state.quotesHistory;
+            let filtered = filterByDateRange(scopedHist, 'hist-date-start', 'hist-date-end');
             const searchEl = document.getElementById('hist-search');
             const search = searchEl && searchEl.value ? searchEl.value.trim().toLowerCase() : '';
             if (search) {
@@ -3622,6 +3627,74 @@
   // en el otro bloque <script> y necesita preguntar el mismo permiso.
   window.leonV2Can=leonV2Can;
 
+  // ================= AISLAMIENTO DE DATOS POR VENDEDOR =================
+  // Cada Vendedor/Nuevo Consultor/Call Center ve SOLO los clientes y ventas/propuestas que él mismo
+  // generó — nunca las de un compañero. Solo Administrador ve todo el negocio. Se aplica en cada
+  // pantalla que LISTA clientes o propuestas (Clientes, Pipeline, Historial, Propuestas, Dashboard,
+  // Reportes, exportar CSV) — "Ventas" ya filtraba así desde antes (ver renderVentas), este es el
+  // mismo criterio extendido al resto del sistema.
+  // Una propuesta es "mía" si vendorEmail coincide con mi correo. Un cliente es "mío" si al menos
+  // una de sus propuestas (activa o en historial) es mía — el expediente del cliente no guarda un
+  // vendorEmail propio, solo consultorName (un nombre, no confiable para comparar con certeza).
+  function leonV2IsAdmin(){ return !state.currentUser || state.currentUser.role==='Administrador'; }
+  function leonV2QuoteIsMine(q){
+    if(leonV2IsAdmin()) return true;
+    const me=state.currentUser&&state.currentUser.email;
+    return !!(me && q && q.vendorEmail && q.vendorEmail.toLowerCase()===me.toLowerCase());
+  }
+  function leonV2ScopedQuotes(list){ return leonV2IsAdmin()?(list||[]):(list||[]).filter(leonV2QuoteIsMine); }
+  function leonV2ClientIsMine(c){
+    if(leonV2IsAdmin()) return true;
+    if(!c || !c.email) return false;
+    const own=q=>q.clientEmail && q.clientEmail.toLowerCase()===c.email.toLowerCase() && leonV2QuoteIsMine(q);
+    return (state.quotes||[]).some(own) || (state.quotesHistory||[]).some(own);
+  }
+  function leonV2ScopedClients(list){ return leonV2IsAdmin()?(list||[]):(list||[]).filter(leonV2ClientIsMine); }
+  // renderQuotesList/renderHistorial viven en el otro bloque <script> (fuera de este IIFE) y
+  // necesitan llamar a estos helpers — mismo motivo que window.leonV2Can más arriba.
+  window.leonV2IsAdmin=leonV2IsAdmin;
+  window.leonV2QuoteIsMine=leonV2QuoteIsMine;
+  window.leonV2ScopedQuotes=leonV2ScopedQuotes;
+  window.leonV2ClientIsMine=leonV2ClientIsMine;
+  window.leonV2ScopedClients=leonV2ScopedClients;
+
+  // ================= VISTA MENSUAL DE VENTAS/GANANCIAS =================
+  // Antes, "Ventas" y "Reportes" siempre sumaban TODO el historial completo — no se podía ver
+  // cuánto se vendió/ganó en un mes específico. Ahora ambas secciones arrancan mostrando el MES
+  // ACTUAL por defecto (selector arriba) y dejan elegir cualquier otro mes con datos, o "Todo el
+  // historial" para el acumulado de siempre. La fecha que cuenta para una venta CERRADA es cuándo
+  // se resolvió (resolvedAt); para una propuesta activa (todavía sin resolver) es cuándo se creó.
+  function leonV2QuoteMonthKey(q){ return ((q&&(q.resolvedAt||q.createdAt))||'').slice(0,7); }
+  function leonV2CurrentMonthKey(){ return new Date().toISOString().slice(0,7); }
+  function leonV2MonthLabel(ym){
+    if(!ym||ym==='all') return 'Todo el historial';
+    const parts=ym.split('-'); const y=parts[0], m=Number(parts[1]);
+    const names=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    return (names[m-1]||ym)+' '+y;
+  }
+  // Junta los meses que de verdad tienen datos (de varias listas a la vez) + el mes actual (aunque
+  // todavía no tenga nada), para que el selector nunca aparezca vacío.
+  function leonV2MonthsPresent(lists){
+    const set=new Set([leonV2CurrentMonthKey()]);
+    (lists||[]).forEach(arr=>(arr||[]).forEach(q=>{ const ym=leonV2QuoteMonthKey(q); if(ym) set.add(ym); }));
+    return Array.from(set).sort().reverse();
+  }
+  function leonV2MonthSelectHtml(selectId, lists, selected){
+    const months=leonV2MonthsPresent(lists);
+    const sel=selected||leonV2CurrentMonthKey();
+    // OJO: renderVentas/renderReports son funciones internas de este IIFE, NO globales — un
+    // onchange="renderVentas()" inline se ejecuta en scope global y fallaría en silencio (mismo
+    // motivo por el que cualquier onclick/onchange inline del sistema pasa por window.leonV2...).
+    // leonV2OpenSection SÍ está expuesta en window, así que reabrir la misma sección (barato, ya
+    // que solo repinta #v2-main) es la forma segura de "volver a renderizar con el mes elegido".
+    const section=selectId==='v2-ventas-month'?'ventas':'reports';
+    return `<select id="${selectId}" onchange="leonV2OpenSection('${section}')" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600">${months.map(ym=>`<option value="${ym}" ${ym===sel?'selected':''}>${leonV2MonthLabel(ym)}</option>`).join('')}<option value="all" ${sel==='all'?'selected':''}>Todo el historial</option></select>`;
+  }
+  function leonV2FilterByMonth(list, ym){
+    if(!ym||ym==='all') return list||[];
+    return (list||[]).filter(q=>leonV2QuoteMonthKey(q)===ym);
+  }
+
   // ================= EXPORTAR A CSV =================
   // Helper genérico: recibe un arreglo de objetos planos {header:valor} y dispara la descarga de
   // un .csv. No depende de ninguna librería — arma el CSV a mano (con comillas escapadas) y usa
@@ -3650,7 +3723,7 @@
     showToast('Descarga iniciada: '+filename,'success');
   }
   window.leonV2ExportClientsCsv=function(){
-    const rows=(state.clients||[]).map(c=>({
+    const rows=leonV2ScopedClients(state.clients).map(c=>({
       Nombre:c.name||'', Email:c.email||'', Telefono:c.phone||'', Municipio:c.municipio||'',
       Direccion:c.address||'', Compania:c.company||'', Fuente:c.source||'',
       Consultor:c.consultorName||'', UltimoContacto:c.lastContact||'', CreadoEl:c.createdAt||''
@@ -3811,18 +3884,45 @@
     if(id==null) return;
     if(!Array.isArray(localTombstones[key])) localTombstones[key]=[];
     const sid=String(id);
-    if(!localTombstones[key].includes(sid)){ localTombstones[key].push(sid); leonV2SaveTombstones(); }
+    if(!localTombstones[key].includes(sid)){ localTombstones[key].push(sid); leonV2SaveTombstones(); leonV2SyncTombstonesRemote(); }
   }
   function leonV2UnmarkDeleted(key, id){
     if(id==null || !Array.isArray(localTombstones[key])) return;
     const sid=String(id);
     const idx=localTombstones[key].indexOf(sid);
-    if(idx!==-1){ localTombstones[key].splice(idx,1); leonV2SaveTombstones(); }
+    if(idx!==-1){ localTombstones[key].splice(idx,1); leonV2SaveTombstones(); leonV2SyncTombstonesRemote(); }
   }
   function leonV2FilterTombstoned(key, arr){
     const tomb=localTombstones[key];
     if(!tomb || !tomb.length || !Array.isArray(arr)) return arr;
     return arr.filter(item=>!item || item.id==null || !tomb.includes(String(item.id)));
+  }
+  // Comparte la lista de tumbas con el resto del equipo (documento meta/deletedIds en Firestore),
+  // además de guardarla en localStorage: así un borrado se queda borrado en CUALQUIER dispositivo, y
+  // sirve de respaldo si la escritura real de borrado (window.__fbDb...doc(id).delete(), justo abajo
+  // en leonV2DbDelete) fue rechazada por las reglas de seguridad de Firestore — aunque el documento
+  // original siga vivo en el servidor, ningún dispositivo con este sistema vuelve a mostrarlo. No usa
+  // fbApplyingRemote como guarda (a diferencia de leonV2SyncCollection/leonV2SyncMeta) porque subir
+  // una tumba que ya llegó de otro dispositivo es inofensivo — vuelve exactamente igual.
+  function leonV2SyncTombstonesRemote(){
+    if(!window.__fbDb) return;
+    try{
+      window.__fbDb.collection('meta').doc('deletedIds').set({data:localTombstones}).catch(err=>console.error('Firebase: no se pudo compartir la lista de borrados', err));
+    }catch(err){ console.error('Firebase: error al compartir la lista de borrados', err); }
+  }
+  // Fusiona (nunca sobrescribe) las tumbas que llegan de Firestore con las de este navegador — así
+  // dos dispositivos que borraron cosas distintas casi al mismo tiempo no se "olvidan" uno al otro.
+  function leonV2MergeRemoteTombstones(remote){
+    if(!remote || typeof remote!=='object') return false;
+    let changed=false;
+    Object.keys(remote).forEach(key=>{
+      const ids=remote[key];
+      if(!Array.isArray(ids)) return;
+      if(!Array.isArray(localTombstones[key])) localTombstones[key]=[];
+      ids.forEach(sid=>{ if(!localTombstones[key].includes(sid)){ localTombstones[key].push(sid); changed=true; } });
+    });
+    if(changed) leonV2SaveTombstones();
+    return changed;
   }
 
   const FB_LIST_COLLECTIONS = ['categories','products','users','quotes','quotesHistory','clients','trash','commissions','tickets','projects','followupTasks','properties','roofAssessments','employeeInvites'];
@@ -3867,9 +3967,16 @@
   };
 
   window.leonV2DbDelete = function(key, id){
-    leonV2MarkDeleted(key, id); // se queda borrado en este navegador aunque falle la escritura remota
+    leonV2MarkDeleted(key, id); // se queda borrado en este navegador (y compartido, ver arriba) aunque falle la escritura remota
     if(!window.__fbDb || id==null) return;
-    window.__fbDb.collection(key).doc(String(id)).delete().catch(err=>console.error('Firebase: error al borrar '+key+'/'+id, err));
+    window.__fbDb.collection(key).doc(String(id)).delete().catch(err=>{
+      console.error('Firebase: error al borrar '+key+'/'+id, err);
+      // Antes esto quedaba SOLO en la consola — invisible para quien está usando el sistema. Si la
+      // base de datos compartida rechazó el borrado (permisos/reglas de Firestore casi siempre), hay
+      // que decirlo: el elemento sigue desaparecido en ESTE dispositivo gracias a la tumba local/
+      // compartida de arriba, pero un dispositivo que todavía no la tenga podría seguir mostrándolo.
+      if(typeof showToast==='function') showToast('Aviso: la base de datos compartida rechazó el borrado de '+key+' ('+(err&&err.code?err.code:'error')+'). Se quedó borrado en este dispositivo, pero revisa los permisos de Firestore para que se borre también del servidor.', 'warning');
+    });
   };
 
   // Para auditLog/securityLog: un documento nuevo por evento (nunca se reescribe lo viejo).
@@ -3952,6 +4059,29 @@
     // "sembrar" en Firestore al detectar una colección vacía, más abajo.
     FB_LIST_COLLECTIONS.forEach(key=>{ if(Array.isArray(state[key])) state[key]=leonV2FilterTombstoned(key, state[key]); });
     if(!window.__fbDb) return;
+    // Trae la lista de borrados compartida (si ya existe), la fusiona con la de este navegador, y
+    // sube el resultado — así un dispositivo que borró algo antes de tener conexión, o que borró
+    // algo que otro dispositivo todavía no sabe que se borró, terminan de acuerdo. Ver el bloque
+    // TUMBAS LOCALES más arriba para el porqué de todo esto.
+    window.__fbDb.collection('meta').doc('deletedIds').get().then(doc=>{
+      if(doc.exists){ const d=doc.data(); if(d&&d.data) leonV2MergeRemoteTombstones(d.data); }
+      leonV2SyncTombstonesRemote();
+      FB_LIST_COLLECTIONS.forEach(key=>{ if(Array.isArray(state[key])) state[key]=leonV2FilterTombstoned(key, state[key]); });
+      leonV2RerenderAfterSync();
+    }).catch(err=>console.error('Firebase: error revisando meta/deletedIds', err));
+    window.__fbDb.collection('meta').doc('deletedIds').onSnapshot(doc=>{
+      if(!doc.exists) return;
+      const d=doc.data();
+      if(!d || !('data' in d)) return;
+      const changed=leonV2MergeRemoteTombstones(d.data);
+      if(changed){
+        // Puede llegar DESPUÉS que las colecciones normales — reaplica el filtro a lo que ya está
+        // en memoria para que un borrado hecho en otro dispositivo también desaparezca aquí sin
+        // tener que esperar a la próxima escritura de esa colección.
+        FB_LIST_COLLECTIONS.forEach(key=>{ if(Array.isArray(state[key])) state[key]=leonV2FilterTombstoned(key, state[key]); });
+        leonV2RerenderAfterSync();
+      }
+    }, err=>console.error('Firebase: error escuchando meta/deletedIds', err));
     // Primera vez que se usa este proyecto de Firebase: si una colección todavía está vacía en
     // Firestore, la sembramos con los datos de demostración que ya trae este archivo (usuarios,
     // productos, reglas de comisión, etc.), para que CUALQUIER dispositivo que abra la página de
@@ -4451,7 +4581,9 @@
   function animateV2Bars(){requestAnimationFrame(()=>{document.querySelectorAll('.v2-bar-fill[data-target]').forEach(el=>{el.style.width=el.dataset.target+'%'})})}
 
   function renderDashboard(){
-    const qs=state.quotes||[], hist=state.quotesHistory||[], total=qs.reduce((s,q)=>s+Number(leonV2ComputeTotal(q).total||0),0);
+    // Cada vendedor ve su PROPIO dashboard (sus propuestas, sus clientes) — solo Administrador ve
+    // el negocio completo. Ver leonV2ScopedQuotes/leonV2ScopedClients.
+    const qs=leonV2ScopedQuotes(state.quotes), hist=leonV2ScopedQuotes(state.quotesHistory), total=qs.reduce((s,q)=>s+Number(leonV2ComputeTotal(q).total||0),0);
     const statusCounts={}; qs.forEach(q=>{statusCounts[q.status]=(statusCounts[q.status]||0)+1});
     const pipelineBars=Object.keys(statusCounts).length?Object.entries(statusCounts).map(([k,v])=>({label:k,value:v})):[{label:'Sin propuestas activas',value:0}];
     const catTotals={}; products().forEach(p=>{catTotals[p.category]=(catTotals[p.category]||0)+p.price});
@@ -4461,7 +4593,7 @@
     const tiemposCierre=aceptadasH.map(q=>daysBetween(q.createdAt,q.resolvedAt)).filter(d=>d!==null&&d>=0);
     const tiempoCierreProm=tiemposCierre.length?Math.round(tiemposCierre.reduce((s,d)=>s+d,0)/tiemposCierre.length):0;
     const vencidas=qs.filter(q=>{const d=daysBetween(q.createdAt,new Date().toISOString());return d!==null&&d>14}).length;
-    const sinSeguimiento=(state.clients||[]).filter(c=>{const d=daysBetween(c.lastContact,new Date().toISOString());return d===null||d>7}).length;
+    const sinSeguimiento=leonV2ScopedClients(state.clients).filter(c=>{const d=daysBetween(c.lastContact,new Date().toISOString());return d===null||d>7}).length;
     document.getElementById('v2-main').innerHTML=`<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Oportunidades',money(total),qs.length+' propuestas activas','fa-sack-dollar')}${kpi('Propuestas',qs.length+hist.length,'Activas + historial','fa-file-signature')}${kpi('Clientes',new Set(qs.concat(hist).map(q=>q.clientEmail||q.clientName)).size,'Expedientes registrados','fa-users')}${kpi('Equipo',users().length,'Usuarios con acceso','fa-user-shield')}</div><div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">${kpi('Ticket Promedio',money(ticketProm),'Sobre propuestas aceptadas','fa-receipt')}${kpi('Tiempo de Cierre',tiempoCierreProm+' días',aceptadasH.length?'Promedio hasta aceptación':'Sin datos aún','fa-hourglass-half')}${kpi('Propuestas Vencidas',vencidas,'Más de 14 días activas','fa-triangle-exclamation')}${kpi('Sin Seguimiento',sinSeguimiento,'Clientes sin contacto en 7+ días','fa-user-clock')}</div><div class="grid xl:grid-cols-2 gap-6 mt-6"><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Pipeline por Estado</h3><button onclick="leonV2OpenSection('reports')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-pipeline"></div></div><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-brand-500"></i> Catálogo por Categoría</h3><button onclick="leonV2OpenSection('catalog')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-cat"></div></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Mis tareas de seguimiento</h3><span class="v2-pill">Asignadas a ti</span></div><div id="v2-dash-my-tasks" class="mt-4 space-y-2"></div></div><div class="v2-card p-6 mt-6"><h3 class="font-black">Acciones rápidas</h3><div class="grid sm:grid-cols-3 gap-3 mt-4"><button onclick="openNewQuoteModal()" class="p-4 rounded-xl bg-blue-50 text-blue-700 text-xs font-black text-left"><i class="fa-solid fa-plus mr-2"></i>Nueva cotización</button><button onclick="leonV2OpenSection('catalog')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-box mr-2"></i>Gestionar catálogo</button><button onclick="leonV2OpenSection('historial')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-clock-rotate-left mr-2"></i>Ver historial</button></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black">Actividad reciente</h3><span class="v2-pill">Auditoría</span></div><div class="mt-4 space-y-3">${qs.slice(0,6).map(q=>`<div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl"><div><b class="text-sm">${esc(q.clientName)}</b><div class="text-[11px] text-slate-500">${esc(q.id)} · ${esc(q.origin||'Autogestionado')}</div></div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div>`).join('')||'<div class="text-sm text-slate-400">Sin actividad todavía.</div>'}</div></div>`;
     document.getElementById('v2-dash-bars-pipeline').innerHTML=v2Bars(pipelineBars);
     document.getElementById('v2-dash-bars-cat').innerHTML=v2Bars(catBars);
@@ -5020,12 +5152,13 @@
     const term=(document.getElementById('v2-clients-search')?.value||'').toLowerCase().trim();
     const catFilter=document.getElementById('v2-clients-filter-cat')?.value||'';
     const muniFilter=document.getElementById('v2-clients-filter-muni')?.value||'';
-    let list=(state.clients||[]).slice().sort((a,b)=>new Date(b.lastContact||0)-new Date(a.lastContact||0));
+    // Cada vendedor ve solo SUS clientes — ver leonV2ScopedClients. Solo Administrador ve todos.
+    let list=leonV2ScopedClients(state.clients).slice().sort((a,b)=>new Date(b.lastContact||0)-new Date(a.lastContact||0));
     if(term)list=list.filter(c=>(c.name||'').toLowerCase().includes(term)||(c.email||'').toLowerCase().includes(term)||(c.municipio||'').toLowerCase().includes(term));
     if(catFilter)list=list.filter(c=>leonV2ClientCategories(c).includes(catFilter));
     if(muniFilter)list=list.filter(c=>c.municipio===muniFilter);
     document.getElementById('v2-clients-list').innerHTML=list.length?list.map(c=>{
-      const qCount=(state.quotes||[]).concat(state.quotesHistory||[]).filter(q=>q.clientEmail&&c.email&&q.clientEmail.toLowerCase()===c.email.toLowerCase()).length;
+      const qCount=leonV2ScopedQuotes((state.quotes||[]).concat(state.quotesHistory||[])).filter(q=>q.clientEmail&&c.email&&q.clientEmail.toLowerCase()===c.email.toLowerCase()).length;
       const ls=leonV2LeadScore(c);
       const cats=leonV2ClientCategories(c);
       return `<div class="v2-card p-5 cursor-pointer hover:border-brand-300 transition" onclick="leonV2OpenClientDossier('${c.id}')"><div class="flex justify-between items-start"><div><b class="text-sm">${esc(c.name)}</b><div class="text-xs text-slate-500">${esc(c.company||'Cliente residencial')}</div></div><div class="flex flex-col items-end gap-1"><div class="flex items-center gap-2"><span class="v2-pill">${esc(c.source||'—')}</span><button onclick="event.stopPropagation();leonV2OpenEditClient('${c.id}')" title="Editar informacion del cliente" class="text-slate-400 hover:text-brand-600 text-xs px-1"><i class="fa-solid fa-user-pen"></i></button></div>${leonV2ScoreBadge(ls.tier)}</div></div><div class="text-xs text-slate-500 mt-3 space-y-1"><div><i class="fa-solid fa-envelope w-4 text-slate-400"></i> ${esc(c.email||'')}</div><div><i class="fa-solid fa-phone w-4 text-slate-400"></i> ${esc(c.phone||'—')}</div><div><i class="fa-solid fa-location-dot w-4 text-slate-400"></i> ${esc(c.municipio||'—')}</div></div>${cats.length?`<div class="flex flex-wrap gap-1 mt-3">${cats.map(cat=>`<span class="text-[9px] font-black uppercase bg-brand-50 text-brand-700 border border-brand-100 px-2 py-0.5 rounded-full">${esc(categoryLabel(cat))}</span>`).join('')}</div>`:''}<div class="flex justify-between items-center mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400"><span>${qCount} propuesta(s)</span><span>${esc(c.consultorName||'Sin consultor')}</span></div></div>`;
@@ -5034,7 +5167,10 @@
   window.renderClientsList=renderClientsList;
   window.leonV2OpenClientDossier=id=>{
     const c=(state.clients||[]).find(x=>x.id===id); if(!c)return;
-    const quotes=(state.quotes||[]).concat(state.quotesHistory||[]).filter(q=>q.clientEmail&&c.email&&q.clientEmail.toLowerCase()===c.email.toLowerCase());
+    // Defensa extra además de que la lista ya solo muestre "sus" clientes (renderClientsList): un
+    // vendedor no puede abrir el expediente de un cliente ajeno aunque conozca su id.
+    if(!leonV2ClientIsMine(c)){ showToast('Este cliente no está asignado a ti.','error'); return; }
+    const quotes=leonV2ScopedQuotes((state.quotes||[]).concat(state.quotesHistory||[])).filter(q=>q.clientEmail&&c.email&&q.clientEmail.toLowerCase()===c.email.toLowerCase());
     const activity=(c.activity||[]).slice().reverse();
     const html=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">EXPEDIENTE 360°</div><h3 class="text-2xl md:text-3xl font-black">${esc(c.name)}</h3><p class="text-sm text-slate-500">${esc(c.company||'Cliente residencial')}</p><div class="mt-2">${leonV2ScoreBadge(leonV2LeadScore(c).tier)} <span class="text-[10px] text-slate-400 ml-1">${leonV2LeadScore(c).score} pts</span></div></div><button onclick="leonV2Close('leon-v2-client-dossier')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
@@ -5353,16 +5489,20 @@
   function renderVentas(){
     const isAdmin=state.currentUser&&state.currentUser.role==='Administrador';
     const me=state.currentUser;
-    const all=(state.quotesHistory||[]).filter(q=>q.status==='Aceptada');
-    const mine=isAdmin?all:all.filter(q=>me&&q.vendorEmail&&me.email&&q.vendorEmail.toLowerCase()===me.email.toLowerCase());
+    const allEver=(state.quotesHistory||[]).filter(q=>q.status==='Aceptada');
+    const mineEver=isAdmin?allEver:allEver.filter(q=>me&&q.vendorEmail&&me.email&&q.vendorEmail.toLowerCase()===me.email.toLowerCase());
+    const selectedMonth=document.getElementById('v2-ventas-month')?.value||leonV2CurrentMonthKey();
+    const mine=leonV2FilterByMonth(mineEver, selectedMonth);
     const sorted=mine.slice().sort((a,b)=>new Date(b.resolvedAt||b.createdAt)-new Date(a.resolvedAt||a.createdAt));
     const totalVentas=sorted.reduce((s,q)=>s+Number(leonV2ComputeTotal(q).total||0),0);
     const manualCount=sorted.filter(q=>q.origin==='Manual').length;
-    document.getElementById('v2-main').innerHTML=`<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Ventas '+(isAdmin?'totales':'mías'),money(totalVentas),sorted.length+' venta(s) cerrada(s)','fa-sack-dollar')}${kpi('Registradas a mano',manualCount,'Ventas físicas cargadas al sistema','fa-pen-to-square')}${kpi('Ticket promedio',money(sorted.length?totalVentas/sorted.length:0),'Por venta cerrada','fa-receipt')}${kpi('Conexión',window.__fbDb?'Tiempo real':'Solo local',window.__fbDb?'Se actualiza sola con cada venta nueva':'Sin base de datos compartida','fa-tower-broadcast')}</div>
+    const monthLabel=leonV2MonthLabel(selectedMonth);
+    document.getElementById('v2-main').innerHTML=`<div class="flex flex-wrap items-center justify-between gap-3 mb-4"><div><h3 class="text-xl font-black text-slate-900">Ventas</h3><p class="text-xs text-slate-500 mt-1">Mostrando: <b>${esc(monthLabel)}</b></p></div>${leonV2MonthSelectHtml('v2-ventas-month', [mineEver], selectedMonth)}</div>
+      <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Ventas '+(isAdmin?'totales':'mías'),money(totalVentas),sorted.length+' venta(s) cerrada(s) — '+monthLabel,'fa-sack-dollar')}${kpi('Registradas a mano',manualCount,'Ventas físicas cargadas al sistema','fa-pen-to-square')}${kpi('Ticket promedio',money(sorted.length?totalVentas/sorted.length:0),'Por venta cerrada','fa-receipt')}${kpi('Conexión',window.__fbDb?'Tiempo real':'Solo local',window.__fbDb?'Se actualiza sola con cada venta nueva':'Sin base de datos compartida','fa-tower-broadcast')}</div>
       <div class="v2-card p-6 mt-6"><div class="flex justify-between items-center flex-wrap gap-3"><div><h3 class="text-xl font-black">Ventas realizadas</h3><p class="text-xs text-slate-500 mt-1">${isAdmin?'Todo lo que el equipo ha cerrado — del sistema y registrado a mano.':'Tus ventas cerradas.'} Se actualiza sola, sin recargar la página.</p></div><div class="flex gap-2"><button onclick="leonV2ExportVentasCsv()" title="Descargar CSV" class="px-4 py-3 rounded-xl border border-slate-200 text-xs font-black uppercase tracking-wider text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-csv mr-2"></i>CSV</button><button onclick="leonV2OpenManualSale()" class="px-4 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-plus mr-2"></i>Registrar venta manual</button></div></div>
-        <div class="overflow-x-auto mt-5"><table class="w-full v2-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Origen</th><th>Forma de pago</th><th>Monto</th>${isAdmin?'<th>Acción</th>':''}</tr></thead><tbody>${sorted.length?sorted.map(q=>`<tr><td>${esc((q.resolvedAt||q.createdAt||'').slice(0,10))}</td><td><b>${esc(q.clientName)}</b><div class="text-[10px] text-slate-400">${esc(q.id)}</div></td><td>${esc(q.vendorName||'—')}</td><td><span class="v2-status ${q.origin==='Manual'?'bg-amber-50 text-amber-700':'bg-blue-50 text-blue-700'}">${q.origin==='Manual'?'Manual / Física':esc(q.origin||'Sistema')}</span></td><td>${esc(q.paymentType||'—')}</td><td><b>${money(leonV2ComputeTotal(q).total)}</b></td>${isAdmin?`<td><button onclick="leonV2VoidSale('${q.id}')" class="v2-tab" style="color:#dc2626" title="Anular esta venta"><i class="fa-solid fa-rotate-left mr-1"></i>Anular</button></td>`:''}</tr>`).join(''):`<tr><td colspan="${isAdmin?7:6}" class="text-center text-slate-400 py-6">Sin ventas cerradas todavía.</td></tr>`}</tbody></table></div>
+        <div class="overflow-x-auto mt-5"><table class="w-full v2-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Origen</th><th>Forma de pago</th><th>Monto</th>${isAdmin?'<th>Acción</th>':''}</tr></thead><tbody>${sorted.length?sorted.map(q=>`<tr><td>${esc((q.resolvedAt||q.createdAt||'').slice(0,10))}</td><td><b>${esc(q.clientName)}</b><div class="text-[10px] text-slate-400">${esc(q.id)}</div></td><td>${esc(q.vendorName||'—')}</td><td><span class="v2-status ${q.origin==='Manual'?'bg-amber-50 text-amber-700':'bg-blue-50 text-blue-700'}">${q.origin==='Manual'?'Manual / Física':esc(q.origin||'Sistema')}</span></td><td>${esc(q.paymentType||'—')}</td><td><b>${money(leonV2ComputeTotal(q).total)}</b></td>${isAdmin?`<td><button onclick="leonV2VoidSale('${q.id}')" class="v2-tab" style="color:#dc2626" title="Anular esta venta"><i class="fa-solid fa-rotate-left mr-1"></i>Anular</button></td>`:''}</tr>`).join(''):`<tr><td colspan="${isAdmin?7:6}" class="text-center text-slate-400 py-6">Sin ventas cerradas en ${esc(monthLabel)}.</td></tr>`}</tbody></table></div>
       </div>
-      ${isAdmin?`<div class="v2-card p-6 mt-6"><h3 class="font-black text-sm mb-4"><i class="fa-solid fa-trophy text-brand-500 mr-2"></i>Ventas por vendedor</h3><div id="v2-ventas-por-vendedor" class="overflow-x-auto"></div></div>`:''}`;
+      ${isAdmin?`<div class="v2-card p-6 mt-6"><h3 class="font-black text-sm mb-4"><i class="fa-solid fa-trophy text-brand-500 mr-2"></i>Ventas por vendedor — ${esc(monthLabel)}</h3><div id="v2-ventas-por-vendedor" class="overflow-x-auto"></div></div>`:''}`;
     if(isAdmin){
       const box=document.getElementById('v2-ventas-por-vendedor');
       const byVendor={};
@@ -5509,7 +5649,7 @@
     renderHistorial();
   }
 
-  function renderProposals(){const qs=(state.quotes||[]).concat(state.quotesHistory||[]);document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center"><div><h3 class="text-xl font-black">Propuestas & Cotizaciones</h3><p class="text-xs text-slate-500">Editor de documento, PDF, precio (CPQ) y portal del cliente por propuesta.</p></div></div><div class="overflow-x-auto mt-5">${qs.length?`<table class="w-full v2-table"><thead><tr><th>ID</th><th>Cliente</th><th>Origen</th><th>Consultor</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${qs.map(q=>`<tr><td><b>${esc(q.id)}</b><div class="text-[10px] text-slate-400">v${q.version||1} · ${esc(q.createdAt||'')}</div></td><td>${esc(q.clientName)}</td><td>${esc(q.origin||'Autogestionado')}</td><td>${esc(q.vendorName||'Pendiente')}</td><td><b>${money(leonV2ComputeTotal(q).total)}</b></td><td><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></td><td class="flex gap-1 flex-wrap">${state.quotes.includes(q)?`<button onclick="leonV2OpenPricing('${q.id}')" class="v2-tab"><i class="fa-solid fa-calculator"></i></button>`:''}<button onclick="leonV2OpenEditor('${q.id}')" class="v2-tab active">Editar</button><button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab">PDF</button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button>${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2DeleteQuote('${q.id}')" class="v2-tab" style="color:#dc2626" title="Eliminar propuesta"><i class="fa-solid fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay propuestas todavía. Se crean desde el catálogo público o desde Pipeline → Nueva Cotización.</div>'}</div></div>`}
+  function renderProposals(){const qs=leonV2ScopedQuotes((state.quotes||[]).concat(state.quotesHistory||[]));document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center"><div><h3 class="text-xl font-black">Propuestas & Cotizaciones</h3><p class="text-xs text-slate-500">Editor de documento, PDF, precio (CPQ) y portal del cliente por propuesta.</p></div></div><div class="overflow-x-auto mt-5">${qs.length?`<table class="w-full v2-table"><thead><tr><th>ID</th><th>Cliente</th><th>Origen</th><th>Consultor</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${qs.map(q=>`<tr><td><b>${esc(q.id)}</b><div class="text-[10px] text-slate-400">v${q.version||1} · ${esc(q.createdAt||'')}</div></td><td>${esc(q.clientName)}</td><td>${esc(q.origin||'Autogestionado')}</td><td>${esc(q.vendorName||'Pendiente')}</td><td><b>${money(leonV2ComputeTotal(q).total)}</b></td><td><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></td><td class="flex gap-1 flex-wrap">${state.quotes.includes(q)?`<button onclick="leonV2OpenPricing('${q.id}')" class="v2-tab"><i class="fa-solid fa-calculator"></i></button>`:''}<button onclick="leonV2OpenEditor('${q.id}')" class="v2-tab active">Editar</button><button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab">PDF</button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button>${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2DeleteQuote('${q.id}')" class="v2-tab" style="color:#dc2626" title="Eliminar propuesta"><i class="fa-solid fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay propuestas todavía. Se crean desde el catálogo público o desde Pipeline → Nueva Cotización.</div>'}</div></div>`}
 
   function renderCatalog(){
     document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex items-center justify-between mb-6 flex-wrap gap-3"><div><h3 class="text-xl font-black text-slate-900">Gestión de Catálogo</h3><p class="text-xs text-slate-500 mt-1">Añade, edita o elimina equipos. La imagen admite URL o archivo local (se comprime automáticamente).</p></div><div class="flex gap-2"><button onclick="leonV2PrintCatalogPdf()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-file-pdf mr-1"></i>Descargar catálogo (PDF)</button><button onclick="leonV2EmailCatalog()" class="bg-white border border-slate-200 hover:border-brand-400 text-slate-600 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-envelope mr-1"></i>Enviar por correo</button><button onclick="openCategoryModal()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-tags mr-1"></i>Categorías</button><button onclick="openProductModal()" class="bg-gradient-to-r from-brand-600 to-brand-400 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-1"></i>Añadir Equipo</button></div></div><div id="admin-products-list" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div><div class="text-center mt-6 hidden" id="admin-products-load-more-wrap"><button onclick="loadMoreAdminProducts()" class="bg-white border-2 border-brand-200 hover:border-brand-500 text-brand-700 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition">Cargar más <i class="fa-solid fa-chevron-down ml-1"></i></button></div></div>`;
@@ -5563,28 +5703,40 @@
   }
 
   function renderReports(){
-    const active=state.quotes||[], hist=state.quotesHistory||[];
+    const isAdmin=state.currentUser&&state.currentUser.role==='Administrador';
+    // Cada vendedor ve solo SUS reportes — igual que Dashboard/Pipeline/Historial/Propuestas.
+    const activeAll=leonV2ScopedQuotes(state.quotes), histAll=leonV2ScopedQuotes(state.quotesHistory);
+    // Lo resuelto (aceptadas/rechazadas/tipo de pago) sí es "de un mes" — el pipeline activo es
+    // "ahora mismo" por naturaleza, así que ese no se filtra por mes. Arranca en el mes actual.
+    const selectedMonth=document.getElementById('v2-reports-month')?.value||leonV2CurrentMonthKey();
+    const active=activeAll, hist=leonV2FilterByMonth(histAll, selectedMonth);
+    const monthLabel=leonV2MonthLabel(selectedMonth);
     const statusCounts={}; active.forEach(q=>{statusCounts[q.status]=(statusCounts[q.status]||0)+1});
     const aceptadas=hist.filter(q=>q.status==='Aceptada').length, rechazadas=hist.filter(q=>q.status==='Rechazada').length;
     const pipelineBars=Object.keys(statusCounts).length?Object.entries(statusCounts).map(([k,v])=>({label:k,value:v})):[{label:'Sin datos activos',value:0}];
     const catTotals={}; products().forEach(p=>{catTotals[p.category]=(catTotals[p.category]||0)+p.price});
     const catBars=Object.entries(catTotals).map(([k,v])=>({label:categoryLabel(k),value:v,display:money(v)}));
-    const payTotals={}; active.concat(hist).forEach(q=>{const key=q.paymentType||'Por definir';payTotals[key]=(payTotals[key]||0)+Number(q.total||0)});
+    const payTotals={}; hist.forEach(q=>{const key=q.paymentType||'Por definir';payTotals[key]=(payTotals[key]||0)+Number(leonV2ComputeTotal(q).total||0)});
     const payBars=Object.entries(payTotals).map(([k,v])=>({label:k,value:v,display:money(v)}));
     const totalResolved=aceptadas+rechazadas, conv=totalResolved?Math.round((aceptadas/totalResolved)*100):0;
-    document.getElementById('v2-main').innerHTML=`<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Conversión',conv+'%',totalResolved?aceptadas+' de '+totalResolved+' resueltas':'Sin datos aún','fa-percent')}${kpi('Aceptadas',aceptadas,'Historial','fa-circle-check')}${kpi('Rechazadas',rechazadas,'Historial','fa-circle-xmark')}${kpi('Pipeline Activo',money(active.reduce((s,q)=>s+Number(q.total||0),0)),active.length+' propuestas','fa-sack-dollar')}</div><div class="grid xl:grid-cols-2 gap-6 mt-6"><div class="v2-bar-card"><h3 class="font-black text-slate-900 text-sm mb-6 flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Pipeline por Estado</h3><div id="v2-bars-pipeline"></div></div><div class="v2-bar-card"><h3 class="font-black text-slate-900 text-sm mb-6 flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-brand-500"></i> Valor de Catálogo por Categoría</h3><div id="v2-bars-cat"></div></div></div><div class="v2-bar-card mt-6"><h3 class="font-black text-slate-900 text-sm mb-6 flex items-center gap-2"><i class="fa-solid fa-credit-card text-brand-500"></i> Volumen por Tipo de Pago</h3><div id="v2-bars-pay"></div></div><div class="v2-card p-6 mt-6"><h3 class="font-black text-slate-900 text-sm mb-4 flex items-center gap-2"><i class="fa-solid fa-trophy text-brand-500"></i> Ranking de Vendedores</h3><div id="v2-vendor-ranking" class="overflow-x-auto"></div></div>`;
+    const gananciaMes=hist.filter(q=>q.status==='Aceptada').reduce((s,q)=>s+Number(leonV2ComputeTotal(q).total||0),0);
+    document.getElementById('v2-main').innerHTML=`<div class="flex flex-wrap items-center justify-between gap-3 mb-4"><div><h3 class="text-xl font-black text-slate-900">Reportes</h3><p class="text-xs text-slate-500 mt-1">Aceptadas/rechazadas/ganancia mostradas para: <b>${esc(monthLabel)}</b> — el pipeline activo siempre es "ahora mismo".</p></div>${leonV2MonthSelectHtml('v2-reports-month', [histAll], selectedMonth)}</div>
+    <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Ganancia del mes',money(gananciaMes),monthLabel,'fa-sack-dollar')}${kpi('Conversión',conv+'%',totalResolved?aceptadas+' de '+totalResolved+' resueltas — '+monthLabel:'Sin datos en '+monthLabel,'fa-percent')}${kpi('Aceptadas',aceptadas,monthLabel,'fa-circle-check')}${kpi('Rechazadas',rechazadas,monthLabel,'fa-circle-xmark')}</div>
+    <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">${kpi('Pipeline Activo',money(active.reduce((s,q)=>s+Number(leonV2ComputeTotal(q).total||0),0)),active.length+' propuestas — ahora mismo','fa-filter-circle-dollar')}</div>
+    <div class="grid xl:grid-cols-2 gap-6 mt-6"><div class="v2-bar-card"><h3 class="font-black text-slate-900 text-sm mb-6 flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Pipeline Activo por Estado</h3><div id="v2-bars-pipeline"></div></div><div class="v2-bar-card"><h3 class="font-black text-slate-900 text-sm mb-6 flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-brand-500"></i> Valor de Catálogo por Categoría</h3><div id="v2-bars-cat"></div></div></div><div class="v2-bar-card mt-6"><h3 class="font-black text-slate-900 text-sm mb-6 flex items-center gap-2"><i class="fa-solid fa-credit-card text-brand-500"></i> Volumen por Tipo de Pago — ${esc(monthLabel)}</h3><div id="v2-bars-pay"></div></div>${isAdmin?`<div class="v2-card p-6 mt-6"><h3 class="font-black text-slate-900 text-sm mb-4 flex items-center gap-2"><i class="fa-solid fa-trophy text-brand-500"></i> Ranking de Vendedores — ${esc(monthLabel)}</h3><div id="v2-vendor-ranking" class="overflow-x-auto"></div></div>`:''}`;
     document.getElementById('v2-bars-pipeline').innerHTML=v2Bars(pipelineBars);
     document.getElementById('v2-bars-cat').innerHTML=v2Bars(catBars);
-    document.getElementById('v2-bars-pay').innerHTML=payBars.length?v2Bars(payBars):'<div class="v2-empty">Sin cotizaciones registradas todavía.</div>';
+    document.getElementById('v2-bars-pay').innerHTML=payBars.length?v2Bars(payBars):'<div class="v2-empty">Sin cotizaciones registradas en '+esc(monthLabel)+'.</div>';
     animateV2Bars();
-    renderVendorRanking();
+    if(isAdmin) renderVendorRanking(hist);
   }
 
   // Ranking de vendedores: propuestas generadas, aceptadas, tasa de conversión y valor total
-  // cerrado, calculado en tiempo real de state.users + state.quotes/quotesHistory.
-  function renderVendorRanking(){
+  // cerrado, calculado en tiempo real de state.users + state.quotesHistory (respeta el mes elegido
+  // en Reportes — el pipeline activo, por su naturaleza, no entra en este ranking).
+  function renderVendorRanking(histScoped){
     const box=document.getElementById('v2-vendor-ranking'); if(!box)return;
-    const all=(state.quotes||[]).concat(state.quotesHistory||[]);
+    const all=histScoped||(state.quotesHistory||[]);
     const sellers=(state.users||[]).filter(u=>u.role==='Vendedor'||u.role==='Nuevo Consultor');
     const rows=sellers.map(u=>{
       const mine=all.filter(q=>q.vendorName===u.name);
