@@ -903,7 +903,7 @@
     <div id="new-quote-modal" class="fixed inset-0 z-50 bg-ink-950/70 backdrop-blur-sm hidden items-center justify-center p-4">
         <div class="modal-content-anim glass-strong w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-glass-lg">
             <div class="sticky top-0 bg-gradient-to-r from-white to-brand-50/60 border-b border-brand-100 p-6 flex justify-between items-center z-10">
-                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-handshake text-brand-500"></i> Registrar Venta / Cotización</h3>
+                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-handshake text-brand-500"></i> Nuevo Lead / Propuesta</h3>
                 <button onclick="closeNewQuoteModal()" class="text-slate-400 hover:text-slate-800 text-xl"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <form onsubmit="handleVendorQuoteSubmit(event)" class="p-6 space-y-5 bg-white">
@@ -1014,9 +1014,14 @@
             // tenga. Se crea/actualiza automáticamente (leonV2UpsertClient) cada vez que se genera una
             // propuesta, sin importar si vino del flujo público o del formulario interno de Vendedor.
             clients: [],
+            // Solicitudes de crédito (financiamiento) — independientes de la propuesta, pero
+            // enlazadas a ella (quoteId) y al expediente del cliente (clientId). Un cliente puede
+            // tener varias, una por cada entidad financiera con la que se intentó. Ver
+            // leonV2SaveCreditApp / renderCreditApps.
+            creditApps: [],
             // Estados de pipeline configurables por el administrador (Configuración → Estados) — no
             // están escritos a fuego en la interfaz, se leen de aquí en cada render del selector.
-            pipelineStatuses: ['Nuevo','Pendiente de revisión','Pendiente de aprobación','Contactar cliente','Contactado','Cita pendiente','Cita agendada','Evaluación','Cotización en preparación','Propuesta enviada','Propuesta abierta','Negociación','Pendiente de documentos','Pendiente de firma','En revisión de crédito','Aprobada','En proceso','Instalación programada','Completada'],
+            pipelineStatuses: ['Nuevo','Pendiente de revisión','Pendiente de aprobación','Contactar cliente','Contactado','Cita pendiente','Cita agendada','Evaluación','Cotización en preparación','Propuesta enviada','Propuesta abierta','Negociación','Firmado — pendiente confirmación','Pendiente de documentos','Pendiente de firma','En revisión de crédito','Aprobada','En proceso','Instalación programada','Completada'],
             // Papelera (soft-delete) y auditoría — ver leonV2SoftDelete/leonV2Audit más abajo.
             trash: [],
             auditLog: [],
@@ -1645,10 +1650,10 @@
                             <td class="py-4 px-3"><div class="font-bold text-slate-900">${q.clientName}</div><div class="text-[10px] text-slate-400 font-mono">${q.id} · ${q.createdAt || ''}</div></td>
                             <td class="py-4 px-3"><span class="text-[9px] font-bold px-2 py-1 rounded bg-white text-slate-600 border border-slate-200 uppercase tracking-wider">${q.origin || 'Autogestionado'}</span></td>
                             <td class="py-4 px-3 font-black text-slate-800 font-mono">$${q.total.toLocaleString()}</td>
-                            <td class="py-4 px-3"><select onchange="leonV2SetQuoteStatus('${q.id}', this.value)" class="text-[9px] font-black tracking-widest uppercase px-2 py-1 rounded-full border bg-brand-50 text-brand-700 border-brand-200 outline-none">${(state.pipelineStatuses||[]).map(s=>`<option value="${s}" ${s===q.status?'selected':''}>${s}</option>`).join('')}${!(state.pipelineStatuses||[]).includes(q.status)?`<option value="${q.status}" selected>${q.status}</option>`:''}</select></td>
+                            <td class="py-4 px-3"><select onchange="leonV2SetQuoteStatus('${q.id}', this.value)" class="text-[9px] font-black tracking-widest uppercase px-2 py-1 rounded-full border bg-brand-50 text-brand-700 border-brand-200 outline-none">${(state.pipelineStatuses||[]).map(s=>`<option value="${s}" ${s===q.status?'selected':''}>${s}</option>`).join('')}${!(state.pipelineStatuses||[]).includes(q.status)?`<option value="${q.status}" selected>${q.status}</option>`:''}</select>${q.acceptance?`<button onclick="window.leonV2VendorConfirmSale('${q.id}')" class="block mt-1 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-emerald-600 text-white"><i class="fa-solid fa-check-double mr-1"></i>Confirmar venta (firmado)</button>`:''}</td>
                             <td class="py-4 px-3 text-right space-x-2">
                                 <button onclick="approveQuote('${q.id}')" class="text-slate-400 hover:text-emerald-500 transition text-sm" title="Aceptar"><i class="fa-solid fa-check-circle"></i></button>
-                                <button onclick="rejectQuote('${q.id}')" class="text-slate-400 hover:text-red-500 transition text-sm" title="Rechazar"><i class="fa-solid fa-circle-xmark"></i></button>
+                                <button onclick="window.leonV2OpenRejectReasonModal('${q.id}')" class="text-slate-400 hover:text-red-500 transition text-sm" title="Rechazar"><i class="fa-solid fa-circle-xmark"></i></button>
                             </td>
                         </tr>
                     `).join('');
@@ -3150,6 +3155,10 @@
 <div id="leon-v2-project-modal" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-xl"><div id="v2-project-modal-content"></div></div></div>
 <!-- LEON V2: Proyectos e Instalaciones — detalle (imágenes, tareas, técnico) -->
 <div id="leon-v2-project-detail" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-4xl"><div id="v2-project-detail-content"></div></div></div>
+<!-- LEON V2: Solicitud de Crédito — crear/editar (checklist PCI de financiamiento) -->
+<div id="leon-v2-creditapp-modal" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-3xl"><div id="v2-creditapp-modal-content"></div></div></div>
+<!-- LEON V2: rechazar propuesta con motivo estructurado (desde Seguimiento de Ventas) -->
+<div id="leon-v2-reject-quote" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-md"><div id="v2-reject-modal-content"></div></div></div>
 <!-- LEON ROOF INTELLIGENCE: workspace de evaluación de techo (imagen + medición por polígono) -->
 <div id="leon-v2-roof-assessment" class="v2-modal"><div class="v2-modal-box p-0 max-w-6xl overflow-hidden"><div id="v2-roof-assessment-content"></div></div></div>
 <!-- LEON ROOF INTELLIGENCE: calculadora pública de Sellado de Techo (desde un producto del catálogo) -->
@@ -3552,9 +3561,11 @@
       // correo. No detiene la creación (a veces sí es la misma persona con otro correo válido, o dos
       // personas distintas con nombre parecido) — solo avisa para que alguien lo revise a mano.
       const dupes=leonV2FindPossibleDuplicateClients(q.clientName, q.clientPhone, q.clientEmail);
-      c={id:'cli-'+Date.now()+'-'+Math.floor(Math.random()*999),name:q.clientName||'',company:q.clientCompany||'',email:q.clientEmail,phone:q.clientPhone||'',municipio:q.clientMunicipio||'',address:q.clientAddress||'',locationUrl:q.clientLocationUrl||'',source:q.source||(q.origin==='Asistido'?'Consultor':'Sitio Web'),consultorName:q.vendorName||null,createdAt:now,lastContact:now,nextAction:'',activity:[]};
+      // Nace como Lead — el momento en que se registra su primera propuesta. Solo pasa a 'Cliente'
+      // cuando una venta suya queda confirmada de verdad (ver leonV2PromoteClientToCustomer).
+      c={id:'cli-'+Date.now()+'-'+Math.floor(Math.random()*999),name:q.clientName||'',company:q.clientCompany||'',email:q.clientEmail,phone:q.clientPhone||'',municipio:q.clientMunicipio||'',address:q.clientAddress||'',locationUrl:q.clientLocationUrl||'',source:q.source||(q.origin==='Asistido'?'Consultor':'Sitio Web'),consultorName:q.vendorName||null,stage:'Lead',createdAt:now,lastContact:now,nextAction:'',activity:[]};
       state.clients.push(c);
-      c.activity.push({type:'cliente_creado',text:'Expediente creado',at:now,by:actor});
+      c.activity.push({type:'cliente_creado',text:'Lead creado — propuesta '+(q.id||'')+' registrada',at:now,by:actor});
       if(dupes.length){
         c.activity.push({type:'posible_duplicado',text:'Posible duplicado: nombre o teléfono parecido a '+dupes.map(d=>d.name+' ('+(d.email||'sin correo')+')').join(', '),at:now,by:'Sistema'});
         showToast('Posible cliente duplicado: "'+dupes[0].name+'" ya existe con nombre o teléfono parecido. Revisa ambos expedientes.','warning');
@@ -3571,6 +3582,9 @@
     if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('clients');
     return c;
   }
+  // Se expone por el mismo motivo que leonV2Audit/leonV2Can más arriba — el bloque <script> clásico
+  // (moveQuoteToHistory original, handleVendorQuoteSubmit, etc.) necesita poder llamarla.
+  window.leonV2UpsertClient=leonV2UpsertClient;
   // Enmascara SSN/ID/pasaporte para mostrar en pantalla — deja visibles solo los últimos 4
   // caracteres. Esto reduce exposición accidental en pantalla compartida, pero NO es cifrado:
   // el valor sigue viviendo sin cifrar en la memoria de esta pestaña.
@@ -3615,7 +3629,8 @@
     systemBackup:['Administrador'],
     deleteProperty:['Administrador'],
     deleteQuote:['Administrador'],
-    deleteProject:['Administrador']
+    deleteProject:['Administrador'],
+    deleteCreditApp:['Administrador']
   };
   function leonV2Can(action){
     const role=state.currentUser&&state.currentUser.role;
@@ -3657,6 +3672,59 @@
   window.leonV2ScopedQuotes=leonV2ScopedQuotes;
   window.leonV2ClientIsMine=leonV2ClientIsMine;
   window.leonV2ScopedClients=leonV2ScopedClients;
+
+  // ================= EMBUDO: LEAD → PROPUESTA → SOLICITUD → CONFIRMACIÓN → CLIENTE =================
+  // "Lead" y "Cliente" no son dos colecciones separadas — siguen viviendo en state.clients (mismo
+  // expediente de siempre), solo que ahora cada expediente carga una etapa (c.stage). Un expediente
+  // nace como 'Lead' en cuanto se registra su primera propuesta (leonV2UpsertClient) y solo pasa a
+  // 'Cliente' cuando la VENTA queda confirmada de verdad — nunca antes. Hay dos caminos para eso:
+  //  (a) un empleado la acepta directo desde el CRM (botón ✓ en Pipeline) → moveQuoteToHistory('Aceptada')
+  //  (b) el cliente firma en el Portal, pero eso SOLO deja la propuesta "Firmada — pendiente
+  //      confirmación"; hace falta que el vendedor asignado (o un admin) confirme la venta desde su
+  //      panel (leonV2VendorConfirmSale) para que recién ahí se dispare moveQuoteToHistory('Aceptada').
+  // Los dos caminos terminan en el mismo lugar: el wrapper de moveQuoteToHistory (más abajo) es el
+  // único punto que promueve un expediente a 'Cliente' — así nunca queda desincronizado entre ambos.
+  function leonV2ClientStage(c){
+    if(!c) return 'Lead';
+    if(c.stage) return c.stage;
+    // Migración perezosa: expedientes creados antes de que existiera esta etapa. Si ya tienen una
+    // propuesta Aceptada en el historial, ya eran clientes de verdad antes de este cambio.
+    const hasAccepted=(state.quotesHistory||[]).some(q=>q.clientEmail&&c.email&&q.clientEmail.toLowerCase()===c.email.toLowerCase()&&q.status==='Aceptada');
+    c.stage=hasAccepted?'Cliente':'Lead';
+    return c.stage;
+  }
+  function leonV2PromoteClientToCustomer(c, reason){
+    if(!c) return;
+    if(c.stage==='Cliente') return;
+    c.stage='Cliente';
+    c.clientSince=c.clientSince||new Date().toISOString();
+    if(!c.activity) c.activity=[];
+    c.activity.push({type:'cliente_confirmado',text:reason||'Confirmado como cliente — venta aceptada',at:new Date().toISOString(),by:(state.currentUser&&state.currentUser.name)||'Sistema'});
+  }
+  window.leonV2ClientStage=leonV2ClientStage;
+  window.leonV2PromoteClientToCustomer=leonV2PromoteClientToCustomer;
+
+  // Motivos fijos de rechazo (el usuario pidió que quedaran registrados así, no en texto libre) —
+  // se usan tanto al rechazar una propuesta (Pipeline/Portal) como al rechazar una solicitud de
+  // crédito. "Otro" habilita un campo de texto para el detalle puntual.
+  const REJECT_REASONS=['Canceló','No le interesa','No tienen dinero','No cualifica','Otro'];
+  window.REJECT_REASONS=REJECT_REASONS;
+
+  // ================= SOLICITUDES DE CRÉDITO (financiamiento) =================
+  // Sistema independiente de la propuesta (por diseño, a pedido explícito): una propuesta puede
+  // tener 0, 1 o varias solicitudes de crédito — una por cada entidad financiera que se intentó.
+  // Recoge exactamente el checklist de información que PCI (y por extensión cualquier otra entidad
+  // de financiamiento) pide para procesar el financiamiento del cliente.
+  const CREDIT_ENTITIES=['PCI','Cooperativa','Synchrony Bank','Otro'];
+  window.CREDIT_ENTITIES=CREDIT_ENTITIES;
+  function leonV2CreditAppIsMine(a){
+    if(leonV2IsAdmin()) return true;
+    const me=state.currentUser&&state.currentUser.email;
+    return !!(me && a && a.vendorEmail && a.vendorEmail.toLowerCase()===me.toLowerCase());
+  }
+  function leonV2ScopedCreditApps(list){ return leonV2IsAdmin()?(list||[]):(list||[]).filter(leonV2CreditAppIsMine); }
+  window.leonV2CreditAppIsMine=leonV2CreditAppIsMine;
+  window.leonV2ScopedCreditApps=leonV2ScopedCreditApps;
 
   // ================= VISTA MENSUAL DE VENTAS/GANANCIAS =================
   // Antes, "Ventas" y "Reportes" siempre sumaban TODO el historial completo — no se podía ver
@@ -3925,7 +3993,7 @@
     return changed;
   }
 
-  const FB_LIST_COLLECTIONS = ['categories','products','users','quotes','quotesHistory','clients','trash','commissions','tickets','projects','followupTasks','properties','roofAssessments','employeeInvites'];
+  const FB_LIST_COLLECTIONS = ['categories','products','users','quotes','quotesHistory','clients','trash','commissions','tickets','projects','followupTasks','properties','roofAssessments','employeeInvites','creditApps'];
   // chatMessages vive como bitácora (un documento nuevo por mensaje, ver leonV2DbAppendLog) — igual
   // que auditLog/securityLog, así reescribir el historial completo no cuesta una escritura enorme
   // cada vez que alguien manda un mensaje.
@@ -4469,7 +4537,7 @@
     } else if(q.status==='Rechazada'){
       decisionHtml=`<div class="v2-card p-6 mt-6 bg-red-50 border border-red-100"><div class="text-red-700 font-black text-sm"><i class="fa-solid fa-circle-xmark mr-2"></i>Propuesta rechazada</div>${q.rejectReason?`<div class="text-xs text-red-700/80 mt-2">Motivo: ${esc(q.rejectReason)}</div>`:''}</div>`;
     } else {
-      decisionHtml=`<div class="v2-card p-6 mt-6"><div class="flex flex-wrap gap-3"><button onclick="leonV2TogglePortalAccept()" class="py-3 px-4 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase"><i class="fa-solid fa-signature mr-2"></i>Aceptar propuesta</button><button onclick="leonV2TogglePortalReject()" class="py-3 px-4 rounded-xl border border-red-200 text-red-600 text-xs font-black uppercase"><i class="fa-solid fa-xmark mr-2"></i>Rechazar</button><button onclick="showToast('Solicitud de cambio enviada al consultor.','success')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-comments mr-2"></i>Solicitar cambio</button></div><div id="v2-portal-accept-box" class="hidden mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-100 space-y-3"><div class="text-xs text-emerald-800"><i class="fa-solid fa-circle-info mr-1"></i>Esto guarda una firma real trazada a mano + nombre + huella del dispositivo — no es un proveedor certificado con validez legal notarial como DocuSign.</div><input id="v2-accept-name" placeholder="Escribe tu nombre completo" class="w-full px-4 py-3 rounded-xl border border-emerald-200 text-sm outline-none">${leonV2SignaturePadHtml('v2-accept-signature')}<label class="flex items-center gap-2 text-xs text-emerald-800"><input type="checkbox" id="v2-accept-check"> Confirmo que acepto los términos de esta propuesta.</label><button onclick="leonV2ConfirmAccept('${q.id}')" class="w-full py-3 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase">Confirmar aceptación</button></div><div id="v2-portal-reject-box" class="hidden mt-4 p-4 rounded-xl bg-red-50 border border-red-100 space-y-3"><input id="v2-reject-reason" placeholder="Motivo (opcional)" class="w-full px-4 py-3 rounded-xl border border-red-200 text-sm outline-none"><button onclick="leonV2ConfirmReject('${q.id}')" class="w-full py-3 rounded-xl bg-red-600 text-white text-xs font-black uppercase">Confirmar rechazo</button></div></div>`;
+      decisionHtml=`<div class="v2-card p-6 mt-6"><div class="flex flex-wrap gap-3"><button onclick="leonV2TogglePortalAccept()" class="py-3 px-4 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase"><i class="fa-solid fa-signature mr-2"></i>Aceptar propuesta</button><button onclick="leonV2TogglePortalReject()" class="py-3 px-4 rounded-xl border border-red-200 text-red-600 text-xs font-black uppercase"><i class="fa-solid fa-xmark mr-2"></i>Rechazar</button><button onclick="showToast('Solicitud de cambio enviada al consultor.','success')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-comments mr-2"></i>Solicitar cambio</button></div><div id="v2-portal-accept-box" class="hidden mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-100 space-y-3"><div class="text-xs text-emerald-800"><i class="fa-solid fa-circle-info mr-1"></i>Esto guarda una firma real trazada a mano + nombre + huella del dispositivo — no es un proveedor certificado con validez legal notarial como DocuSign.</div><input id="v2-accept-name" placeholder="Escribe tu nombre completo" class="w-full px-4 py-3 rounded-xl border border-emerald-200 text-sm outline-none">${leonV2SignaturePadHtml('v2-accept-signature')}<label class="flex items-center gap-2 text-xs text-emerald-800"><input type="checkbox" id="v2-accept-check"> Confirmo que acepto los términos de esta propuesta.</label><button onclick="leonV2ConfirmAccept('${q.id}')" class="w-full py-3 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase">Confirmar aceptación</button></div><div id="v2-portal-reject-box" class="hidden mt-4 p-4 rounded-xl bg-red-50 border border-red-100 space-y-3"><select id="v2-reject-reason-select" onchange="document.getElementById('v2-reject-reason-detail-wrap').classList.toggle('hidden', this.value!=='Otro')" class="w-full px-4 py-3 rounded-xl border border-red-200 text-sm outline-none"><option value="">Elige un motivo...</option>${REJECT_REASONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select><div id="v2-reject-reason-detail-wrap" class="hidden"><input id="v2-reject-reason-detail" placeholder="Detalle del motivo..." class="w-full px-4 py-3 rounded-xl border border-red-200 text-sm outline-none"></div><button onclick="leonV2ConfirmReject('${q.id}')" class="w-full py-3 rounded-xl bg-red-600 text-white text-xs font-black uppercase">Confirmar rechazo</button></div></div>`;
     }
     const html=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">PORTAL DEL CLIENTE · ${esc(q.id)}</div><h3 class="text-2xl md:text-3xl font-black">${esc(q.clientName)}</h3><p class="text-sm text-slate-500">${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</p></div><button onclick="leonV2Close('leon-v2-client-portal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div><div class="grid lg:grid-cols-3 gap-4 mt-7"><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Estado</div><div class="text-xl font-black mt-2">${esc(q.status)}</div><div class="text-xs text-slate-500 mt-2">Origen: <b>${esc(q.origin)}</b></div></div><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Consultor</div><div class="text-xl font-black mt-2">${esc(q.vendorName||'Asignación pendiente')}</div><div class="text-xs text-slate-500 mt-2">Responsable comercial</div></div><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Valor</div><div class="text-2xl font-black text-brand-600 mt-2">${money(t.total)}</div><div class="text-xs text-slate-500 mt-2">${esc(q.paymentType)}</div></div></div><div class="grid lg:grid-cols-[1.2fr_.8fr] gap-6 mt-6"><div class="v2-card p-6"><h4 class="font-black">Productos</h4><div class="mt-4 space-y-3">${q.items.map(i=>`<div class="flex justify-between gap-4 p-3 bg-slate-50 rounded-xl"><div><b>${esc(i.name)}</b><div class="text-xs text-slate-500">Cantidad: ${i.qty}</div></div><b>${money(i.price*i.qty)}</b></div>`).join('')}</div></div><div class="v2-card p-6"><h4 class="font-black">Progreso</h4><div class="v2-timeline mt-5 space-y-5"><div class="relative"><span class="v2-dot"></span><b class="text-sm">Solicitud creada</b><div class="text-xs text-slate-500">${esc(q.createdAt)}</div></div><div class="relative"><span class="v2-dot"></span><b class="text-sm">Revisión comercial</b><div class="text-xs text-slate-500">En proceso</div></div><div class="relative"><span class="v2-dot" style="background:#cbd5e1"></span><b class="text-sm">Aprobación</b><div class="text-xs text-slate-500">Pendiente</div></div></div></div></div>${roofSealBox}${breakdown}${decisionHtml}<div class="flex flex-wrap gap-3 mt-6"><button onclick="leonV2OpenEditor('${q.id}')" class="py-3 px-4 rounded-xl bg-ink-900 text-white text-xs font-black uppercase"><i class="fa-solid fa-pen-ruler mr-2"></i>Editar propuesta</button><button onclick="leonV2PrintProposalById('${q.id}')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-file-pdf mr-2"></i>PDF / Imprimir</button><button onclick="leonV2EmailProposal('${q.id}')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-envelope mr-2"></i>Enviar por correo</button></div>`;
     document.getElementById('v2-client-portal-content').innerHTML=html;
@@ -4486,19 +4554,69 @@
     if(!signatureDataUrl){showToast('Dibuja tu firma en el recuadro antes de aceptar.','warning');return}
     if(!checked){showToast('Confirma la casilla de aceptación.','warning');return}
     q.acceptance={name, acceptedAt:new Date().toISOString(), device:navigator.userAgent, signatureDataUrl};
-    leonV2UpsertClient(q,'Propuesta '+q.id+' aceptada digitalmente por '+name);
-    if(state.quotes.find(x=>x.id===id)){approveQuote(id)}
-    showToast('Propuesta aceptada. Registro digital guardado.','success');
+    // OJO: firmar en el Portal NO convierte al cliente todavía — a propósito. Hace falta que el
+    // vendedor asignado (o un admin) confirme la venta desde su panel (leonV2VendorConfirmSale)
+    // antes de que el expediente pase de Lead a Cliente. Ver bloque EMBUDO más arriba.
+    if(state.quotes.find(x=>x.id===id) && q.status!=='Firmado — pendiente confirmación'){ q.status='Firmado — pendiente confirmación'; }
+    leonV2UpsertClient(q,'Propuesta '+q.id+' firmada digitalmente por '+name+' — pendiente de que el vendedor confirme la venta');
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection(state.quotes.includes(q)?'quotes':'quotesHistory');
+    showToast('Firma registrada. El vendedor debe confirmar la venta desde su panel para que quede cerrada.','success');
     leonV2OpenPortal(id);
+  };
+  // El vendedor asignado (o un admin) confirma UNA venta ya firmada por el cliente en el Portal —
+  // este es el paso que de verdad la mueve a Historial como "Aceptada" y promueve el expediente a
+  // Cliente (ver wrapper de moveQuoteToHistory). Sin este paso, una firma del cliente por sí sola
+  // nunca convierte a nadie en cliente.
+  window.leonV2VendorConfirmSale=id=>{
+    const q=findQuoteAnywhere(id); if(!q){showToast('No se encontró la propuesta.','error');return}
+    if(!q.acceptance){showToast('El cliente todavía no ha firmado esta propuesta en el Portal.','warning');return}
+    if(!leonV2IsAdmin() && !leonV2QuoteIsMine(q)){showToast('Solo el vendedor asignado o un administrador puede confirmar esta venta.','error');return}
+    if(q.status==='Aceptada'){showToast('Esta venta ya está confirmada.','info');return}
+    if(state.quotes.find(x=>x.id===id)){ approveQuote(id); }
+    else { showToast('Esta propuesta ya no está en el pipeline activo.','warning'); return; }
+    showToast('Venta confirmada — el expediente pasó a Cliente.','success');
+    if(document.getElementById('v2-main').innerHTML.includes('Propuestas'))renderProposals();
+    if(document.getElementById('leon-v2-client-portal')?.classList.contains('show'))leonV2OpenPortal(id);
   };
   window.leonV2ConfirmReject=id=>{
     const q=findQuoteAnywhere(id); if(!q)return;
-    const reason=(document.getElementById('v2-reject-reason').value||'').trim();
-    q.rejectReason=reason||null;
-    leonV2UpsertClient(q,'Propuesta '+q.id+' rechazada'+(reason?(' — '+reason):''));
+    const sel=document.getElementById('v2-reject-reason-select');
+    const reason=sel?sel.value:'';
+    const detailEl=document.getElementById('v2-reject-reason-detail');
+    const detail=(detailEl&&detailEl.value||'').trim();
+    if(!reason){showToast('Elige un motivo de rechazo.','warning');return}
+    q.rejectReason=reason==='Otro'&&detail?detail:reason;
+    leonV2UpsertClient(q,'Propuesta '+q.id+' rechazada — '+q.rejectReason);
     if(state.quotes.find(x=>x.id===id)){rejectQuote(id)}
     showToast('Propuesta marcada como rechazada.','error');
     leonV2OpenPortal(id);
+  };
+
+  // Rechazo con motivo estructurado desde Seguimiento de Ventas (Pipeline) — mismo set de motivos
+  // que el rechazo desde el Portal (REJECT_REASONS), para que quede consistente sin importar quién
+  // lo marque como rechazado.
+  window.leonV2OpenRejectReasonModal=id=>{
+    const q=findQuoteAnywhere(id); if(!q){showToast('No se encontró la propuesta.','error');return}
+    document.getElementById('v2-reject-modal-content').innerHTML=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">RECHAZAR PROPUESTA</div><h3 class="text-xl font-black">${esc(q.clientName)} — ${esc(q.id)}</h3></div><button onclick="leonV2Close('leon-v2-reject-quote')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="mt-5 space-y-3">
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Motivo del rechazo</label><select id="v2-pipeline-reject-select" onchange="document.getElementById('v2-pipeline-reject-detail-wrap').classList.toggle('hidden', this.value!=='Otro')" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="">Elige un motivo...</option>${REJECT_REASONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+      <div id="v2-pipeline-reject-detail-wrap" class="hidden"><label class="text-[10px] font-black uppercase text-slate-500">Detalle</label><input id="v2-pipeline-reject-detail" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Detalle del motivo..."></div>
+      <button onclick="leonV2ConfirmRejectFromPipeline('${q.id}')" class="w-full py-3 rounded-xl bg-red-600 text-white text-xs font-black uppercase">Confirmar rechazo</button>
+    </div>`;
+    open('leon-v2-reject-quote');
+  };
+  window.leonV2ConfirmRejectFromPipeline=id=>{
+    const q=findQuoteAnywhere(id); if(!q)return;
+    const sel=document.getElementById('v2-pipeline-reject-select');
+    const reason=sel?sel.value:'';
+    if(!reason){showToast('Elige un motivo de rechazo.','warning');return}
+    const detailEl=document.getElementById('v2-pipeline-reject-detail');
+    const detail=(detailEl&&detailEl.value||'').trim();
+    q.rejectReason=reason==='Otro'&&detail?detail:reason;
+    leonV2UpsertClient(q,'Propuesta '+q.id+' rechazada — '+q.rejectReason);
+    if(state.quotes.find(x=>x.id===id)){rejectQuote(id)}
+    leonV2Close('leon-v2-reject-quote');
+    showToast('Propuesta marcada como rechazada — '+q.rejectReason,'error');
   };
 
   window.leonV2OpenEditor=id=>{
@@ -4557,19 +4675,19 @@
   function buildCRM(){
     const old=document.querySelector('#internal-view > .max-w-7xl'); if(!old)return; old.innerHTML=`<div class="leon-v2-shell"><div class="flex flex-col lg:flex-row justify-between gap-4 mb-6"><div><div class="v2-pill bg-white"><i class="fa-solid fa-shield-halved text-brand-600"></i><span id="v2-role-pill">Administrador</span></div><h2 class="text-3xl md:text-4xl font-black text-slate-900 mt-3" id="v2-greeting">Buenos días 👋</h2><p class="text-sm text-slate-500 mt-1">Tu espacio comercial se adapta automáticamente a tus permisos.</p><div id="v2-db-status" class="mt-2"></div></div><div class="flex items-center gap-3"><div class="relative"><button onclick="leonV2ToggleNotifications()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Notificaciones"><i class="fa-solid fa-bell"></i><span id="v2-notif-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-glass-lg z-50 max-h-96 overflow-y-auto"></div></div><div class="relative"><button onclick="leonV2ToggleChat()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Chat interno"><i class="fa-solid fa-comments"></i><span id="v2-chat-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-chat-panel" class="hidden fixed right-4 bottom-4 top-24 sm:top-auto sm:h-[520px] w-[92vw] sm:w-96 max-w-[92vw] bg-white border border-slate-200 rounded-2xl shadow-glass-lg z-50 flex flex-col overflow-hidden"><div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50"><b class="text-sm"><i class="fa-solid fa-comments text-brand-500 mr-2"></i>Chat del equipo</b><button onclick="leonV2ToggleChat(true)" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div><div id="v2-chat-messages" class="flex-grow overflow-y-auto p-4"></div><div id="v2-chat-gif-preview" class="hidden px-4 pb-1"></div><div class="border-t border-slate-100 p-3"><div class="flex gap-1 mb-2 flex-wrap">${['😀','😂','👍','🎉','🔥','❤️','😢','🙏','👏','💡'].map(em=>`<button type="button" onclick="leonV2InsertChatEmoji('${em}')" class="text-lg hover:scale-125 transition">${em}</button>`).join('')}<label class="ml-1 cursor-pointer text-slate-400 hover:text-brand-600 text-sm px-1" title="Adjuntar GIF/imagen"><i class="fa-solid fa-image"></i><input type="file" id="v2-chat-gif-file" accept="image/*" class="hidden" onchange="handleChatGifFile(event)"></label></div><form onsubmit="leonV2SendChatMessage(event)" class="flex gap-2"><input id="v2-chat-input" placeholder="Escribe un mensaje..." class="flex-grow px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black"><i class="fa-solid fa-paper-plane"></i></button></form></div></div></div><button onclick="leonV2OpenSection('clients')" class="px-4 py-3 rounded-xl border bg-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-2"></i>Buscar cliente</button><button onclick="logoutUser()" class="px-4 py-3 rounded-xl bg-red-50 text-red-600 text-xs font-black"><i class="fa-solid fa-right-from-bracket mr-2"></i>Salir</button></div></div><div class="grid lg:grid-cols-[230px_1fr] gap-6 v2-layout"><aside class="v2-nav h-fit"><div class="px-3 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Workspace</div><div id="v2-nav"></div></aside><section id="v2-main" class="min-w-0"></section></div></div>`;renderNav();renderDashboard();leonV2RefreshNotifications();if(typeof window.leonV2UpdateDbStatusBadge==='function')window.leonV2UpdateDbStatusBadge();
   }
-  const navItems=[['dashboard','fa-chart-pie','Dashboard'],['clients','fa-address-card','Clientes'],['pipeline','fa-filter-circle-dollar','Pipeline'],['ventas','fa-cash-register','Ventas'],['historial','fa-clock-rotate-left','Historial'],['catalog','fa-boxes-stacked','Catálogo'],['roofintel','fa-house-chimney-crack','Roof Intelligence'],['proposals','fa-file-signature','Propuestas'],['payroll','fa-sitemap','Comisiones'],['empleados','fa-users-gear','Empleados'],['tickets','fa-ticket','Tickets'],['projects','fa-helmet-safety','Proyectos'],['reports','fa-chart-line','Reportes'],['branding','fa-pen-ruler','Sitio Web'],['users','fa-user-shield','Usuarios'],['trash','fa-trash-can','Papelera'],['audit','fa-clipboard-list','Auditoría'],['settings','fa-gear','Configuración']];
+  const navItems=[['dashboard','fa-chart-pie','Dashboard'],['clients','fa-address-card','Clientes'],['pipeline','fa-filter-circle-dollar','Seguimiento de Ventas'],['creditapps','fa-file-invoice-dollar','Solicitudes de Crédito'],['ventas','fa-cash-register','Ventas'],['historial','fa-clock-rotate-left','Historial'],['catalog','fa-boxes-stacked','Catálogo'],['roofintel','fa-house-chimney-crack','Roof Intelligence'],['proposals','fa-file-signature','Propuestas'],['payroll','fa-sitemap','Comisiones'],['empleados','fa-users-gear','Empleados'],['tickets','fa-ticket','Tickets'],['projects','fa-helmet-safety','Proyectos'],['reports','fa-chart-line','Reportes'],['branding','fa-pen-ruler','Sitio Web'],['users','fa-user-shield','Usuarios'],['trash','fa-trash-can','Papelera'],['audit','fa-clipboard-list','Auditoría'],['settings','fa-gear','Configuración']];
   // Qué secciones del panel puede ver cada rol — única fuente de verdad (antes vivía inline dentro
   // de applyRolePermissions). También se usa para el bloque de "Permisos del sistema" del contrato
   // de empleado (leonV2ContractPermissionsHtml), así el contrato firmado siempre coincide con el
   // acceso real que el sistema le da a esa persona — nunca una lista aparte que se pueda desviar.
   const ROLE_ACCESS={
     Administrador: navItems.map(x=>x[0]),
-    Vendedor: ['dashboard','clients','pipeline','ventas','historial','catalog','roofintel','proposals','payroll','tickets','projects','reports'],
-    ['Nuevo Consultor']: ['dashboard','clients','ventas','catalog','roofintel','proposals','payroll','tickets'],
+    Vendedor: ['dashboard','clients','pipeline','creditapps','ventas','historial','catalog','roofintel','proposals','payroll','tickets','projects','reports'],
+    ['Nuevo Consultor']: ['dashboard','clients','creditapps','ventas','catalog','roofintel','proposals','payroll','tickets'],
     ['Call Center']: ['dashboard','clients','pipeline','ventas','historial','tickets'],
     ['Técnico']: ['dashboard','roofintel','projects','tickets']
   };
-  window.leonV2OpenSection=sec=>{document.querySelectorAll('#v2-nav button').forEach(b=>b.classList.toggle('active',b.dataset.sec===sec));({dashboard:renderDashboard,clients:renderClients,pipeline:renderPipeline,ventas:renderVentas,historial:renderHistorialSection,catalog:renderCatalog,roofintel:renderRoofIntel,proposals:renderProposals,payroll:renderPayroll,empleados:renderEmpleados,tickets:renderTickets,projects:renderProjects,reports:renderReports,branding:renderBranding,users:renderUsers,trash:renderTrash,audit:renderAudit,settings:renderSettings}[sec]||renderDashboard)()};
+  window.leonV2OpenSection=sec=>{document.querySelectorAll('#v2-nav button').forEach(b=>b.classList.toggle('active',b.dataset.sec===sec));({dashboard:renderDashboard,clients:renderClients,pipeline:renderPipeline,creditapps:renderCreditApps,ventas:renderVentas,historial:renderHistorialSection,catalog:renderCatalog,roofintel:renderRoofIntel,proposals:renderProposals,payroll:renderPayroll,empleados:renderEmpleados,tickets:renderTickets,projects:renderProjects,reports:renderReports,branding:renderBranding,users:renderUsers,trash:renderTrash,audit:renderAudit,settings:renderSettings}[sec]||renderDashboard)()};
   function renderNav(){const role=state.currentUser?.role||'Administrador';document.getElementById('v2-role-pill').textContent=role;document.getElementById('v2-nav').innerHTML=navItems.map(([s,i,t])=>`<button data-sec="${s}" onclick="leonV2OpenSection('${s}')"><i class="fa-solid ${i} w-4"></i>${t}</button>`).join('');document.querySelector('#v2-nav button')?.classList.add('active')}
   function kpi(title,val,sub,icon){return `<div class="v2-card v2-kpi p-5"><div class="text-[10px] font-black uppercase tracking-widest text-slate-500">${title}</div><div class="text-3xl font-black text-slate-900 mt-2">${val}</div><div class="text-xs text-brand-600 font-bold mt-2">${sub}</div><i class="fa-solid ${icon} absolute right-5 top-5 text-xl text-brand-300"></i></div>`}
 
@@ -4932,7 +5050,7 @@
     }).join(''):'<div class="text-xs text-slate-400">Sin tareas todavía.</div>';
     const images=(p.images||[]);
     const gallery=images.length?images.map((url,i)=>`<div class="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 group"><img src="${esc(url)}" class="w-full h-full object-cover"><button type="button" onclick="leonV2RemoveProjectImage('${p.id}',${i})" title="Quitar foto" class="absolute inset-0 bg-ink-950/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-trash text-xs"></i></button></div>`).join(''):'<div class="text-[11px] text-slate-400">Sin fotos todavía.</div>';
-    return `<div class="flex items-start justify-between mb-5"><div><h3 class="text-lg font-black text-slate-900">${esc(p.id)}</h3><p class="text-xs text-slate-500 mt-1">${esc(p.clientName||'Sin cliente')}${p.quoteId?' · Propuesta '+esc(p.quoteId):' · Proyecto manual'}</p></div><button onclick="leonV2Close('leon-v2-project-detail')" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+    return `<div class="flex items-start justify-between mb-5"><div><h3 class="text-lg font-black text-slate-900">${esc(p.id)}</h3><p class="text-xs text-slate-500 mt-1">${esc(p.clientName||'Sin cliente')}${p.quoteId?' · Propuesta '+esc(p.quoteId):' · Proyecto manual'}</p><p class="text-[11px] text-slate-400 mt-1">Fecha de proyecto: ${esc((p.createdAt||'').slice(0,10))} · Fecha de instalación: ${p.installDate?esc(p.installDate):'sin definir'}</p></div><button onclick="leonV2Close('leon-v2-project-detail')" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-lg"></i></button></div>
     <div class="flex flex-wrap gap-2 mb-5">
       ${canManage?`<button onclick="leonV2Close('leon-v2-project-detail');leonV2OpenProjectModal('${p.id}')" class="v2-tab"><i class="fa-solid fa-pen mr-1"></i>Editar</button>`:''}
       ${leonV2Can('deleteProject')?`<button onclick="leonV2DeleteProject('${p.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-trash mr-1"></i>Eliminar</button>`:''}
@@ -4995,6 +5113,7 @@
         <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Etapa</label><select id="proj-stage" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none">${(state.projectStages||[]).map(s=>`<option value="${s}" ${p&&p.stage===s?'selected':''}>${s}</option>`).join('')}</select></div>
         <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Técnico principal</label><select id="proj-tech" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="">Sin asignar</option>${techOptions}</select></div>
       </div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Fecha de instalación</label><input id="proj-install-date" type="date" value="${esc(p&&p.installDate?p.installDate:'')}" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
       <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Notas</label><textarea id="proj-notes" rows="3" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none">${esc(p?p.notes||'':'')}</textarea></div>
       <div class="flex gap-3 pt-2"><button type="button" onclick="leonV2Close('leon-v2-project-modal')" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-500">Cancelar</button><button type="submit" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase">Guardar</button></div>
     </form>`;
@@ -5009,19 +5128,20 @@
     const techId=document.getElementById('proj-tech').value;
     const tech=techId?state.users.find(u=>u.id===techId):null;
     const notes=document.getElementById('proj-notes').value||'';
+    const installDate=document.getElementById('proj-install-date')?document.getElementById('proj-install-date').value||null:null;
     if(!client && !name){ showToast('Vincula un cliente o escribe un nombre para el proyecto.','warning'); return; }
     if(!state.projects) state.projects=[];
     if(id){
       const p=state.projects.find(x=>x.id===id); if(!p){showToast('No se encontró el proyecto.','error');return}
       p.clientId=client?client.id:null; p.clientName=client?client.name:(name||p.clientName);
-      p.stage=stage; p.technicianId=techId||null; p.technicianName=tech?tech.name:null; p.notes=notes;
+      p.stage=stage; p.technicianId=techId||null; p.technicianName=tech?tech.name:null; p.notes=notes; p.installDate=installDate;
       leonV2Audit('Proyecto editado', p.id);
       showToast('Proyecto actualizado.','success');
     } else {
       const now=new Date().toISOString();
       const p={
         id:'PRY-'+Math.floor(1000+Math.random()*8999), quoteId:null, clientId:client?client.id:null, clientName:client?client.name:name,
-        stage:stage||'Proyecto', technicianId:techId||null, technicianName:tech?tech.name:null,
+        stage:stage||'Proyecto', technicianId:techId||null, technicianName:tech?tech.name:null, installDate,
         images:[], notes, tasks:[], createdAt:now, createdBy:(state.currentUser&&state.currentUser.name)||'Sistema'
       };
       state.projects.unshift(p);
@@ -5042,6 +5162,150 @@
     leonV2Close('leon-v2-project-detail');
     if(document.getElementById('v2-projects-list'))renderProjectsList();
     showToast('Proyecto movido a la papelera.','success');
+  };
+
+  // ===================== SOLICITUDES DE CRÉDITO (financiamiento) =====================
+  // Sistema aparte de la propuesta, a pedido explícito: "cotización es independiente, propuesta es
+  // independiente — lo único que las une es que luego de la propuesta se hace la cotización [ahora
+  // Solicitud de Crédito]". Un cliente puede tener varias — una por cada entidad financiera que se
+  // intentó (PCI, Cooperativa, Synchrony Bank...). Recoge exactamente el checklist que pide PCI.
+  function renderCreditApps(){
+    const list=leonV2ScopedCreditApps(state.creditApps||[]).slice().sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-4 mb-5"><div><h3 class="text-xl font-black text-slate-900">Solicitudes de Crédito</h3><p class="text-xs text-slate-500 mt-1">Información de financiamiento por cliente — puede haber varias, una por cada entidad financiera intentada.</p></div><button onclick="leonV2OpenCreditAppModal()" class="px-4 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-2"></i>Nueva solicitud</button></div>
+    <div class="overflow-x-auto">${list.length?`<table class="w-full v2-table"><thead><tr><th>Cliente</th><th>Entidad</th><th>Monto deseado</th><th>Estado</th><th>Fecha</th><th class="text-right">Acción</th></tr></thead><tbody>${list.map(a=>`<tr class="hover:bg-brand-50/40 transition cursor-pointer" onclick="leonV2OpenCreditAppModal('${a.id}')"><td class="py-3 px-3"><b>${esc(a.clientName||'—')}</b></td><td class="py-3 px-3">${esc(a.entity||'—')}</td><td class="py-3 px-3 font-mono">${money(Number((a.financiamiento&&a.financiamiento.monto)||0))}</td><td class="py-3 px-3"><span class="v2-status ${a.status==='Aprobada'?'bg-emerald-50 text-emerald-700':a.status==='Rechazada'?'bg-red-50 text-red-700':'bg-blue-50 text-blue-700'}">${esc(a.status)}</span></td><td class="py-3 px-3 text-xs text-slate-500">${esc((a.createdAt||'').slice(0,10))}</td><td class="py-3 px-3 text-right" onclick="event.stopPropagation()">${leonV2Can('deleteCreditApp')?`<button onclick="leonV2DeleteCreditApp('${a.id}')" class="text-slate-400 hover:text-red-500" title="Eliminar"><i class="fa-solid fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay solicitudes de crédito todavía. Se crean desde aquí, desde una propuesta, o desde el expediente del cliente.</div>'}</div></div>`;
+  }
+  window.renderCreditApps=renderCreditApps;
+  function leonV2CreditAppModalHtml(id, quoteId, clientId){
+    const a=id?(state.creditApps||[]).find(x=>x.id===id):null;
+    let client=null;
+    if(a) client=(state.clients||[]).find(c=>c.id===a.clientId);
+    else if(clientId) client=(state.clients||[]).find(c=>c.id===clientId);
+    else if(quoteId){ const q=findQuoteAnywhere(quoteId); if(q&&q.clientEmail) client=(state.clients||[]).find(c=>c.email&&c.email.toLowerCase()===q.clientEmail.toLowerCase()); }
+    const clientOptions=leonV2ScopedClients(state.clients||[]).map(c=>`<option value="${c.id}" ${(client&&client.id===c.id)||(a&&a.clientId===c.id)?'selected':''}>${esc(c.name)} — ${esc(c.email||'')}</option>`).join('');
+    const p=a?a.personal||{}:{}, v=a?a.vivienda||{}:{}, l=a?a.laboral||{}:{}, f=a?a.financiamiento||{}:{};
+    const linkedQuoteId=a?a.quoteId:quoteId;
+    return `<div class="flex justify-between items-start gap-4 mb-5"><div><div class="v2-pill mb-2">SOLICITUD DE CRÉDITO</div><h3 class="text-xl font-black">${a?'Editar solicitud':'Nueva solicitud de crédito'}</h3><p class="text-xs text-slate-500 mt-1">Requisitos de información para financiamiento — toda la información debe ser correcta, completa y verificable.</p></div><button onclick="leonV2Close('leon-v2-creditapp-modal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+    <form onsubmit="leonV2SaveCreditApp(event${a?`,'${a.id}'`:''})" class="space-y-5">
+      <input type="hidden" id="ca-quote-id" value="${esc(linkedQuoteId||'')}">
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Cliente</label><select id="ca-client" ${a?'disabled':''} class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none disabled:bg-slate-100"><option value="">Elige un cliente...</option>${clientOptions}</select></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Entidad financiera</label><select id="ca-entity" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none">${CREDIT_ENTITIES.map(e=>`<option value="${e}" ${a&&a.entity===e?'selected':''}>${e}</option>`).join('')}</select></div>
+      </div>
+      <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">1. Información personal</h4><div class="grid sm:grid-cols-2 gap-3">
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Licencia de conducir vigente</label><input id="ca-licencia" value="${esc(p.licencia||'')}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Número de teléfono</label><input id="ca-telefono" value="${esc(p.telefono||(client?client.phone:'')||'')}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Correo electrónico</label><input id="ca-correo" type="email" value="${esc(p.correo||(client?client.email:'')||'')}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Número de Seguro Social</label><input id="ca-ssn" placeholder="${a&&p.ssnMasked?p.ssnMasked+' (deja vacío para no cambiar)':'###-##-####'}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"><p class="text-[9px] text-slate-400 mt-1">Se enmascara al guardar — solo quedan visibles los últimos 4 dígitos.</p></div>
+      </div></div>
+      <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">2. Información de vivienda</h4><div class="grid sm:grid-cols-3 gap-3">
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">¿Propietario o renta?</label><select id="ca-vivienda-tipo" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="Propietario" ${v.tipo==='Propietario'?'selected':''}>Propietario</option><option value="Renta" ${v.tipo==='Renta'?'selected':''}>Renta</option></select></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Pago mensual (casa/hipoteca)</label><input id="ca-vivienda-pago" type="number" min="0" step="0.01" value="${v.pagoMensual!=null?v.pagoMensual:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Años viviendo en la propiedad</label><input id="ca-vivienda-anos" type="number" min="0" step="1" value="${v.anos!=null?v.anos:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+      </div></div>
+      <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">3. Información laboral</h4><div class="grid sm:grid-cols-3 gap-3">
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Nombre del empleador</label><input id="ca-laboral-empleador" value="${esc(l.empleador||'')}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Ingreso aproximado</label><input id="ca-laboral-ingreso" type="number" min="0" step="0.01" value="${l.ingreso!=null?l.ingreso:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Tiempo en ese empleo</label><input id="ca-laboral-tiempo" value="${esc(l.tiempoEmpleo||'')}" placeholder="Ej. 2 años" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+      </div></div>
+      <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">4. Información del financiamiento</h4><div class="grid sm:grid-cols-2 gap-3">
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">¿Cuánto desea financiar el cliente?</label><input id="ca-fin-monto" type="number" min="0" step="0.01" value="${f.monto!=null?f.monto:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Ganancias extras (opcional)</label><input id="ca-fin-extra" type="number" min="0" step="0.01" value="${f.gananciasExtras!=null?f.gananciasExtras:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+      </div></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Notas</label><textarea id="ca-notes" rows="2" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none">${esc(a?a.notes||'':'')}</textarea></div>
+      ${a?`<div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Estado de la solicitud</label><select id="ca-status" onchange="leonV2SetCreditAppStatusFromSelect('${a.id}', this.value)" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="Pendiente" ${a.status==='Pendiente'?'selected':''}>Pendiente</option><option value="Aprobada" ${a.status==='Aprobada'?'selected':''}>Aprobada</option><option value="Rechazada" ${a.status==='Rechazada'?'selected':''}>Rechazada</option></select></div>`:''}
+      <div class="flex gap-3 pt-2"><button type="button" onclick="leonV2Close('leon-v2-creditapp-modal')" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-500">Cancelar</button><button type="submit" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase">Guardar</button></div>
+    </form>`;
+  }
+  window.leonV2OpenCreditAppModal=(id,quoteId,clientId)=>{ document.getElementById('v2-creditapp-modal-content').innerHTML=leonV2CreditAppModalHtml(id,quoteId,clientId); open('leon-v2-creditapp-modal'); };
+  window.leonV2SaveCreditApp=function(e,id){
+    e.preventDefault();
+    const clientSel=document.getElementById('ca-client');
+    const clientId=id?((state.creditApps||[]).find(x=>x.id===id)||{}).clientId:(clientSel?clientSel.value:'');
+    const client=(state.clients||[]).find(c=>c.id===clientId);
+    if(!client){ showToast('Elige un cliente para vincular esta solicitud.','warning'); return; }
+    const ssnRaw=(document.getElementById('ca-ssn').value||'').trim();
+    const val=elId=>{const el=document.getElementById(elId); return el?el.value:''};
+    const num=elId=>{const v=val(elId); return v===''?null:Number(v)};
+    const payload={
+      clientId:client.id, clientName:client.name, clientEmail:client.email||null,
+      quoteId:document.getElementById('ca-quote-id').value||null,
+      entity:val('ca-entity'),
+      personal:{ licencia:val('ca-licencia'), telefono:val('ca-telefono'), correo:val('ca-correo'), ssnMasked: ssnRaw?maskId(ssnRaw):(id?((state.creditApps||[]).find(x=>x.id===id)||{}).personal?.ssnMasked||null:null) },
+      vivienda:{ tipo:val('ca-vivienda-tipo'), pagoMensual:num('ca-vivienda-pago'), anos:num('ca-vivienda-anos') },
+      laboral:{ empleador:val('ca-laboral-empleador'), ingreso:num('ca-laboral-ingreso'), tiempoEmpleo:val('ca-laboral-tiempo') },
+      financiamiento:{ monto:num('ca-fin-monto'), gananciasExtras:num('ca-fin-extra') },
+      notes:val('ca-notes')
+    };
+    if(id){
+      const a=(state.creditApps||[]).find(x=>x.id===id); if(!a){showToast('No se encontró la solicitud.','error');return}
+      Object.assign(a,payload);
+      leonV2Audit('Solicitud de crédito editada', a.id+' — '+a.clientName);
+      showToast('Solicitud de crédito actualizada.','success');
+    } else {
+      if(!state.creditApps) state.creditApps=[];
+      const a=Object.assign({
+        id:'SC-'+Date.now().toString().slice(-8),
+        status:'Pendiente',
+        vendorName:(state.currentUser&&state.currentUser.name)||client.consultorName||null,
+        vendorEmail:(state.currentUser&&state.currentUser.email)||null,
+        createdAt:new Date().toISOString().slice(0,10),
+        createdBy:(state.currentUser&&state.currentUser.name)||'Sistema'
+      }, payload);
+      state.creditApps.unshift(a);
+      if(!client.activity)client.activity=[];
+      client.activity.push({type:'solicitud_credito',text:'Solicitud de crédito creada — '+(a.entity||'')+' ('+a.id+')',at:new Date().toISOString(),by:a.createdBy});
+      leonV2Audit('Solicitud de crédito creada', a.id+' — '+a.clientName);
+      showToast('Solicitud de crédito creada.','success');
+      if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('clients');
+    }
+    leonV2Close('leon-v2-creditapp-modal');
+    if(document.getElementById('v2-main').innerHTML.includes('Solicitudes de Crédito'))renderCreditApps();
+    if(document.getElementById('leon-v2-client-dossier')?.classList.contains('show'))leonV2OpenClientDossier(client.id);
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('creditApps');
+  };
+  window.leonV2SetCreditAppStatusFromSelect=(id,status)=>{
+    const a=(state.creditApps||[]).find(x=>x.id===id); if(!a)return;
+    if(status==='Rechazada'){ leonV2OpenCreditAppRejectModal(id); return; }
+    a.status=status;
+    leonV2Audit('Estado de solicitud de crédito cambiado', a.id+' → '+status);
+    showToast('Estado actualizado a "'+status+'".','success');
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('creditApps');
+  };
+  // Igual que el rechazo de propuestas: motivo estructurado, no texto libre suelto.
+  window.leonV2OpenCreditAppRejectModal=id=>{
+    const a=(state.creditApps||[]).find(x=>x.id===id); if(!a)return;
+    document.getElementById('v2-reject-modal-content').innerHTML=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">RECHAZAR SOLICITUD</div><h3 class="text-xl font-black">${esc(a.clientName)} — ${esc(a.entity||'')}</h3></div><button onclick="leonV2Close('leon-v2-reject-quote');leonV2OpenCreditAppModal('${a.id}')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="mt-5 space-y-3">
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Motivo del rechazo</label><select id="v2-ca-reject-select" onchange="document.getElementById('v2-ca-reject-detail-wrap').classList.toggle('hidden', this.value!=='Otro')" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="">Elige un motivo...</option>${REJECT_REASONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+      <div id="v2-ca-reject-detail-wrap" class="hidden"><label class="text-[10px] font-black uppercase text-slate-500">Detalle</label><input id="v2-ca-reject-detail" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Detalle del motivo..."></div>
+      <button onclick="leonV2ConfirmRejectCreditApp('${a.id}')" class="w-full py-3 rounded-xl bg-red-600 text-white text-xs font-black uppercase">Confirmar rechazo</button>
+    </div>`;
+    open('leon-v2-reject-quote');
+  };
+  window.leonV2ConfirmRejectCreditApp=id=>{
+    const a=(state.creditApps||[]).find(x=>x.id===id); if(!a)return;
+    const sel=document.getElementById('v2-ca-reject-select');
+    const reason=sel?sel.value:'';
+    if(!reason){showToast('Elige un motivo de rechazo.','warning');return}
+    const detailEl=document.getElementById('v2-ca-reject-detail');
+    const detail=(detailEl&&detailEl.value||'').trim();
+    a.status='Rechazada';
+    a.rejectReason=reason==='Otro'&&detail?detail:reason;
+    leonV2Audit('Solicitud de crédito rechazada', a.id+' — '+a.rejectReason);
+    leonV2Close('leon-v2-reject-quote');
+    showToast('Solicitud marcada como rechazada — '+a.rejectReason,'error');
+    if(document.getElementById('v2-main').innerHTML.includes('Solicitudes de Crédito'))renderCreditApps();
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('creditApps');
+  };
+  window.leonV2DeleteCreditApp=id=>{
+    if(!leonV2Can('deleteCreditApp')){ showToast('Solo un administrador puede eliminar solicitudes de crédito.','error'); return; }
+    const idx=(state.creditApps||[]).findIndex(x=>x.id===id); if(idx===-1)return;
+    const a=state.creditApps[idx];
+    state.creditApps.splice(idx,1);
+    if(typeof window.leonV2DbDelete==='function')window.leonV2DbDelete('creditApps', id);
+    leonV2SoftDelete('creditapp', a, (a.clientName||'')+' — '+(a.entity||''));
+    showToast('Solicitud de crédito movida a la papelera.','success');
+    if(document.getElementById('v2-main').innerHTML.includes('Solicitudes de Crédito'))renderCreditApps();
   };
   // ---------- Galería de fotos del proyecto ----------
   window.handleProjectImgFiles=function(event, id){
@@ -5161,7 +5425,9 @@
       const qCount=leonV2ScopedQuotes((state.quotes||[]).concat(state.quotesHistory||[])).filter(q=>q.clientEmail&&c.email&&q.clientEmail.toLowerCase()===c.email.toLowerCase()).length;
       const ls=leonV2LeadScore(c);
       const cats=leonV2ClientCategories(c);
-      return `<div class="v2-card p-5 cursor-pointer hover:border-brand-300 transition" onclick="leonV2OpenClientDossier('${c.id}')"><div class="flex justify-between items-start"><div><b class="text-sm">${esc(c.name)}</b><div class="text-xs text-slate-500">${esc(c.company||'Cliente residencial')}</div></div><div class="flex flex-col items-end gap-1"><div class="flex items-center gap-2"><span class="v2-pill">${esc(c.source||'—')}</span><button onclick="event.stopPropagation();leonV2OpenEditClient('${c.id}')" title="Editar informacion del cliente" class="text-slate-400 hover:text-brand-600 text-xs px-1"><i class="fa-solid fa-user-pen"></i></button></div>${leonV2ScoreBadge(ls.tier)}</div></div><div class="text-xs text-slate-500 mt-3 space-y-1"><div><i class="fa-solid fa-envelope w-4 text-slate-400"></i> ${esc(c.email||'')}</div><div><i class="fa-solid fa-phone w-4 text-slate-400"></i> ${esc(c.phone||'—')}</div><div><i class="fa-solid fa-location-dot w-4 text-slate-400"></i> ${esc(c.municipio||'—')}</div></div>${cats.length?`<div class="flex flex-wrap gap-1 mt-3">${cats.map(cat=>`<span class="text-[9px] font-black uppercase bg-brand-50 text-brand-700 border border-brand-100 px-2 py-0.5 rounded-full">${esc(categoryLabel(cat))}</span>`).join('')}</div>`:''}<div class="flex justify-between items-center mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400"><span>${qCount} propuesta(s)</span><span>${esc(c.consultorName||'Sin consultor')}</span></div></div>`;
+      const stage=leonV2ClientStage(c);
+      const stageBadge=`<span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${stage==='Cliente'?'bg-emerald-50 text-emerald-700 border border-emerald-200':'bg-amber-50 text-amber-700 border border-amber-200'}">${stage}</span>`;
+      return `<div class="v2-card p-5 cursor-pointer hover:border-brand-300 transition" onclick="leonV2OpenClientDossier('${c.id}')"><div class="flex justify-between items-start"><div><div class="flex items-center gap-2 mb-1">${stageBadge}</div><b class="text-sm">${esc(c.name)}</b><div class="text-xs text-slate-500">${esc(c.company||'Cliente residencial')}</div></div><div class="flex flex-col items-end gap-1"><div class="flex items-center gap-2"><span class="v2-pill">${esc(c.source||'—')}</span><button onclick="event.stopPropagation();leonV2OpenEditClient('${c.id}')" title="Editar informacion del cliente" class="text-slate-400 hover:text-brand-600 text-xs px-1"><i class="fa-solid fa-user-pen"></i></button></div>${leonV2ScoreBadge(ls.tier)}</div></div><div class="text-xs text-slate-500 mt-3 space-y-1"><div><i class="fa-solid fa-envelope w-4 text-slate-400"></i> ${esc(c.email||'')}</div><div><i class="fa-solid fa-phone w-4 text-slate-400"></i> ${esc(c.phone||'—')}</div><div><i class="fa-solid fa-location-dot w-4 text-slate-400"></i> ${esc(c.municipio||'—')}</div></div>${cats.length?`<div class="flex flex-wrap gap-1 mt-3">${cats.map(cat=>`<span class="text-[9px] font-black uppercase bg-brand-50 text-brand-700 border border-brand-100 px-2 py-0.5 rounded-full">${esc(categoryLabel(cat))}</span>`).join('')}</div>`:''}<div class="flex justify-between items-center mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400"><span>${qCount} propuesta(s)</span><span>${esc(c.consultorName||'Sin consultor')}</span></div></div>`;
     }).join(''):'<div class="v2-empty col-span-full">No hay clientes que coincidan. El expediente se crea automáticamente al generar una propuesta.</div>';
   }
   window.renderClientsList=renderClientsList;
@@ -5171,8 +5437,11 @@
     // vendedor no puede abrir el expediente de un cliente ajeno aunque conozca su id.
     if(!leonV2ClientIsMine(c)){ showToast('Este cliente no está asignado a ti.','error'); return; }
     const quotes=leonV2ScopedQuotes((state.quotes||[]).concat(state.quotesHistory||[])).filter(q=>q.clientEmail&&c.email&&q.clientEmail.toLowerCase()===c.email.toLowerCase());
+    const creditApps=leonV2ScopedCreditApps(state.creditApps||[]).filter(a=>a.clientId===c.id);
+    const projects=(state.projects||[]).filter(p=>p.clientId===c.id);
     const activity=(c.activity||[]).slice().reverse();
-    const html=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">EXPEDIENTE 360°</div><h3 class="text-2xl md:text-3xl font-black">${esc(c.name)}</h3><p class="text-sm text-slate-500">${esc(c.company||'Cliente residencial')}</p><div class="mt-2">${leonV2ScoreBadge(leonV2LeadScore(c).tier)} <span class="text-[10px] text-slate-400 ml-1">${leonV2LeadScore(c).score} pts</span></div></div><button onclick="leonV2Close('leon-v2-client-dossier')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+    const dossierStage=leonV2ClientStage(c);
+    const html=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">EXPEDIENTE 360°</div><h3 class="text-2xl md:text-3xl font-black">${esc(c.name)}</h3><p class="text-sm text-slate-500">${esc(c.company||'Cliente residencial')}</p><div class="mt-2 flex items-center gap-2 flex-wrap">${leonV2ScoreBadge(leonV2LeadScore(c).tier)} <span class="text-[10px] text-slate-400">${leonV2LeadScore(c).score} pts</span><span class="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${dossierStage==='Cliente'?'bg-emerald-50 text-emerald-700 border border-emerald-200':'bg-amber-50 text-amber-700 border border-amber-200'}">${dossierStage==='Cliente'?'Cliente confirmado':'Lead'}</span></div></div><button onclick="leonV2Close('leon-v2-client-dossier')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
       <div class="v2-card p-4"><div class="text-[10px] uppercase font-black text-slate-500">Correo</div><div class="text-sm font-bold mt-1 break-all">${esc(c.email||'—')}</div></div>
       <div class="v2-card p-4"><div class="text-[10px] uppercase font-black text-slate-500">Teléfono</div><div class="text-sm font-bold mt-1">${esc(c.phone||'—')}</div></div>
@@ -5194,7 +5463,11 @@
     </div>
     <div class="v2-card p-5 mt-4"><h4 class="font-black text-sm mb-3"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Tareas de seguimiento</h4><div id="v2-client-tasks-box"></div></div>
     <div class="grid lg:grid-cols-[1fr_1fr] gap-6 mt-6">
-      <div class="v2-card p-6"><h4 class="font-black">Propuestas vinculadas (${quotes.length})</h4><div class="mt-4 space-y-2 max-h-72 overflow-y-auto">${quotes.length?quotes.map(q=>`<div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl"><div><b class="text-sm">${esc(q.id)}</b><div class="text-[11px] text-slate-500">${esc(q.createdAt||'')}</div></div><div class="text-right"><div class="text-sm font-bold">${money(leonV2ComputeTotal(q).total)}</div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div></div>`).join(''):'<div class="text-sm text-slate-400">Sin propuestas todavía.</div>'}</div></div>
+      <div class="v2-card p-6"><div class="flex justify-between items-center"><h4 class="font-black">Propuestas vinculadas (${quotes.length})</h4><button onclick="leonV2Close('leon-v2-client-dossier');leonV2OpenSection('pipeline');openNewQuoteModal()" class="text-[11px] font-bold text-brand-600 hover:text-brand-800 uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Nueva propuesta</button></div><div class="mt-4 space-y-2 max-h-96 overflow-y-auto">${quotes.length?quotes.map(q=>`<div class="p-3 bg-slate-50 rounded-xl"><div class="flex justify-between items-center"><div><b class="text-sm">${esc(q.id)}</b><div class="text-[11px] text-slate-500">${esc(q.createdAt||'')}</div></div><div class="text-right"><div class="text-sm font-bold">${money(leonV2ComputeTotal(q).total)}</div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div></div><div class="flex gap-1 flex-wrap mt-2">${q.acceptance&&q.status!=='Aceptada'?`<button onclick="leonV2VendorConfirmSale('${q.id}')" class="v2-tab active" style="background:#059669;border-color:#059669">Confirmar venta</button>`:''}<button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab" title="Descargar/imprimir PDF"><i class="fa-solid fa-file-pdf"></i></button><button onclick="leonV2EmailProposal('${q.id}')" class="v2-tab" title="Enviar por correo"><i class="fa-solid fa-envelope"></i></button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button><button onclick="leonV2OpenCreditAppModal(null,'${q.id}')" class="v2-tab" title="Nueva solicitud de crédito"><i class="fa-solid fa-file-invoice-dollar"></i></button></div></div>`).join(''):'<div class="text-sm text-slate-400">Sin propuestas todavía.</div>'}</div></div>
+      <div class="v2-card p-6"><div class="flex justify-between items-center"><h4 class="font-black">Solicitudes de crédito (${creditApps.length})</h4><button onclick="leonV2OpenCreditAppModal(null,null,'${c.id}')" class="text-[11px] font-bold text-brand-600 hover:text-brand-800 uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Nueva</button></div><div class="mt-4 space-y-2 max-h-96 overflow-y-auto">${creditApps.length?creditApps.map(a=>`<div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100" onclick="leonV2OpenCreditAppModal('${a.id}')"><div><b class="text-sm">${esc(a.entity||'—')}</b><div class="text-[11px] text-slate-500">${esc(a.createdAt||'')} · ${money(Number((a.financiamiento&&a.financiamiento.monto)||0))}</div></div><span class="v2-status ${a.status==='Aprobada'?'bg-emerald-50 text-emerald-700':a.status==='Rechazada'?'bg-red-50 text-red-700':'bg-blue-50 text-blue-700'}">${esc(a.status)}</span></div>`).join(''):'<div class="text-sm text-slate-400">Sin solicitudes de crédito todavía. Puede haber varias — una por cada entidad financiera intentada.</div>'}</div></div>
+    </div>
+    <div class="v2-card p-6 mt-6"><h4 class="font-black"><i class="fa-solid fa-helmet-safety text-brand-500 mr-2"></i>Proyecto(s) e instalación</h4><div class="mt-4 space-y-2">${projects.length?projects.map(p=>{const tks=(p.tasks||[]).filter(t=>!t.done&&t.dueDate).sort((x,y)=>new Date(x.dueDate)-new Date(y.dueDate));const nextVisit=tks[0];return `<div class="p-3 bg-slate-50 rounded-xl flex justify-between items-center flex-wrap gap-2"><div><b class="text-sm">${esc(p.id)}</b><span class="v2-status bg-blue-50 text-blue-700 ml-2">${esc(p.stage||'Proyecto')}</span><div class="text-[11px] text-slate-500 mt-1">Fecha de proyecto: ${esc((p.createdAt||'').slice(0,10))}${p.installDate?' · Fecha de instalación: '+esc(p.installDate):' · Fecha de instalación: sin definir'}${nextVisit?' · Próxima visita: '+esc(nextVisit.dueDate)+' ('+esc(nextVisit.title)+')':''}</div></div><button onclick="leonV2Close('leon-v2-client-dossier');leonV2OpenSection('projects');leonV2OpenProjectDetail('${p.id}')" class="v2-tab active">Ver proyecto</button></div>`}).join(''):'<div class="text-sm text-slate-400">Sin proyecto de instalación todavía — se crea automáticamente al aceptar una venta.</div>'}</div></div>
+    <div class="grid lg:grid-cols-[1fr_1fr] gap-6 mt-6">
       <div class="v2-card p-6"><h4 class="font-black">Actividad</h4><div class="v2-timeline mt-5 space-y-4 max-h-56 overflow-y-auto">${activity.length?activity.map(a=>`<div class="relative"><span class="v2-dot"></span><b class="text-sm">${esc(a.text)}</b><div class="text-xs text-slate-500">${esc(new Date(a.at).toLocaleString())} · ${esc(a.by||'')}</div></div>`).join(''):'<div class="text-sm text-slate-400">Sin actividad registrada.</div>'}</div>
       <form onsubmit="leonV2AddClientNote(event,'${c.id}')" class="mt-5 flex gap-2 flex-wrap"><select id="v2-client-note-type" class="px-2 py-2.5 rounded-xl border border-slate-200 text-xs outline-none"><option value="nota">Nota</option><option value="llamada">Llamada</option><option value="email">Email</option><option value="whatsapp">WhatsApp</option><option value="reunion">Reunión</option></select><input id="v2-client-note-input" placeholder="Detalle del contacto..." class="flex-grow px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none min-w-[140px]"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Agregar</button></form></div>
     </div>`;
@@ -5365,7 +5638,7 @@
     const t=state.trash[idx];
     // Quita la tumba local ANTES de restaurar: si no, el próximo dato que llegue de Firestore para
     // esta colección lo volvería a filtrar como si siguiera borrado (ver TUMBAS LOCALES arriba).
-    const tombKey=t.type==='client'?'clients':t.type==='product'?'products':t.type==='category'?'categories':t.type==='property'?'properties':t.type==='quote'?(t.data.resolvedAt?'quotesHistory':'quotes'):t.type==='project'?'projects':null;
+    const tombKey=t.type==='client'?'clients':t.type==='product'?'products':t.type==='category'?'categories':t.type==='property'?'properties':t.type==='quote'?(t.data.resolvedAt?'quotesHistory':'quotes'):t.type==='project'?'projects':t.type==='creditapp'?'creditApps':null;
     if(tombKey && t.data && t.data.id!=null) leonV2UnmarkDeleted(tombKey, t.data.id);
     if(t.type==='client')state.clients.push(t.data);
     else if(t.type==='product')state.products.push(t.data);
@@ -5376,6 +5649,7 @@
     // estaba activa en el pipeline (state.quotes) — mismo criterio que usa moveQuoteToHistory.
     else if(t.type==='quote'){ if(t.data.resolvedAt){ if(!state.quotesHistory)state.quotesHistory=[]; state.quotesHistory.unshift(t.data); } else { if(!state.quotes)state.quotes=[]; state.quotes.unshift(t.data); } }
     else if(t.type==='project'){ if(!state.projects)state.projects=[]; state.projects.unshift(t.data); }
+    else if(t.type==='creditapp'){ if(!state.creditApps)state.creditApps=[]; state.creditApps.unshift(t.data); }
     state.trash.splice(idx,1);
     leonV2Audit('Restaurado de papelera', t.type+': '+t.label);
     showToast(t.label+' restaurado.','success');
@@ -5389,6 +5663,7 @@
       else if(t.type==='property')window.leonV2SyncCollection('properties');
       else if(t.type==='quote')window.leonV2SyncCollection(t.data.resolvedAt?'quotesHistory':'quotes');
       else if(t.type==='project')window.leonV2SyncCollection('projects');
+      else if(t.type==='creditapp')window.leonV2SyncCollection('creditApps');
     }
     if(typeof window.leonV2DbDelete==='function')window.leonV2DbDelete('trash', trashId);
   };
@@ -5476,7 +5751,7 @@
   };
 
   function renderPipeline(){
-    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-4 mb-5"><div><h3 class="text-xl font-black text-slate-900">Pipeline de Cotizaciones</h3><p class="text-xs text-slate-500 mt-1">Propuestas activas — acepta, rechaza o revisa cada una.</p></div><div class="flex flex-wrap gap-2"><button onclick="leonV2OpenRoofSealWizard()" class="px-4 py-3 rounded-xl bg-white border border-brand-200 text-brand-700 text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-house-chimney-crack mr-2"></i>Sellado de Techo</button><button onclick="leonV2OpenManualSale()" class="px-4 py-3 rounded-xl bg-white border border-brand-200 text-brand-700 text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-cash-register mr-2"></i>Venta manual</button><button onclick="openNewQuoteModal()" class="px-4 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-2"></i>Nueva Cotización</button></div></div><div class="flex flex-wrap items-end gap-3 mb-5 p-3 bg-brand-50/50 border border-brand-100 rounded-xl"><div><label class="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Desde</label><input type="date" id="quotes-date-start" onchange="renderQuotesList()" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 text-xs outline-none"></div><div><label class="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Hasta</label><input type="date" id="quotes-date-end" onchange="renderQuotesList()" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 text-xs outline-none"></div><button onclick="document.getElementById('quotes-date-start').value='';document.getElementById('quotes-date-end').value='';renderQuotesList();" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-brand-600 text-[10px] font-bold uppercase tracking-wider transition"><i class="fa-solid fa-filter-circle-xmark mr-1"></i>Limpiar</button></div><div class="overflow-x-auto"><table class="w-full v2-table"><thead><tr><th>Cliente</th><th>Origen</th><th>Total</th><th>Estado</th><th class="text-right">Acción</th></tr></thead><tbody id="quotes-table-body"></tbody></table></div></div>`;
+    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-4 mb-5"><div><h3 class="text-xl font-black text-slate-900">Seguimiento de Ventas</h3><p class="text-xs text-slate-500 mt-1">Tus propuestas activas, de Lead a confirmadas — acepta, rechaza o revisa cada una.</p></div><div class="flex flex-wrap gap-2"><button onclick="leonV2OpenRoofSealWizard()" class="px-4 py-3 rounded-xl bg-white border border-brand-200 text-brand-700 text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-house-chimney-crack mr-2"></i>Sellado de Techo</button><button onclick="leonV2OpenManualSale()" class="px-4 py-3 rounded-xl bg-white border border-brand-200 text-brand-700 text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-cash-register mr-2"></i>Venta manual</button><button onclick="openNewQuoteModal()" class="px-4 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-2"></i>Nuevo Lead / Propuesta</button></div></div><div class="flex flex-wrap items-end gap-3 mb-5 p-3 bg-brand-50/50 border border-brand-100 rounded-xl"><div><label class="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Desde</label><input type="date" id="quotes-date-start" onchange="renderQuotesList()" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 text-xs outline-none"></div><div><label class="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Hasta</label><input type="date" id="quotes-date-end" onchange="renderQuotesList()" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 text-xs outline-none"></div><button onclick="document.getElementById('quotes-date-start').value='';document.getElementById('quotes-date-end').value='';renderQuotesList();" class="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-brand-600 text-[10px] font-bold uppercase tracking-wider transition"><i class="fa-solid fa-filter-circle-xmark mr-1"></i>Limpiar</button></div><div class="overflow-x-auto"><table class="w-full v2-table"><thead><tr><th>Cliente</th><th>Origen</th><th>Total</th><th>Estado</th><th class="text-right">Acción</th></tr></thead><tbody id="quotes-table-body"></tbody></table></div></div>`;
     renderQuotesList();
   }
 
@@ -5616,7 +5891,7 @@
     (q.items||[]).forEach(item=>leonV2AdjustItemStock(item,-1));
     leonV2GenerateCommissions(q);
     leonV2CreateProject(q);
-    leonV2UpsertClient(q,'Venta manual registrada — '+q.id);
+    { const c=leonV2UpsertClient(q,'Venta manual registrada — '+q.id); if(c) leonV2PromoteClientToCustomer(c, 'Confirmado como cliente — venta manual '+q.id); }
     leonV2Audit('Venta manual registrada', q.clientName+' — '+money(total)+' · '+vendor.name);
     if(typeof window.leonV2SyncCollection==='function'){window.leonV2SyncCollection('quotesHistory');window.leonV2SyncCollection('products');}
     leonV2Close('leon-v2-manual-sale');
@@ -5649,7 +5924,7 @@
     renderHistorial();
   }
 
-  function renderProposals(){const qs=leonV2ScopedQuotes((state.quotes||[]).concat(state.quotesHistory||[]));document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center"><div><h3 class="text-xl font-black">Propuestas & Cotizaciones</h3><p class="text-xs text-slate-500">Editor de documento, PDF, precio (CPQ) y portal del cliente por propuesta.</p></div></div><div class="overflow-x-auto mt-5">${qs.length?`<table class="w-full v2-table"><thead><tr><th>ID</th><th>Cliente</th><th>Origen</th><th>Consultor</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${qs.map(q=>`<tr><td><b>${esc(q.id)}</b><div class="text-[10px] text-slate-400">v${q.version||1} · ${esc(q.createdAt||'')}</div></td><td>${esc(q.clientName)}</td><td>${esc(q.origin||'Autogestionado')}</td><td>${esc(q.vendorName||'Pendiente')}</td><td><b>${money(leonV2ComputeTotal(q).total)}</b></td><td><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></td><td class="flex gap-1 flex-wrap">${state.quotes.includes(q)?`<button onclick="leonV2OpenPricing('${q.id}')" class="v2-tab"><i class="fa-solid fa-calculator"></i></button>`:''}<button onclick="leonV2OpenEditor('${q.id}')" class="v2-tab active">Editar</button><button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab">PDF</button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button>${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2DeleteQuote('${q.id}')" class="v2-tab" style="color:#dc2626" title="Eliminar propuesta"><i class="fa-solid fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay propuestas todavía. Se crean desde el catálogo público o desde Pipeline → Nueva Cotización.</div>'}</div></div>`}
+  function renderProposals(){const qs=leonV2ScopedQuotes((state.quotes||[]).concat(state.quotesHistory||[]));document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center"><div><h3 class="text-xl font-black">Propuestas</h3><p class="text-xs text-slate-500">Editor de documento, PDF, precio (CPQ) y portal del cliente por propuesta. Un cliente puede tener varias propuestas.</p></div></div><div class="overflow-x-auto mt-5">${qs.length?`<table class="w-full v2-table"><thead><tr><th>ID</th><th>Cliente</th><th>Origen</th><th>Consultor</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${qs.map(q=>`<tr><td><b>${esc(q.id)}</b><div class="text-[10px] text-slate-400">v${q.version||1} · ${esc(q.createdAt||'')}</div></td><td>${esc(q.clientName)}</td><td>${esc(q.origin||'Autogestionado')}</td><td>${esc(q.vendorName||'Pendiente')}</td><td><b>${money(leonV2ComputeTotal(q).total)}</b></td><td><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span>${(q.acceptance&&q.status!=='Aceptada')?`<div class="mt-1"><button onclick="leonV2VendorConfirmSale('${q.id}')" class="v2-tab active" style="background:#059669;border-color:#059669" title="El cliente ya firmó — confirma la venta para que pase a Cliente"><i class="fa-solid fa-check-double mr-1"></i>Confirmar venta</button></div>`:''}</td><td class="flex gap-1 flex-wrap">${state.quotes.includes(q)?`<button onclick="leonV2OpenPricing('${q.id}')" class="v2-tab"><i class="fa-solid fa-calculator"></i></button>`:''}<button onclick="leonV2OpenEditor('${q.id}')" class="v2-tab active">Editar</button><button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab" title="Descargar/imprimir PDF">PDF</button><button onclick="leonV2EmailProposal('${q.id}')" class="v2-tab" title="Enviar por correo"><i class="fa-solid fa-envelope"></i></button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button><button onclick="leonV2OpenCreditAppModal(null,'${q.id}')" class="v2-tab" title="Nueva solicitud de crédito para esta propuesta"><i class="fa-solid fa-file-invoice-dollar"></i></button>${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2DeleteQuote('${q.id}')" class="v2-tab" style="color:#dc2626" title="Eliminar propuesta"><i class="fa-solid fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay propuestas todavía. Se crean desde el catálogo público o desde Seguimiento de Ventas → Nuevo Lead / Propuesta.</div>'}</div></div>`}
 
   function renderCatalog(){
     document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex items-center justify-between mb-6 flex-wrap gap-3"><div><h3 class="text-xl font-black text-slate-900">Gestión de Catálogo</h3><p class="text-xs text-slate-500 mt-1">Añade, edita o elimina equipos. La imagen admite URL o archivo local (se comprime automáticamente).</p></div><div class="flex gap-2"><button onclick="leonV2PrintCatalogPdf()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-file-pdf mr-1"></i>Descargar catálogo (PDF)</button><button onclick="leonV2EmailCatalog()" class="bg-white border border-slate-200 hover:border-brand-400 text-slate-600 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-envelope mr-1"></i>Enviar por correo</button><button onclick="openCategoryModal()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-tags mr-1"></i>Categorías</button><button onclick="openProductModal()" class="bg-gradient-to-r from-brand-600 to-brand-400 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-1"></i>Añadir Equipo</button></div></div><div id="admin-products-list" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div><div class="text-center mt-6 hidden" id="admin-products-load-more-wrap"><button onclick="loadMoreAdminProducts()" class="bg-white border-2 border-brand-200 hover:border-brand-500 text-brand-700 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition">Cargar más <i class="fa-solid fa-chevron-down ml-1"></i></button></div></div>`;
@@ -6668,9 +6943,14 @@
       leonV2GenerateCommissions(q);
       leonV2CreateProject(q);
     }
-    leonV2UpsertClient(q,'Propuesta '+q.id+' — '+finalStatus);
+    const c=leonV2UpsertClient(q,'Propuesta '+q.id+' — '+finalStatus);
+    // Único punto que promueve un expediente de Lead a Cliente — ver bloque EMBUDO más arriba. Pasa
+    // sin importar si la venta se aceptó directo desde el CRM o vía confirmación del vendedor tras
+    // la firma del cliente en el Portal (leonV2VendorConfirmSale), porque ambos caminos terminan
+    // llamando a moveQuoteToHistory('Aceptada').
+    if(finalStatus==='Aceptada' && c) leonV2PromoteClientToCustomer(c, 'Confirmado como cliente — propuesta '+q.id+' aceptada');
     leonV2Audit('Cambio de estado', q.id+' → '+finalStatus);
-    if(typeof window.leonV2SyncCollection==='function'){window.leonV2SyncCollection('quotes');window.leonV2SyncCollection('quotesHistory');}
+    if(typeof window.leonV2SyncCollection==='function'){window.leonV2SyncCollection('quotes');window.leonV2SyncCollection('quotesHistory');window.leonV2SyncCollection('clients');}
   };
 
   // ===================== ESTRUCTURA PIRAMIDAL + COMISIONES JERÁRQUICAS =====================
