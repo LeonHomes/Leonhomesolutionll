@@ -930,7 +930,7 @@
                 <div class="flex items-end gap-3">
                     <div class="flex-grow">
                         <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Equipo</label>
-                        <select id="nq-product-select" class="glass-select w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-sm"></select>
+                        <div id="nq-product-select__wrap"></div>
                     </div>
                     <div class="w-24">
                         <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cant.</label>
@@ -1995,7 +1995,7 @@
         function openNewQuoteModal() {
             state.vendorQuoteItems = [];
             document.querySelector('#new-quote-modal form').reset();
-            const select = document.getElementById('nq-product-select');
+            const wrap = document.getElementById('nq-product-select__wrap');
             // Los equipos de Sellado de Techo NO se listan aquí: su precio es $/pie², no un precio
             // fijo, y este selector genérico multiplica precio × cantidad como si fuera un producto
             // normal (daría un total sin sentido, ej. "$3.50" en vez de calcular por pies cuadrados).
@@ -2003,7 +2003,10 @@
             const hasRoofSeal = state.products.some(p => p.roofSealing && p.roofSealing.enabled && !p.agotado);
             const roofSealNote = document.getElementById('nq-roofseal-note');
             if (roofSealNote) roofSealNote.classList.toggle('hidden', !hasRoofSeal);
-            select.innerHTML = state.products.filter(p => !p.agotado && !(p.roofSealing && p.roofSealing.enabled)).map(p => `<option value="${p.id}">${p.name} — $${p.price.toLocaleString()}</option>`).join('');
+            // Buscador con autocompletar en vez de una lista desplegable larga — escribe parte del
+            // nombre del equipo y la lista se filtra sola (ver leonV2SearchableSelectHtml).
+            const productOptions = state.products.filter(p => !p.agotado && !(p.roofSealing && p.roofSealing.enabled)).map(p => ({ value: p.id, label: p.name + ' — $' + p.price.toLocaleString() }));
+            if (wrap && typeof window.leonV2SearchableSelectHtml === 'function') wrap.innerHTML = window.leonV2SearchableSelectHtml('nq-product-select', productOptions, { placeholder: 'Buscar equipo por nombre...' });
             renderVendorQuoteItems();
             const modal = document.getElementById('new-quote-modal');
             modal.classList.remove('hidden');
@@ -3387,6 +3390,77 @@
 (function(){
   const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0});
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+
+  // ===================== BUSCADOR CON AUTOCOMPLETAR (reemplaza los <select> gigantes) =====================
+  // Antes: elegir un cliente/producto era un <select> normal — con una lista larga (cientos de
+  // clientes) toca desplazarse a mano por todos los nombres en vez de poder escribir y filtrar. Esto
+  // arma, en su lugar, un buscador de escritorio típico: un campo de texto donde escribes parte del
+  // nombre y la lista se filtra sola, más un <input type="hidden"> que guarda el id real seleccionado
+  // CON EL MISMO id que tenía el <select> de antes — así ningún otro código de la app (los `.value`
+  // que ya existían) tiene que cambiar, solo el HTML que arma el campo.
+  // options: [{value, label}]. opts: {selectedValue, selectedLabel, placeholder, disabled}.
+  function leonV2SearchableSelectHtml(hiddenId, options, opts){
+    opts = opts || {};
+    const selectedValue = opts.selectedValue!=null ? String(opts.selectedValue) : '';
+    const selectedLabel = opts.selectedLabel || '';
+    const placeholder = opts.placeholder || 'Escribe para buscar...';
+    const disabledAttr = opts.disabled ? 'disabled' : '';
+    const dataOptions = esc(JSON.stringify(options||[]));
+    return `<div class="v2-searchselect relative" data-options="${dataOptions}">
+      <input type="text" id="${hiddenId}__search" value="${esc(selectedLabel)}" placeholder="${esc(placeholder)}" autocomplete="off" ${disabledAttr}
+        oninput="leonV2SearchSelectFilter('${hiddenId}')" onfocus="leonV2SearchSelectFilter('${hiddenId}')"
+        onblur="setTimeout(()=>leonV2SearchSelectBlur('${hiddenId}'),150)"
+        class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none disabled:bg-slate-100">
+      <input type="hidden" id="${hiddenId}" value="${esc(selectedValue)}">
+      <div id="${hiddenId}__list" class="hidden absolute z-30 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-glass-lg"></div>
+    </div>`;
+  }
+  window.leonV2SearchableSelectHtml=leonV2SearchableSelectHtml; // expuesto: lo usa también el script de la vista pública (ej. Nueva Cotización), que vive fuera de este IIFE
+  window.leonV2SearchSelectFilter=function(hiddenId){
+    const searchEl=document.getElementById(hiddenId+'__search');
+    const listEl=document.getElementById(hiddenId+'__list');
+    const wrap=searchEl&&searchEl.closest('.v2-searchselect');
+    if(!searchEl||!listEl||!wrap) return;
+    let options=[];
+    try{ options=JSON.parse(wrap.dataset.options||'[]'); }catch(e){ options=[]; }
+    const q=(searchEl.value||'').trim().toLowerCase();
+    const matches=(q?options.filter(o=>String(o.label).toLowerCase().includes(q)):options).slice(0,50);
+    listEl.innerHTML = matches.length
+      ? matches.map(o=>`<div class="px-3 py-2 text-sm hover:bg-brand-50 cursor-pointer" onmousedown="leonV2SearchSelectPick('${hiddenId}','${esc(String(o.value)).replace(/'/g,"\\'")}')">${esc(o.label)}</div>`).join('')
+      : '<div class="px-3 py-2 text-xs text-slate-400">Sin resultados</div>';
+    listEl.classList.remove('hidden');
+  };
+  window.leonV2SearchSelectPick=function(hiddenId, value){
+    const searchEl=document.getElementById(hiddenId+'__search');
+    const hidden=document.getElementById(hiddenId);
+    const listEl=document.getElementById(hiddenId+'__list');
+    const wrap=searchEl&&searchEl.closest('.v2-searchselect');
+    if(!searchEl||!hidden||!wrap) return;
+    let options=[];
+    try{ options=JSON.parse(wrap.dataset.options||'[]'); }catch(e){ options=[]; }
+    const opt=options.find(o=>String(o.value)===String(value));
+    hidden.value=value;
+    searchEl.value=opt?opt.label:'';
+    if(listEl) listEl.classList.add('hidden');
+    // Por si algún código escucha 'change' en el hidden — los .value directos de esta app no lo
+    // necesitan hoy, pero no cuesta nada dejarlo disparado como lo haría un <select> normal.
+    hidden.dispatchEvent(new Event('change'));
+  };
+  window.leonV2SearchSelectBlur=function(hiddenId){
+    const listEl=document.getElementById(hiddenId+'__list');
+    if(listEl) listEl.classList.add('hidden');
+    // Si escribió texto y no eligió nada de la lista, no se deja un texto suelto sin id real detrás
+    // — vuelve al último válido (o queda vacío si nunca hubo uno), para que el valor oculto nunca se
+    // desincronice de lo que se ve escrito.
+    const searchEl=document.getElementById(hiddenId+'__search');
+    const hidden=document.getElementById(hiddenId);
+    const wrap=searchEl&&searchEl.closest('.v2-searchselect');
+    if(!searchEl||!hidden||!wrap) return;
+    let options=[];
+    try{ options=JSON.parse(wrap.dataset.options||'[]'); }catch(e){ options=[]; }
+    const current=options.find(o=>String(o.value)===String(hidden.value));
+    searchEl.value=current?current.label:'';
+  };
   let v2Flow='propuesta', v2Help=null, v2Blocks=['Encabezado','Información del cliente','Productos seleccionados','Resumen financiero','Condiciones','Firma'];
   // true cuando el cliente entró por "Cotizar por tu consumo" (sin seleccionar ningún equipo del
   // catálogo) — permite que leonV2SubmitClient acepte un carrito vacío SOLO en ese caso, y solo con
@@ -3705,30 +3779,55 @@
   // valor del mes MÁS RECIENTE es el que queda (el emparejamiento por cercanía en x hace que gane el
   // de la derecha). Devuelve null si no hay suficientes datos reconocibles como para armar la tabla —
   // en ese caso el vendedor sigue pudiendo llenar los meses a mano o foto por foto.
-  function leonV2ParseLumaChartWords(data){
-    const words=data && Array.isArray(data.words) ? data.words : [];
-    if(!words.length) return null;
-    const monthRe=/^(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)/i;
+  // Tesseract.js ha cambiado la forma exacta de su respuesta entre versiones: a veces trae un
+  // `data.words` ya aplanado, a veces solo `data.blocks` (con párrafos→líneas→palabras adentro), y a
+  // veces `data.lines` sin aplanar. En vez de apostar a una sola forma (que fue el bug real: si esa
+  // forma no venía, la gráfica SIEMPRE fallaba con "no pudimos leer la gráfica" sin importar qué tan
+  // buena fuera la foto), esto revisa todas las formas conocidas y arma una sola lista de palabras.
+  function leonV2FlattenTesseractWords(data){
+    if(!data) return [];
+    if(Array.isArray(data.words) && data.words.length) return data.words;
+    const out=[];
+    (Array.isArray(data.blocks)?data.blocks:[]).forEach(b=>{
+      (b.paragraphs||[]).forEach(p=>{
+        (p.lines||[]).forEach(l=>{
+          (l.words||[]).forEach(w=>out.push(w));
+        });
+      });
+    });
+    if(out.length) return out;
+    (Array.isArray(data.lines)?data.lines:[]).forEach(l=>{ (l.words||[]).forEach(w=>out.push(w)); });
+    return out;
+  }
+  function leonV2IsChartMonthToken(raw){
+    const mm=String(raw||'').match(/^(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)/i);
+    if(!mm) return -1;
+    return V2_MESES_CORTOS.findIndex(m=>m.toLowerCase()===mm[1].toLowerCase());
+  }
+  // Solo números "sueltos" de 2-4 dígitos en un rango realista de consumo mensual (kWh) — así no se
+  // confunde un año ("2021"), un precio con centavos, o la tarifa por kWh (que trae "$0.xx", y el
+  // punto decimal la delata) con el consumo real.
+  function leonV2IsChartConsumptionToken(raw){
+    const digits=String(raw||'').replace(/[^\d]/g,'');
+    if(!/^\d{2,4}$/.test(digits) || raw.indexOf('.')!==-1 || raw.indexOf('$')!==-1) return null;
+    const n=parseInt(digits,10);
+    if(n>=30 && n<=4000 && !/^(19|20)\d{2}$/.test(digits)) return n;
+    return null;
+  }
+  // Camino principal: usa la posición horizontal real (bbox.x0) de cada palabra — el más preciso,
+  // porque compara distancias en píxeles reales sobre la imagen.
+  function leonV2ParseLumaChartFromWords(words){
     const months=[], numbers=[];
     words.forEach(w=>{
       const raw=(w && w.text || '').trim();
       if(!raw || !w.bbox) return;
       const x0=w.bbox.x0;
-      const mm=raw.match(monthRe);
-      if(mm){
-        const idx=V2_MESES_CORTOS.findIndex(m=>m.toLowerCase()===mm[1].toLowerCase());
-        if(idx!==-1){ months.push({idx,x0}); return; }
-      }
-      const digits=raw.replace(/[^\d]/g,'');
-      // Solo números "sueltos" de 2-4 dígitos en un rango realista de consumo mensual (kWh) — así no
-      // se confunde un año ("2021"), un precio con centavos, o la tarifa por kWh (que trae "$0.xx" y
-      // el punto decimal la delata) con el consumo real.
-      if(/^\d{2,4}$/.test(digits) && raw.indexOf('.')===-1 && raw.indexOf('$')===-1){
-        const n=parseInt(digits,10);
-        if(n>=30 && n<=4000 && !/^(19|20)\d{2}$/.test(digits)) numbers.push({n,x0});
-      }
+      const idx=leonV2IsChartMonthToken(raw);
+      if(idx!==-1){ months.push({idx,x0}); return; }
+      const n=leonV2IsChartConsumptionToken(raw);
+      if(n!=null) numbers.push({n,x0});
     });
-    if(months.length<3 || numbers.length<3) return null; // muy poco reconocido — no vale la pena arriesgar una tabla mal armada
+    if(months.length<3 || numbers.length<3) return null;
     const byMonth={};
     numbers.forEach(numEntry=>{
       let best=null, bestDist=Infinity;
@@ -3739,6 +3838,39 @@
       if(best && bestDist<260) byMonth[best.idx]=numEntry.n; // en un mes repetido (13 barras), el número más a la derecha es el que queda
     });
     return Object.keys(byMonth).length ? byMonth : null;
+  }
+  // Camino de respaldo: cuando la respuesta de Tesseract no trae coordenadas por palabra (según la
+  // versión/config de la librería que cargue el navegador de quien lo use), se usa el ORDEN en que
+  // aparecen los números/meses dentro del texto reconocido como si fuera la posición — menos preciso
+  // que usar píxeles reales, pero mejor que fallar por completo cuando sí se reconoció el texto.
+  function leonV2ParseLumaChartFromText(text){
+    const tokens=String(text||'').split(/\s+/).filter(Boolean);
+    const months=[], numbers=[];
+    tokens.forEach((raw,i)=>{
+      const idx=leonV2IsChartMonthToken(raw);
+      if(idx!==-1){ months.push({idx,i}); return; }
+      const n=leonV2IsChartConsumptionToken(raw);
+      if(n!=null) numbers.push({n,i});
+    });
+    if(months.length<3 || numbers.length<3) return null;
+    const byMonth={};
+    numbers.forEach(numEntry=>{
+      let best=null, bestDist=Infinity;
+      months.forEach(mEntry=>{
+        const dist=Math.abs(mEntry.i-numEntry.i);
+        if(dist<bestDist){ bestDist=dist; best=mEntry; }
+      });
+      if(best && bestDist<8) byMonth[best.idx]=numEntry.n;
+    });
+    return Object.keys(byMonth).length ? byMonth : null;
+  }
+  function leonV2ParseLumaChartWords(data){
+    if(!data) return null;
+    const words=leonV2FlattenTesseractWords(data);
+    const byPosition = words.length ? leonV2ParseLumaChartFromWords(words) : null;
+    if(byPosition) return byPosition;
+    // Sin coordenadas usables (o muy pocas) — se intenta con el texto plano antes de rendirse.
+    return data.text ? leonV2ParseLumaChartFromText(data.text) : null;
   }
   window.leonV2ParseLumaChartWords=leonV2ParseLumaChartWords; // expuesto para pruebas automatizadas (función pura, sin efectos secundarios)
   function leonV2ParseLumaBillText(text){
@@ -3779,10 +3911,14 @@
       if(statusEl) statusEl.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando lector de facturas (solo la primera vez)...';
       return leonV2GetTesseractWorker().then(worker=>{
         if(statusEl) statusEl.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i>Leyendo la factura, un momento...';
-        if(worker) return worker.recognize(prepared);
+        // El tercer parámetro (output) le pide EXPLÍCITAMENTE a Tesseract que incluya blocks/words con
+        // la posición (bbox) de cada palabra — sin pedirlo, algunas versiones de la librería devuelven
+        // solo el texto plano por defecto, y ahí leonV2ParseLumaChartWords nunca tenía nada que leer
+        // (esa era la causa real de "no pudimos leer la gráfica" aunque la foto estuviera perfecta).
+        if(worker) return worker.recognize(prepared, {}, {text:true, blocks:true}).catch(()=>worker.recognize(prepared));
         // Sin worker persistente disponible (versión vieja de la librería) — cae al modo de una
         // sola pasada de siempre, más lento pero siempre funciona.
-        return leonV2LoadTesseract().then(Tesseract=>Tesseract.recognize(prepared,'eng'));
+        return leonV2LoadTesseract().then(Tesseract=>Tesseract.recognize(prepared,'eng',{},{text:true,blocks:true}).catch(()=>Tesseract.recognize(prepared,'eng')));
       });
     }).then(({data})=>({simple:leonV2ParseLumaBillText(data&&data.text), data}));
   }
@@ -5337,7 +5473,7 @@
     const isStaffWide=['Administrador','Vendedor','Call Center'].includes(state.currentUser?.role);
     document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center flex-wrap gap-3"><div><h3 class="text-xl font-black">Tickets de Servicio</h3><p class="text-xs text-slate-500 mt-1">Incidencias vinculadas al cliente, con técnico asignado y estado real.</p></div><button onclick="leonV2OpenNewTicket()" class="px-4 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase"><i class="fa-solid fa-plus mr-2"></i>Nuevo Ticket</button></div>
     <form id="v2-ticket-form" onsubmit="leonV2CreateTicket(event)" class="hidden mt-5 p-4 rounded-xl bg-slate-50 border border-slate-100 grid sm:grid-cols-2 gap-3">
-      <select id="v2-ticket-client" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm sm:col-span-2"><option value="">Sin cliente vinculado</option>${(state.clients||[]).map(c=>`<option value="${c.id}">${esc(c.name)} — ${esc(c.email||'')}</option>`).join('')}</select>
+      <div class="sm:col-span-2">${leonV2SearchableSelectHtml('v2-ticket-client', (state.clients||[]).map(c=>({value:c.id,label:c.name+' — '+(c.email||'')})), {placeholder:'Buscar cliente (opcional)...'})}</div>
       <select id="v2-ticket-category" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm"><option>Instalación</option><option>Mantenimiento</option><option>Garantía</option><option>Facturación</option><option>Otro</option></select>
       <select id="v2-ticket-priority" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm"><option>Baja</option><option selected>Media</option><option>Alta</option><option>Urgente</option></select>
       <select id="v2-ticket-tech" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm sm:col-span-2"><option value="">Sin asignar</option>${state.users.filter(u=>u.role==='Técnico').map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('')}</select>
@@ -5349,7 +5485,9 @@
   }
   window.leonV2OpenNewTicket=(clientId)=>{
     document.getElementById('v2-ticket-form').classList.remove('hidden');
-    if(clientId) document.getElementById('v2-ticket-client').value=clientId;
+    // leonV2SearchSelectPick (no solo el .value directo) para que el campo de texto visible también
+    // muestre el nombre del cliente, no solo el id oculto por dentro.
+    if(clientId) window.leonV2SearchSelectPick('v2-ticket-client', clientId);
   };
   window.leonV2CreateTicket=e=>{
     e.preventDefault();
@@ -5563,11 +5701,10 @@
   // ---------- Crear / editar / eliminar proyecto ----------
   function leonV2ProjectModalHtml(id){
     const p = id ? (state.projects||[]).find(x=>x.id===id) : null;
-    const clientOptions=(state.clients||[]).map(c=>`<option value="${c.id}" ${p&&p.clientId===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
     const techOptions=state.users.filter(u=>u.role==='Técnico').map(u=>`<option value="${u.id}" ${p&&p.technicianId===u.id?'selected':''}>${esc(u.name)}</option>`).join('');
     return `<div class="flex items-center justify-between mb-5"><h3 class="text-lg font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-helmet-safety text-brand-500"></i> ${p?'Editar proyecto':'Nuevo proyecto'}</h3><button onclick="leonV2Close('leon-v2-project-modal')" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-lg"></i></button></div>
     <form onsubmit="leonV2SaveProject(event${p?`,'${p.id}'`:''})" class="space-y-4">
-      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Cliente (opcional)</label><select id="proj-client" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="">Sin vincular</option>${clientOptions}</select></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Cliente (opcional)</label>${leonV2SearchableSelectHtml('proj-client', (state.clients||[]).map(c=>({value:c.id,label:c.name})), {placeholder:'Buscar cliente (opcional)...', selectedValue:p&&p.clientId?p.clientId:'', selectedLabel:(p&&p.clientId&&(state.clients||[]).find(c=>c.id===p.clientId))?(state.clients||[]).find(c=>c.id===p.clientId).name:''})}</div>
       <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Nombre del proyecto (si no hay cliente vinculado)</label><input id="proj-name" value="${esc(p&&!p.clientId?p.clientName||'':'')}" placeholder="Ej. Mantenimiento — Oficina Central" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
       <div class="grid sm:grid-cols-2 gap-3">
         <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Etapa</label><select id="proj-stage" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none">${(state.projectStages||[]).map(s=>`<option value="${s}" ${p&&p.stage===s?'selected':''}>${s}</option>`).join('')}</select></div>
@@ -5641,14 +5778,14 @@
     if(a) client=(state.clients||[]).find(c=>c.id===a.clientId);
     else if(clientId) client=(state.clients||[]).find(c=>c.id===clientId);
     else if(quoteId){ const q=findQuoteAnywhere(quoteId); if(q&&q.clientEmail) client=(state.clients||[]).find(c=>c.email&&c.email.toLowerCase()===q.clientEmail.toLowerCase()); }
-    const clientOptions=leonV2ScopedClients(state.clients||[]).map(c=>`<option value="${c.id}" ${(client&&client.id===c.id)||(a&&a.clientId===c.id)?'selected':''}>${esc(c.name)} — ${esc(c.email||'')}</option>`).join('');
+    const clientSearchOptions=leonV2ScopedClients(state.clients||[]).map(c=>({value:c.id,label:c.name+' — '+(c.email||'')}));
     const p=a?a.personal||{}:{}, v=a?a.vivienda||{}:{}, l=a?a.laboral||{}:{}, f=a?a.financiamiento||{}:{};
     const linkedQuoteId=a?a.quoteId:quoteId;
     return `<div class="flex justify-between items-start gap-4 mb-5"><div><div class="v2-pill mb-2">SOLICITUD DE CRÉDITO</div><h3 class="text-xl font-black">${a?'Editar solicitud':'Nueva solicitud de crédito'}</h3><p class="text-xs text-slate-500 mt-1">Requisitos de información para financiamiento — toda la información debe ser correcta, completa y verificable.</p></div><button onclick="leonV2Close('leon-v2-creditapp-modal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
     <form onsubmit="leonV2SaveCreditApp(event${a?`,'${a.id}'`:''})" class="space-y-5">
       <input type="hidden" id="ca-quote-id" value="${esc(linkedQuoteId||'')}">
       <div class="grid sm:grid-cols-2 gap-3">
-        <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Cliente</label><select id="ca-client" ${a?'disabled':''} class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none disabled:bg-slate-100"><option value="">Elige un cliente...</option>${clientOptions}</select></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Cliente</label>${leonV2SearchableSelectHtml('ca-client', clientSearchOptions, {placeholder:'Buscar cliente por nombre...', disabled:!!a, selectedValue:client?client.id:'', selectedLabel:client?(client.name+' — '+(client.email||'')):''})}</div>
         <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Entidad financiera</label><select id="ca-entity" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none">${CREDIT_ENTITIES.map(e=>`<option value="${e}" ${a&&a.entity===e?'selected':''}>${e}</option>`).join('')}</select></div>
       </div>
       <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">1. Información personal</h4><div class="grid sm:grid-cols-2 gap-3">
@@ -6345,7 +6482,7 @@
       </div>
       <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100">
         <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600">Equipos (opcional — del catálogo)</h4>
-        <div class="flex gap-2 mt-2"><select id="ms-product-select" class="flex-grow border border-slate-200 rounded-xl px-3 py-2.5 text-sm">${(state.products||[]).filter(p=>!(p.roofSealing&&p.roofSealing.enabled)).map(p=>`<option value="${p.id}">${esc(p.name)} — ${money(p.price)}</option>`).join('')}</select><input type="number" id="ms-product-qty" value="1" min="1" class="w-20 border border-slate-200 rounded-xl px-3 py-2.5 text-sm"><button type="button" onclick="leonV2AddManualSaleItem()" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black">+</button></div>
+        <div class="flex gap-2 mt-2"><div class="flex-grow">${leonV2SearchableSelectHtml('ms-product-select', (state.products||[]).filter(p=>!(p.roofSealing&&p.roofSealing.enabled)).map(p=>({value:p.id,label:p.name+' — '+money(p.price)})), {placeholder:'Buscar equipo por nombre...'})}</div><input type="number" id="ms-product-qty" value="1" min="1" class="w-20 border border-slate-200 rounded-xl px-3 py-2.5 text-sm"><button type="button" onclick="leonV2AddManualSaleItem()" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black">+</button></div>
         ${(state.products||[]).some(p=>p.roofSealing&&p.roofSealing.enabled)?`<div class="mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-100 text-[11px] text-amber-800"><i class="fa-solid fa-circle-info mr-1"></i>Los equipos de <b>Sellado de Techo</b> no aparecen aquí (su precio es por pie²) — para esos, escribe el monto total a mano o usa el asistente en Pipeline → Sellado de Techo.</div>`:''}
         <div id="ms-items-list" class="mt-3 space-y-2 text-xs text-slate-400">Sin equipos añadidos — no es obligatorio, puedes usar solo el monto total.</div>
       </div>
@@ -6462,7 +6599,30 @@
     renderHistorial();
   }
 
-  function renderProposals(){const qs=leonV2ScopedQuotes((state.quotes||[]).concat(state.quotesHistory||[]));document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center"><div><h3 class="text-xl font-black">Propuestas</h3><p class="text-xs text-slate-500">Editor de documento, PDF, precio (CPQ) y portal del cliente por propuesta. Un cliente puede tener varias propuestas.</p></div></div><div class="overflow-x-auto mt-5">${qs.length?`<table class="w-full v2-table"><thead><tr><th>ID</th><th>Cliente</th><th>Origen</th><th>Consultor</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${qs.map(q=>`<tr><td><b>${esc(q.id)}</b><div class="text-[10px] text-slate-400">v${q.version||1} · ${esc(q.createdAt||'')}</div></td><td>${esc(q.clientName)}</td><td>${esc(q.origin||'Autogestionado')}</td><td>${esc(q.vendorName||'Pendiente')}</td><td><b>${money(leonV2ComputeTotal(q).total)}</b></td><td><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span>${(q.acceptance&&q.status!=='Aceptada')?`<div class="mt-1"><button onclick="leonV2VendorConfirmSale('${q.id}')" class="v2-tab active" style="background:#059669;border-color:#059669" title="El cliente ya firmó — confirma la venta para que pase a Cliente"><i class="fa-solid fa-check-double mr-1"></i>Confirmar venta</button></div>`:''}</td><td class="flex gap-1 flex-wrap">${state.quotes.includes(q)?`<button onclick="leonV2OpenPricing('${q.id}')" class="v2-tab"><i class="fa-solid fa-calculator"></i></button>`:''}<button onclick="leonV2OpenEditor('${q.id}')" class="v2-tab active">Editar</button><button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab" title="Descargar/imprimir PDF">PDF</button><button onclick="leonV2EmailProposal('${q.id}')" class="v2-tab" title="Enviar por correo"><i class="fa-solid fa-envelope"></i></button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button><button onclick="leonV2OpenCreditAppModal(null,'${q.id}')" class="v2-tab" title="Nueva solicitud de crédito para esta propuesta"><i class="fa-solid fa-file-invoice-dollar"></i></button>${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2DeleteQuote('${q.id}')" class="v2-tab" style="color:#dc2626" title="Eliminar propuesta"><i class="fa-solid fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay propuestas todavía. Se crean desde el catálogo público o desde Seguimiento de Ventas → Nuevo Lead / Propuesta.</div>'}</div></div>`}
+  // Quién puede quedar como consultor/vendedor responsable de una propuesta — mismo criterio que ya
+  // se usa para registrar una venta manual (leonV2ManualSaleModalHtml): Vendedor, Nuevo Consultor,
+  // Call Center o Administrador. Solo un administrador puede reasignar (evita que un vendedor se
+  // "auto-asigne" propuestas ajenas para cobrar comisión).
+  function leonV2ConsultantAssignCellHtml(q){
+    const isAdmin = state.currentUser && state.currentUser.role==='Administrador';
+    if(q.vendorName) return esc(q.vendorName);
+    if(!isAdmin) return '<span class="text-amber-600 font-bold">Pendiente</span>';
+    const eligibles=(state.users||[]).filter(u=>['Vendedor','Nuevo Consultor','Call Center','Administrador'].includes(u.role));
+    const options=eligibles.map(u=>`<option value="${u.id}">${esc(u.name)} — ${esc(u.role)}</option>`).join('');
+    return `<div class="flex items-center gap-1"><span class="text-amber-600 font-bold text-[11px]">Pendiente</span><select onchange="leonV2AssignProposalVendor('${q.id}',this.value)" class="border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] max-w-[130px]"><option value="">Asignar...</option>${options}</select></div>`;
+  }
+  window.leonV2AssignProposalVendor=function(quoteId, vendorId){
+    if(!vendorId) return;
+    if(!(state.currentUser && state.currentUser.role==='Administrador')){ showToast('Solo un administrador puede asignar consultor.','error'); return; }
+    const q=findQuoteAnywhere(quoteId); if(!q) return;
+    const vendor=(state.users||[]).find(u=>u.id===vendorId); if(!vendor) return;
+    q.vendorName=vendor.name; q.vendorEmail=vendor.email||'';
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection(state.quotes.includes(q)?'quotes':'quotesHistory');
+    leonV2Audit('Asignó consultor a propuesta', q.id+' → '+vendor.name);
+    showToast('Consultor asignado: '+vendor.name,'success');
+    if(typeof window.leonV2OpenSection==='function') window.leonV2OpenSection('proposals');
+  };
+  function renderProposals(){const qs=leonV2ScopedQuotes((state.quotes||[]).concat(state.quotesHistory||[]));document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center"><div><h3 class="text-xl font-black">Propuestas</h3><p class="text-xs text-slate-500">Editor de documento, PDF, precio (CPQ) y portal del cliente por propuesta. Un cliente puede tener varias propuestas.</p></div></div><div class="overflow-x-auto mt-5">${qs.length?`<table class="w-full v2-table"><thead><tr><th>ID</th><th>Cliente</th><th>Origen</th><th>Consultor</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${qs.map(q=>`<tr><td><b>${esc(q.id)}</b><div class="text-[10px] text-slate-400">v${q.version||1} · ${esc(q.createdAt||'')}</div></td><td>${esc(q.clientName)}</td><td>${esc(q.origin||'Autogestionado')}</td><td>${leonV2ConsultantAssignCellHtml(q)}</td><td><b>${money(leonV2ComputeTotal(q).total)}</b></td><td><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span>${(q.acceptance&&q.status!=='Aceptada')?`<div class="mt-1"><button onclick="leonV2VendorConfirmSale('${q.id}')" class="v2-tab active" style="background:#059669;border-color:#059669" title="El cliente ya firmó — confirma la venta para que pase a Cliente"><i class="fa-solid fa-check-double mr-1"></i>Confirmar venta</button></div>`:''}</td><td class="flex gap-1 flex-wrap">${state.quotes.includes(q)?`<button onclick="leonV2OpenPricing('${q.id}')" class="v2-tab"><i class="fa-solid fa-calculator"></i></button>`:''}<button onclick="leonV2OpenEditor('${q.id}')" class="v2-tab active">Editar</button><button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab" title="Descargar/imprimir PDF">PDF</button><button onclick="leonV2EmailProposal('${q.id}')" class="v2-tab" title="Enviar por correo"><i class="fa-solid fa-envelope"></i></button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button><button onclick="leonV2OpenCreditAppModal(null,'${q.id}')" class="v2-tab" title="Nueva solicitud de crédito para esta propuesta"><i class="fa-solid fa-file-invoice-dollar"></i></button>${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2DeleteQuote('${q.id}')" class="v2-tab" style="color:#dc2626" title="Eliminar propuesta"><i class="fa-solid fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay propuestas todavía. Se crean desde el catálogo público o desde Seguimiento de Ventas → Nuevo Lead / Propuesta.</div>'}</div></div>`}
 
   function renderCatalog(){
     document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex items-center justify-between mb-6 flex-wrap gap-3"><div><h3 class="text-xl font-black text-slate-900">Gestión de Catálogo</h3><p class="text-xs text-slate-500 mt-1">Añade, edita o elimina equipos. La imagen admite URL o archivo local (se comprime automáticamente).</p></div><div class="flex gap-2"><button onclick="leonV2PrintCatalogPdf()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-file-pdf mr-1"></i>Descargar catálogo (PDF)</button><button onclick="leonV2ExportCatalogCsv()" title="Nombre, precio y comisión directa estimada de cada equipo — para uso interno del equipo" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-file-csv mr-1"></i>Descargar catálogo (CSV)</button><button onclick="leonV2EmailCatalog()" class="bg-white border border-slate-200 hover:border-brand-400 text-slate-600 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-envelope mr-1"></i>Enviar por correo</button><button onclick="openCategoryModal()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-tags mr-1"></i>Categorías</button><button onclick="openProductModal()" class="bg-gradient-to-r from-brand-600 to-brand-400 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-1"></i>Añadir Equipo</button></div></div><div id="admin-products-list" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div><div class="text-center mt-6 hidden" id="admin-products-load-more-wrap"><button onclick="loadMoreAdminProducts()" class="bg-white border-2 border-brand-200 hover:border-brand-500 text-brand-700 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition">Cargar más <i class="fa-solid fa-chevron-down ml-1"></i></button></div></div>`;
@@ -6650,10 +6810,10 @@
   }
   function leonV2PropertyModalHtml(id){
     const p = id ? (state.properties||[]).find(x=>x.id===id) : null;
-    const clientsOpts = (state.clients||[]).map(c=>`<option value="${c.id}" ${p&&p.clientId===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
+    const propClient = p&&p.clientId ? (state.clients||[]).find(c=>c.id===p.clientId) : null;
     return `<div class="flex items-center justify-between mb-5"><h3 class="text-lg font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-house-chimney-crack text-brand-500"></i> ${p?'Editar propiedad':'Nueva propiedad'}</h3><button onclick="leonV2Close('leon-v2-property-modal')" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-lg"></i></button></div>
     <form onsubmit="leonV2SaveProperty(event${p?`,'${p.id}'`:''})" class="space-y-4">
-      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Cliente (opcional)</label><select id="prop-client" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="">Sin vincular</option>${clientsOpts}</select></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Cliente (opcional)</label>${leonV2SearchableSelectHtml('prop-client', (state.clients||[]).map(c=>({value:c.id,label:c.name})), {placeholder:'Buscar cliente (opcional)...', selectedValue:propClient?propClient.id:'', selectedLabel:propClient?propClient.name:''})}</div>
       <div class="grid sm:grid-cols-2 gap-3">
         <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Dirección</label><input id="prop-address" required value="${esc(p?p.address:'')}" placeholder="Calle, número, urbanización" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
         <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Municipio</label><input id="prop-municipio" value="${esc(p?p.municipio||'':'')}" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
