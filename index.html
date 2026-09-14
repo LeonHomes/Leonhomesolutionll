@@ -799,9 +799,21 @@
                         <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Stock disponible</label><input type="number" id="prod-stock" min="0" step="1" placeholder="Ej. 20" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-sm"></div>
                     </div>
                     <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Descripción Breve</label><textarea id="prod-desc" rows="3" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-sm"></textarea></div>
-                    <div class="flex items-center gap-4 bg-brand-50/60 p-3 rounded-lg border border-brand-100">
+                    <div class="flex items-center gap-4 flex-wrap bg-brand-50/60 p-3 rounded-lg border border-brand-100">
                         <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-800"><input type="checkbox" id="prod-agotado" class="w-4 h-4 accent-brand-600"> Agotado</label>
                         <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-800"><input type="checkbox" id="prod-oculto" class="w-4 h-4 accent-red-500"> Ocultar del catálogo público</label>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-800" title="Ej. baterías solares — no llevan IVU. El impuesto de la propuesta se calcula excluyendo estos equipos."><input type="checkbox" id="prod-tax-exempt" class="w-4 h-4 accent-emerald-600"> Exento de IVU (ej. baterías solares)</label>
+                    </div>
+                    <div class="bg-brand-50/60 p-3 rounded-lg border border-brand-100">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2" title="Ej. Sunrun solo financia su propia gama de equipos certificados — una batería que no sea de esa gama (ej. Franklin WH) solo se puede pagar por Cooperativa o Cash.">Financiamientos compatibles con este equipo</label>
+                        <div class="flex items-center gap-3 flex-wrap text-sm font-semibold text-slate-800">
+                            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="prod-fin-Cash" checked class="w-4 h-4 accent-brand-600"> Cash</label>
+                            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="prod-fin-Cooperativa" checked class="w-4 h-4 accent-brand-600"> Cooperativa</label>
+                            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="prod-fin-PCI" checked class="w-4 h-4 accent-brand-600"> PCI</label>
+                            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="prod-fin-SynchronyBank" checked class="w-4 h-4 accent-brand-600"> Synchrony Bank</label>
+                            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="prod-fin-Sunrun" checked class="w-4 h-4 accent-brand-600"> Sunrun</label>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1.5">Desmarca solo lo que NO acepte este equipo. Con todo marcado (por defecto) no hay restricción.</p>
                     </div>
                 </div>
                 <div>
@@ -1034,7 +1046,11 @@
             // Motor de comisiones jerárquicas — configurable por el administrador, nunca escrito a
             // fuego en el código. "direct" es lo que gana el vendedor por su propia venta; "levels"
             // es lo que gana cada supervisor hacia arriba de la cadena (nivel 1 = supervisor directo).
-            commissionRules: { direct: 10, levels: [{ level: 1, percent: 5 }, { level: 2, percent: 2 }] },
+            // "levels" (por %) se aplica a ventas SOLARES; "flatLevels" (monto fijo en USD) se aplica
+            // a ventas que NO son solares (baterías y demás) — ver leonV2IsSolarSale/leonV2GenerateCommissions.
+            // "activeSalesThreshold": ventas propias que un supervisor debe cerrar en el mes para
+            // seguir cobrando el override de su equipo ese mes — si no, "pierde la parte gerencial".
+            commissionRules: { direct: 10, levels: [{ level: 1, percent: 5 }, { level: 2, percent: 2 }], flatLevels: [{ level: 1, amount: 50 }, { level: 2, amount: 25 }], activeSalesThreshold: 4 },
             // Ledger real de comisiones — una entrada por (venta aceptada × beneficiario). Se genera
             // una sola vez al aceptar la propuesta, con una copia de las reglas vigentes en ese
             // momento, para que cambiar el % después no reescriba pagos ya calculados.
@@ -1781,6 +1797,7 @@
                             <span class="text-[9px] uppercase border px-1.5 py-0.5 rounded ${(p.stock || 0) <= 5 ? 'text-red-600 border-red-200' : 'text-slate-500 border-slate-200'}"><i class="fa-solid fa-cubes mr-0.5"></i>${p.stock || 0} en stock</span>
                             ${p.agotado ? `<span class="text-[9px] text-red-600 uppercase border border-red-200 px-1.5 py-0.5 rounded">Agotado</span>` : ''}
                             ${p.oculto ? `<span class="text-[9px] text-slate-500 uppercase border border-slate-200 px-1.5 py-0.5 rounded"><i class="fa-solid fa-eye-slash"></i> Oculto</span>` : ''}
+                            ${(Array.isArray(p.compatibleFinancing) && p.compatibleFinancing.length && p.compatibleFinancing.indexOf('Sunrun') === -1) ? `<span class="text-[9px] text-amber-700 uppercase border border-amber-200 bg-amber-50 px-1.5 py-0.5 rounded" title="Este equipo no se puede financiar por Sunrun"><i class="fa-solid fa-ban mr-0.5"></i>No Sunrun</span>` : ''}
                             ${(Array.isArray(p.images) && p.images.length) ? `<span class="text-[9px] text-slate-500 uppercase border border-slate-200 px-1.5 py-0.5 rounded"><i class="fa-solid fa-images mr-0.5"></i>+${p.images.length} foto${p.images.length===1?'':'s'}</span>` : ''}
                             ${p.video ? `<span class="text-[9px] text-slate-500 uppercase border border-slate-200 px-1.5 py-0.5 rounded"><i class="fa-solid fa-circle-play mr-0.5"></i>Video</span>` : ''}
                             ${(Array.isArray(p.variants) && p.variants.length) ? `<span class="text-[9px] text-brand-700 uppercase border border-brand-200 bg-brand-50 px-1.5 py-0.5 rounded"><i class="fa-solid fa-layer-group mr-0.5"></i>${p.variants.length} variante${p.variants.length === 1 ? '' : 's'}</span>` : ''}
@@ -1816,6 +1833,16 @@
                 document.getElementById('prod-img').value = p.image || '';
                 document.getElementById('prod-agotado').checked = !!p.agotado;
                 document.getElementById('prod-oculto').checked = !!p.oculto;
+                document.getElementById('prod-tax-exempt').checked = !!p.taxExempt;
+                // Sin restricción guardada (productos viejos o nunca tocados) = las 5 casillas
+                // marcadas, igual que el default de un producto nuevo — nunca se rompe retroactivamente.
+                (function(){
+                    const cf = Array.isArray(p.compatibleFinancing) && p.compatibleFinancing.length ? p.compatibleFinancing : null;
+                    ['Cash','Cooperativa','PCI','Synchrony Bank','Sunrun'].forEach(function(f){
+                        const el = document.getElementById('prod-fin-' + f.replace(/\s+/g, ''));
+                        if (el) el.checked = !cf || cf.indexOf(f) !== -1;
+                    });
+                })();
                 document.getElementById('prod-stock').value = (typeof p.stock === 'number') ? p.stock : '';
                 previewProductImg(p.image);
                 currentProductExtraImages = Array.isArray(p.images) ? [...p.images] : [];
@@ -1895,6 +1922,14 @@
                 image: document.getElementById('prod-img').value || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22600%22%20height%3D%22400%22%20viewBox%3D%220%200%20600%20400%22%3E%0A%3Cdefs%3E%0A%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%0A%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230a1a2e%22/%3E%0A%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23025fae%22/%3E%0A%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%231893f5%22/%3E%0A%3C/linearGradient%3E%0A%3Cpattern%20id%3D%22dots%22%20width%3D%2226%22%20height%3D%2226%22%20patternUnits%3D%22userSpaceOnUse%22%3E%0A%3Ccircle%20cx%3D%221.5%22%20cy%3D%221.5%22%20r%3D%221.5%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.10%22/%3E%0A%3C/pattern%3E%0A%3C/defs%3E%0A%3Crect%20width%3D%22600%22%20height%3D%22400%22%20fill%3D%22url%28%23g%29%22/%3E%0A%3Crect%20width%3D%22600%22%20height%3D%22400%22%20fill%3D%22url%28%23dots%29%22/%3E%0A%3Ccircle%20cx%3D%22516.0%22%20cy%3D%2256.00000000000001%22%20r%3D%22128.0%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.05%22/%3E%0A%3Ccircle%20cx%3D%2260.0%22%20cy%3D%22368.0%22%20r%3D%2288.0%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.06%22/%3E%0A%3Ctext%20x%3D%22300.0%22%20y%3D%22184.0%22%20font-family%3D%22Arial%2C%20Helvetica%2C%20sans-serif%22%20font-size%3D%22112%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.16%22%20font-weight%3D%22900%22%20text-anchor%3D%22middle%22%3E%EF%BC%8B%3C/text%3E%0A%3Ctext%20x%3D%22300.0%22%20y%3D%22231.99999999999997%22%20font-family%3D%22Arial%2C%20Helvetica%2C%20sans-serif%22%20font-size%3D%2244%22%20fill%3D%22%23ffffff%22%20font-weight%3D%22900%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ELEON%3C/text%3E%0A%3Ctext%20x%3D%22300.0%22%20y%3D%22266.2%22%20font-family%3D%22Arial%2C%20Helvetica%2C%20sans-serif%22%20font-size%3D%2218%22%20fill%3D%22%23bfe0ff%22%20font-weight%3D%22700%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EEQUIPO%20NUEVO%3C/text%3E%0A%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22600%22%20height%3D%226%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.25%22/%3E%0A%3C/svg%3E',
                 agotado: document.getElementById('prod-agotado').checked,
                 oculto: document.getElementById('prod-oculto').checked,
+                taxExempt: document.getElementById('prod-tax-exempt').checked,
+                // Si las 5 casillas quedan marcadas se guarda null (= "sin restricción", compatible
+                // con cualquier proveedor futuro también) en vez de un array redundante con los 5.
+                compatibleFinancing: (function(){
+                    const opts = ['Cash','Cooperativa','PCI','Synchrony Bank','Sunrun'];
+                    const checked = opts.filter(function(f){ const el = document.getElementById('prod-fin-' + f.replace(/\s+/g, '')); return el ? el.checked : true; });
+                    return checked.length === opts.length ? null : checked;
+                })(),
                 stock: Math.max(0, parseInt(document.getElementById('prod-stock').value, 10) || 0),
                 images: [...currentProductExtraImages],
                 video: document.getElementById('prod-video-url').value || '',
@@ -2125,8 +2160,12 @@
                     // forzarlo dentro del cuadrito cuadrado con fondo que usa el ícono por defecto —
                     // el archivo que suban ya trae su propio diseño (aro, texto, etc.), así que solo
                     // se limita la altura para que quepa en el header, y el ancho se ajusta solo.
-                    logoBox.className = 'h-14 sm:h-16 flex items-center group-hover:scale-105 transition-transform duration-300';
-                    logoBox.innerHTML = `<img src="${state.siteContent.logoUrl}" alt="Logo" class="h-full w-auto max-w-[240px] object-contain">`;
+                    // Chip blanco propio: el header cambia de fondo claro (sitio público) a un fondo
+                    // casi negro (panel interno, ver .header-internal-mode.nav-crystal más arriba) —
+                    // sin este fondo blanco fijo, un logo subido con transparencia real deja ver ese
+                    // fondo oscuro a través suyo y parece "tener fondo negro" dentro del panel interno.
+                    logoBox.className = 'h-14 sm:h-16 flex items-center group-hover:scale-105 transition-transform duration-300 bg-white/95 rounded-xl px-2 shadow-sm';
+                    logoBox.innerHTML = `<img src="${state.siteContent.logoUrl}" alt="Logo" class="h-[85%] w-auto max-w-[220px] object-contain">`;
                 } else {
                     logoBox.className = 'w-14 h-14 bg-gradient-to-br from-ink-900 to-ink-700 rounded-xl flex items-center justify-center text-brand-400 font-extrabold text-2xl shadow-[0_0_18px_rgba(24,147,245,0.35)] group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300';
                     logoBox.innerHTML = `<i class="fa-solid font-bold fa-house-chimney"></i>`;
@@ -3037,17 +3076,32 @@
       </div>
       <div id="v2-solar-wrap" class="hidden p-4 rounded-2xl bg-brand-50/50 border border-brand-100">
         <div class="text-[10px] font-black uppercase tracking-widest text-brand-700 mb-3"><i class="fa-solid fa-solar-panel mr-1"></i>Calculadora Solar Sunrun (PPA)</div>
+        <div id="v2-solar-fin-warning" class="hidden mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700"></div>
         <div class="mb-4"><label class="text-[10px] font-black uppercase text-slate-500">¿Cómo quieres calcular el consumo?</label>
           <select id="v2-solar-method" onchange="leonV2SolarSetMethod()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 bg-white">
             <option value="Pago mensual">Pago mensual (factura de LUMA)</option>
             <option value="Consumo Histórico">Consumo histórico (hasta 12 meses)</option>
           </select>
         </div>
-        <div id="v2-solar-monthly-wrap" class="grid sm:grid-cols-2 gap-4 mb-4">
-          <div><label class="text-[10px] font-black uppercase text-slate-500">Factura mensual actual ($)</label><input type="number" id="v2-solar-bill" min="0" step="0.01" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 bg-white" placeholder="Ej. 250"></div>
-          <div><label class="text-[10px] font-black uppercase text-slate-500">Tarifa LUMA ($/kWh)</label><input type="number" id="v2-solar-luma-rate" min="0" step="0.001" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 bg-white"></div>
+        <div id="v2-solar-monthly-wrap" class="mb-4">
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div><label class="text-[10px] font-black uppercase text-slate-500">Factura mensual actual ($)</label><input type="number" id="v2-solar-bill" min="0" step="0.01" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 bg-white" placeholder="Ej. 250"></div>
+            <div><label class="text-[10px] font-black uppercase text-slate-500">Tarifa LUMA ($/kWh)</label><input type="number" id="v2-solar-luma-rate" min="0" step="0.001" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 bg-white"></div>
+          </div>
+          <label class="mt-2 inline-flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg bg-white border border-brand-200 text-brand-700 text-[11px] font-bold"><i class="fa-solid fa-camera"></i>Leer factura desde una foto (opcional)<input type="file" accept="image/*" class="hidden" onchange="handleLumaBillPhotoMonthly(event)"></label>
+          <p class="text-[10px] text-slate-400 mt-1">Lee el texto impreso (total a pagar, kWh) — no puede leer la gráfica de barras del historial. Tú confirmas los números antes de usarlos.</p>
+          <div id="v2-solar-bill-ocr-status" class="hidden mt-2 text-xs"></div>
         </div>
         <div id="v2-solar-historical-wrap" class="hidden mb-4">
+          <div class="p-3 rounded-xl bg-white border border-slate-200 mb-3">
+            <label class="text-[10px] font-black uppercase text-slate-500 block mb-1">Autocompletar un mes desde foto de factura (opcional)</label>
+            <div class="flex flex-wrap items-center gap-2">
+              <select id="v2-solar-hist-ocr-month" class="border border-slate-200 rounded-lg px-2 py-2 text-xs"><option value="1">Ene</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Abr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Ago</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dic</option></select>
+              <label class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand-50 border border-brand-200 text-brand-700 text-[11px] font-bold"><i class="fa-solid fa-camera"></i>Subir foto<input type="file" accept="image/*" class="hidden" onchange="handleLumaBillPhotoHistorical(event)"></label>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-1">Sube la foto de la factura de ese mes (repite por cada mes que tengas) — no puede leer la gráfica de barras, solo el texto impreso. Tú confirmas el mes y el número antes de aplicarlo.</p>
+            <div id="v2-solar-hist-ocr-status" class="hidden mt-2 text-xs"></div>
+          </div>
           <label class="text-[10px] font-black uppercase text-slate-500 mb-2 block">Consumo histórico por mes (kWh) — deja en blanco los meses que no tengas</label>
           <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
             <div><label class="text-[9px] text-slate-400">Ene</label><input type="number" id="v2-solar-hist-1" min="0" step="1" class="w-full mt-0.5 border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white"></div>
@@ -3091,7 +3145,7 @@
 <div id="leon-v2-client-portal" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-5xl"><div id="v2-client-portal-content"></div></div></div>
 
 <!-- LEON V2: proposal editor -->
-<div id="leon-v2-editor-modal" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-6xl"><div class="flex justify-between items-start mb-5"><div><div class="v2-pill mb-2"><i class="fa-solid fa-pen-ruler"></i> DOCUMENTOS</div><h3 class="text-2xl font-black">Editor de propuesta</h3><p class="text-sm text-slate-500">Edita bloques y guarda una versión sin destruir las anteriores.</p></div><button onclick="leonV2Close('leon-v2-editor-modal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div><div class="grid lg:grid-cols-[1fr_330px] gap-6"><div><div class="v2-editor" id="v2-editor-canvas"></div><div id="v2-editor-versions" class="mt-4"></div></div><div class="v2-card p-5 h-fit"><div class="font-black text-sm mb-4">Agregar bloque</div><div class="grid grid-cols-2 gap-2"><button onclick="leonV2AddBlock('Título')" class="v2-tab bg-slate-50">Título</button><button onclick="leonV2AddBlock('Texto')" class="v2-tab bg-slate-50">Texto</button><button onclick="leonV2AddBlock('Producto')" class="v2-tab bg-slate-50">Producto</button><button onclick="leonV2AddBlock('Tabla')" class="v2-tab bg-slate-50">Tabla</button><button onclick="leonV2AddBlock('Condiciones')" class="v2-tab bg-slate-50">Condiciones</button><button onclick="leonV2AddBlock('Firma')" class="v2-tab bg-slate-50">Firma</button></div><button onclick="leonV2SaveEditorVersion()" class="w-full mt-5 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase"><i class="fa-solid fa-floppy-disk mr-2"></i> Guardar versión</button><button onclick="leonV2PrintProposal()" class="w-full mt-2 py-3 rounded-xl bg-ink-900 text-white font-black text-xs uppercase"><i class="fa-solid fa-file-pdf mr-2"></i> Generar documento / PDF</button></div></div></div></div>
+<div id="leon-v2-editor-modal" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-6xl"><div class="flex justify-between items-start mb-5"><div><div class="v2-pill mb-2"><i class="fa-solid fa-pen-ruler"></i> DOCUMENTOS</div><h3 class="text-2xl font-black">Editor de propuesta</h3><p class="text-sm text-slate-500">Edita bloques y guarda una versión sin destruir las anteriores.</p></div><button onclick="leonV2Close('leon-v2-editor-modal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div><div class="grid lg:grid-cols-[1fr_330px] gap-6"><div><div class="v2-editor" id="v2-editor-canvas"></div><div id="v2-editor-versions" class="mt-4"></div></div><div class="v2-card p-5 h-fit"><div class="font-black text-sm mb-4">Agregar bloque</div><div class="grid grid-cols-2 gap-2"><button onclick="leonV2AddBlock('Título')" class="v2-tab bg-slate-50">Título</button><button onclick="leonV2AddBlock('Texto')" class="v2-tab bg-slate-50">Texto</button><button onclick="leonV2AddBlock('Producto')" class="v2-tab bg-slate-50">Producto</button><button onclick="leonV2AddBlock('Tabla')" class="v2-tab bg-slate-50">Tabla</button><button onclick="leonV2AddBlock('Condiciones')" class="v2-tab bg-slate-50">Condiciones</button><button onclick="leonV2AddBlock('Firma')" class="v2-tab bg-slate-50">Firma</button></div><button onclick="leonV2SaveEditorVersion()" class="w-full mt-5 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase"><i class="fa-solid fa-floppy-disk mr-2"></i> Guardar versión</button><button onclick="leonV2OpenPricingFromEditor()" class="w-full mt-2 py-3 rounded-xl bg-emerald-600 text-white font-black text-xs uppercase"><i class="fa-solid fa-calculator mr-2"></i> Precio / Impuestos (IVU)</button><button onclick="leonV2PrintProposal()" class="w-full mt-2 py-3 rounded-xl bg-ink-900 text-white font-black text-xs uppercase"><i class="fa-solid fa-file-pdf mr-2"></i> Generar documento / PDF</button></div></div></div></div>
 
 <!-- LEON V2: client 360 dossier -->
 <div id="leon-v2-client-dossier" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-5xl"><div id="v2-dossier-content"></div></div></div>
@@ -3189,6 +3243,7 @@
         <div><label class="text-[10px] font-black uppercase text-slate-500">Transporte (USD)</label><input id="v2-price-transport" type="number" min="0" step="0.01" value="0" oninput="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
         <div><label class="text-[10px] font-black uppercase text-slate-500">Impuesto / IVU (%)</label><input id="v2-price-tax" type="number" min="0" step="0.01" value="11.5" oninput="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><p class="text-[9px] text-slate-400 mt-1">IVU Puerto Rico por defecto (10.5% estatal + 1% municipal). Editable si aplica exención u otra tasa.</p></div>
       </div>
+      <div id="v2-price-exempt-note" class="hidden p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-800"><i class="fa-solid fa-circle-check mr-1"></i> <span id="v2-price-exempt-text"></span></div>
       <div id="v2-price-months-wrap"><label class="text-[10px] font-black uppercase text-slate-500">Financiamiento</label><select id="v2-price-months" onchange="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="0">Contado — sin financiamiento</option><option value="6">6 meses</option><option value="12">12 meses</option><option value="18">18 meses</option><option value="24">24 meses</option><option value="30">30 meses</option><option value="36">36 meses</option><option value="42">42 meses</option><option value="48">48 meses</option><option value="54">54 meses</option><option value="60">60 meses</option><option value="66">66 meses</option><option value="72">72 meses</option><option value="78">78 meses</option><option value="84">84 meses</option><option value="90">90 meses</option><option value="96">96 meses</option></select></div>
       <div id="v2-price-rate-wrap" class="hidden"><label class="text-[10px] font-black uppercase text-slate-500">Tasa de interés anual (%)</label><input id="v2-price-rate" type="number" min="0" step="0.01" value="0" oninput="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. 14.00"></div>
       <div id="v2-price-sunrun-note" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-100 text-xs text-amber-800"><i class="fa-solid fa-solar-panel mr-1"></i> Esta propuesta usa financiamiento Sunrun (PPA) — el pago mensual se fijó con la calculadora solar al crearla y no se recalcula aquí. Para cambiarlo, genera una nueva propuesta.</div>
@@ -3288,6 +3343,23 @@
   window.leonV2MaxPrincipalForPayment=leonV2MaxPrincipalForPayment;
   window.FINANCING_CONFIG=FINANCING_CONFIG;
 
+  // ===== Elegibilidad de financiamiento por producto (ej. Sunrun solo financia su propia gama de
+  // equipos — una batería Franklin WH se puede pagar por Cooperativa o Cash, pero NO por Sunrun) =====
+  // `compatibleFinancing` en el producto es un array de proveedores permitidos (ver checkbox en el
+  // formulario de producto, prod-fin-*). Si no está definido (productos viejos que nunca se
+  // tocaron) se asume compatible con TODO — nunca se rompe retroactivamente un producto existente.
+  function leonV2IsFinancingCompatible(item, provider){
+    if(!provider) return true;
+    const cf=item&&item.compatibleFinancing;
+    if(!Array.isArray(cf) || !cf.length) return true; // sin restricción guardada = compatible con todo
+    return cf.includes(provider);
+  }
+  function leonV2IncompatibleItemsForFinancing(items, provider){
+    return (items||[]).filter(it=>!leonV2IsFinancingCompatible(it, provider));
+  }
+  window.leonV2IsFinancingCompatible=leonV2IsFinancingCompatible;
+  window.leonV2IncompatibleItemsForFinancing=leonV2IncompatibleItemsForFinancing;
+
   // ===================== CALCULADORA SOLAR SUNRUN (PPA) =====================
   // Implementa exactamente las fórmulas que definió el negocio: dos métodos de entrada
   // (factura mensual o consumo histórico de hasta 12 meses) que nunca se mezclan, ambos
@@ -3308,13 +3380,19 @@
     if(!(rate>0)) return {error:'La tarifa LUMA debe ser mayor que $0 — no se puede dividir entre cero.'};
     const valid=(monthValues||[]).filter(v=>typeof v==='number' && !isNaN(v) && v>=0);
     if(!valid.length) return {error:'Ingresa al menos un mes de consumo histórico válido (en kWh).'};
-    const consumoAnual=valid.reduce((s,v)=>s+v,0);
     const mesesLlenos=valid.length;
-    const consumoMensualPromedio=consumoAnual/mesesLlenos; // NUNCA se divide entre 12 si faltan meses
+    // BUG REAL corregido: antes "consumoAnual" era la SUMA CRUDA de los meses que el vendedor
+    // llenó (ej. si solo escribía 3 meses, "consumoAnual" terminaba siendo el consumo de 3 meses,
+    // no de 12) y esa cifra se usaba directo para dimensionar el sistema — por eso el pago
+    // estimado salía mal cada vez que no se llenaban los 12 meses. Ahora SIEMPRE se extrapola a un
+    // año completo a partir del promedio mensual real, sin importar cuántos meses se hayan escrito.
+    const consumoIngresado=valid.reduce((s,v)=>s+v,0); // suma tal cual de los meses escritos — solo informativo
+    const consumoMensualPromedio=consumoIngresado/mesesLlenos; // el promedio SÍ se calcula solo sobre los meses llenos, nunca dividiendo entre 12 si faltan
+    const consumoAnual=consumoMensualPromedio*12; // extrapolado a 12 meses — esto es lo que debe usarse para dimensionar el sistema
     const produccionTarget=consumoAnual*SOLAR_CONFIG.coberturaObjetivo;
     const sistemaKw=produccionTarget/SOLAR_CONFIG.produccionPorKwAnual;
     const facturaLumaMensual=consumoMensualPromedio*rate;
-    return {method:'Consumo Histórico', lumaRateUsed:rate, consumoAnual, mesesLlenos, consumoMensual:consumoMensualPromedio, produccionTarget, sistemaKw, facturaLumaMensual};
+    return {method:'Consumo Histórico', lumaRateUsed:rate, consumoAnual, consumoIngresado, mesesLlenos, consumoMensual:consumoMensualPromedio, produccionTarget, sistemaKw, facturaLumaMensual};
   }
   function calculatePpa(produccionTarget, tarifaPpa){
     const rate=(typeof tarifaPpa==='number' && tarifaPpa>0)?tarifaPpa:SOLAR_CONFIG.tarifaPpaSunrun;
@@ -3399,7 +3477,10 @@
       ['Ahorro mensual inicial', money(r.ahorroMensual)],
       ['Ahorro porcentual', r.ahorroPorcentaje.toFixed(1)+'%']
     ];
-    if(r.mesesLlenos) rows.splice(3,0,['Meses con datos', r.mesesLlenos+' de 12']);
+    if(r.mesesLlenos){
+      rows.splice(3,0,['Meses con datos', r.mesesLlenos+' de 12'+(r.mesesLlenos<12?' (extrapolado a 12)':'')]);
+      if(r.mesesLlenos<12 && typeof r.consumoIngresado==='number') rows.splice(4,0,['Consumo escrito (sin extrapolar)', r.consumoIngresado.toLocaleString('en-US',{maximumFractionDigits:2})+' kWh en '+r.mesesLlenos+' mes(es)']);
+    }
     const projRows=r.projection.map(y=>`<tr><td>Año ${y.year}</td><td class="text-right">${money(y.monthly)}/mes</td><td class="text-right">${money(y.annual)}/año</td></tr>`).join('');
     el.innerHTML=`<div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
       <div class="text-[10px] font-black uppercase tracking-widest text-emerald-700 mb-2"><i class="fa-solid fa-solar-panel mr-1"></i>Resultados Solares</div>
@@ -3410,13 +3491,146 @@
     </div>`;
   }
 
+  // ===================== LECTURA DE FACTURA LUMA POR FOTO (OCR) =====================
+  // Esta app es un solo archivo HTML sin servidor detrás — no hay forma confiable de "leer" la
+  // GRÁFICA de barras que trae la factura (esos cuadritos de consumo por mes son una imagen, no
+  // texto). Lo que SÍ se puede leer con OCR es el TEXTO IMPRESO de la factura: el total a pagar y
+  // los kWh utilizados del período. Por eso el flujo es: OCR intenta leer esos números → SIEMPRE
+  // se muestran editables para que el vendedor confirme o corrija → nunca se aplican solos.
+  // Tesseract.js se carga solo la primera vez que se usa (no en cada carga de la página).
+  let v2TesseractLoadPromise=null;
+  function leonV2LoadTesseract(){
+    if(window.Tesseract) return Promise.resolve(window.Tesseract);
+    if(v2TesseractLoadPromise) return v2TesseractLoadPromise;
+    v2TesseractLoadPromise=new Promise((resolve,reject)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js';
+      s.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(new Error('No se pudo iniciar el lector de facturas.'));
+      s.onerror=()=>{v2TesseractLoadPromise=null;reject(new Error('No se pudo cargar el lector de facturas — revisa tu conexión a internet.'));};
+      document.head.appendChild(s);
+    });
+    return v2TesseractLoadPromise;
+  }
+  const V2_MESES_ES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const V2_MESES_EN=['january','february','march','april','may','june','july','august','september','october','november','december'];
+  const V2_MESES_CORTOS=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  // "1,234.56" ó "1.234,56" — LUMA imprime en formato US (coma=miles, punto=decimales), así que se
+  // asume ese orden; solo importa para el prellenado, el vendedor siempre puede corregir el número.
+  function leonV2ParseLooseNumber(s){ if(!s)return NaN; return parseFloat(String(s).replace(/,/g,'')); }
+  function leonV2ParseLumaBillText(text){
+    const norm=String(text||'').replace(/\r/g,'');
+    const lower=norm.toLowerCase();
+    let kwh=null;
+    const kwhMatches=[...norm.matchAll(/([\d]{1,3}(?:,\d{3})*(?:\.\d+)?)\s*k\s*w\s*h/gi)];
+    if(kwhMatches.length){
+      const nums=kwhMatches.map(m=>leonV2ParseLooseNumber(m[1])).filter(n=>n>0 && n<100000);
+      if(nums.length) kwh=Math.max(...nums);
+    }
+    let amount=null;
+    const totalMatch=norm.match(/(?:total a pagar|amount due|balance due|total due|total)[^\n$]{0,20}\$\s*([\d]{1,3}(?:,\d{3})*(?:\.\d{1,2})?)/i);
+    if(totalMatch) amount=leonV2ParseLooseNumber(totalMatch[1]);
+    if(amount==null){
+      const dollarMatches=[...norm.matchAll(/\$\s*([\d]{1,3}(?:,\d{3})*(?:\.\d{1,2})?)/g)];
+      if(dollarMatches.length){
+        const nums=dollarMatches.map(m=>leonV2ParseLooseNumber(m[1])).filter(n=>n>0 && n<50000);
+        if(nums.length) amount=Math.max(...nums);
+      }
+    }
+    let monthIndex=null;
+    for(let i=0;i<12;i++){ if(lower.indexOf(V2_MESES_ES[i])!==-1 || lower.indexOf(V2_MESES_EN[i])!==-1){ monthIndex=i; break; } }
+    if(monthIndex===null){
+      const dm=norm.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\b/);
+      if(dm){ const mm=parseInt(dm[1],10); if(mm>=1&&mm<=12) monthIndex=mm-1; }
+    }
+    return {kwh, amount, monthIndex};
+  }
+  window.leonV2ParseLumaBillText=leonV2ParseLumaBillText; // expuesto para pruebas automatizadas (función pura, sin efectos secundarios)
+  function leonV2OcrExtractFromImage(file, statusEl){
+    if(statusEl){ statusEl.classList.remove('hidden'); statusEl.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando lector de facturas (solo la primera vez)...'; }
+    return leonV2LoadTesseract().then(Tesseract=>{
+      if(statusEl) statusEl.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i>Leyendo la factura, un momento...';
+      return Tesseract.recognize(file,'eng');
+    }).then(({data})=>leonV2ParseLumaBillText(data&&data.text));
+  }
+  // Método "Pago mensual": intenta leer el total a pagar y, si también encuentra los kWh del
+  // período, calcula la TARIFA REAL de ese cliente (total÷kWh) en vez de usar siempre el default
+  // genérico de $0.27 — más preciso, y el vendedor la ve y la puede ajustar antes de calcular.
+  window.handleLumaBillPhotoMonthly=function(event){
+    const file=event.target.files[0]; if(!file)return;
+    const statusEl=document.getElementById('v2-solar-bill-ocr-status');
+    leonV2OcrExtractFromImage(file, statusEl).then(r=>{
+      if(r.kwh==null && r.amount==null){
+        statusEl.innerHTML='<i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600"></i>No pudimos leer números claros en la foto — escribe la factura manualmente abajo.';
+        return;
+      }
+      let html='<div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800"><b class="text-[11px] uppercase tracking-wide">Detectado en la foto — verifica antes de usar</b><div class="grid sm:grid-cols-2 gap-2 mt-2">';
+      html+=`<div><label class="text-[9px] uppercase font-black text-emerald-700">Factura ($)</label><input type="number" id="v2-solar-bill-detected" value="${r.amount!=null?r.amount:''}" step="0.01" placeholder="No detectado" class="w-full mt-0.5 border border-emerald-200 rounded-lg px-2 py-1.5 text-xs bg-white"></div>`;
+      html+=`<div><label class="text-[9px] uppercase font-black text-emerald-700">Consumo (kWh)</label><input type="number" id="v2-solar-kwh-detected" value="${r.kwh!=null?r.kwh:''}" step="1" placeholder="No detectado" class="w-full mt-0.5 border border-emerald-200 rounded-lg px-2 py-1.5 text-xs bg-white"></div>`;
+      html+='</div><button type="button" onclick="leonV2ApplyOcrMonthly()" class="mt-3 w-full py-2 rounded-lg bg-emerald-600 text-white text-[11px] font-black uppercase">Usar estos valores</button></div>';
+      statusEl.innerHTML=html;
+    }).catch(err=>{
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML='<i class="fa-solid fa-triangle-exclamation mr-1 text-red-600"></i>'+esc(err&&err.message||'No se pudo leer la factura.');
+    });
+  };
+  window.leonV2ApplyOcrMonthly=function(){
+    const amountEl=document.getElementById('v2-solar-bill-detected');
+    const kwhEl=document.getElementById('v2-solar-kwh-detected');
+    if(amountEl && amountEl.value) document.getElementById('v2-solar-bill').value=amountEl.value;
+    if(kwhEl && kwhEl.value && amountEl && amountEl.value){
+      const rate=Number(amountEl.value)/Number(kwhEl.value);
+      if(rate>0 && rate<2) document.getElementById('v2-solar-luma-rate').value=rate.toFixed(4);
+    }
+    showToast('Factura aplicada — revisa los campos antes de calcular el sistema.','success');
+  };
+  // Método "Consumo Histórico": una foto = un mes. El vendedor sube la factura de cada mes que
+  // tenga a mano; el mes lo confirma/corrige él (el detectado por fecha en la factura es solo una
+  // sugerencia), nunca se sobreescribe un mes sin que el vendedor pulse "Aplicar".
+  window.handleLumaBillPhotoHistorical=function(event){
+    const file=event.target.files[0]; if(!file)return;
+    const statusEl=document.getElementById('v2-solar-hist-ocr-status');
+    leonV2OcrExtractFromImage(file, statusEl).then(r=>{
+      const monthSel=document.getElementById('v2-solar-hist-ocr-month');
+      if(r.monthIndex!=null && monthSel) monthSel.value=String(r.monthIndex+1);
+      if(r.kwh==null){
+        statusEl.innerHTML='<i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600"></i>No pudimos leer un consumo claro en la foto — escribe el mes manualmente abajo.';
+        return;
+      }
+      statusEl.innerHTML=`<div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800"><b class="text-[11px] uppercase tracking-wide">Consumo detectado</b><div class="flex items-center gap-2 mt-2"><input type="number" id="v2-solar-hist-detected" value="${r.kwh}" step="1" class="border border-emerald-200 rounded-lg px-2 py-1.5 text-xs bg-white w-28"><span>kWh</span></div><p class="text-[10px] mt-1">${r.monthIndex!=null?'Mes sugerido: <b>'+V2_MESES_CORTOS[r.monthIndex]+'</b> (puedes cambiarlo arriba antes de aplicar).':'No se detectó el mes — selecciónalo arriba.'}</p><button type="button" onclick="leonV2ApplyOcrHistorical()" class="mt-2 py-2 px-3 rounded-lg bg-emerald-600 text-white text-[11px] font-black uppercase">Aplicar al mes seleccionado</button></div>`;
+    }).catch(err=>{
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML='<i class="fa-solid fa-triangle-exclamation mr-1 text-red-600"></i>'+esc(err&&err.message||'No se pudo leer la factura.');
+    });
+  };
+  window.leonV2ApplyOcrHistorical=function(){
+    const monthSel=document.getElementById('v2-solar-hist-ocr-month');
+    const detectedEl=document.getElementById('v2-solar-hist-detected');
+    if(!monthSel||!detectedEl||!detectedEl.value)return;
+    const idx=Number(monthSel.value);
+    const field=document.getElementById('v2-solar-hist-'+idx);
+    if(field) field.value=detectedEl.value;
+    showToast('Consumo aplicado a '+V2_MESES_CORTOS[idx-1]+' — revisa el número antes de calcular.','success');
+  };
+
   // Motor de cotización (CPQ): un único cálculo compartido por el portal del cliente, el PDF y el
   // modal de precio del staff, para que los tres muestren siempre el mismo número.
   function leonV2ComputeTotal(q){
-    const subtotal=(q.items||[]).reduce((s,x)=>s+x.price*x.qty,0);
+    const items=q.items||[];
+    const subtotal=items.reduce((s,x)=>s+x.price*x.qty,0);
+    // No todos los equipos llevan IVU (ej. baterías solares marcadas "Exento de IVU" en el
+    // catálogo, ver prod-tax-exempt) — se separa el subtotal en gravado/exento y el impuesto se
+    // calcula SOLO sobre la parte gravada, en vez de aplicar la tasa a todo el pedido por igual.
+    const exemptSubtotal=items.reduce((s,x)=>s+(x.taxExempt?x.price*x.qty:0),0);
+    const taxableItemsSubtotal=subtotal-exemptSubtotal;
     const discount=Number(q.discount)||0, install=Number(q.installationFee)||0, transport=Number(q.transportFee)||0, taxRate=Number(q.taxRate)||0;
+    // El descuento se reparte proporcionalmente entre lo gravado y lo exento, según cuánto pesa
+    // cada uno en el subtotal — así un descuento grande no termina "cobrando" impuesto de más (o de
+    // menos) sobre la parte que nunca debió llevar IVU.
+    const taxableShare=subtotal>0?taxableItemsSubtotal/subtotal:0;
+    const discountOnTaxable=discount*taxableShare;
+    const taxableBase=Math.max(0, taxableItemsSubtotal-discountOnTaxable+install+transport);
     const taxable=Math.max(0, subtotal - discount + install + transport);
-    const tax=taxable*(taxRate/100);
+    const tax=taxableBase*(taxRate/100);
     const total=taxable+tax;
     const months=Number(q.financingMonths)||0;
     const provider=q.financingProvider||'Cash';
@@ -3429,7 +3643,7 @@
       financing=window.leonV2CalcFinancing(provider, total, months, {rate:q.financingRate});
       monthly=financing?financing.monthly:(total/months);
     }
-    return {subtotal, discount, install, transport, tax, total, monthly, months, financing};
+    return {subtotal, discount, install, transport, tax, total, monthly, months, financing, exemptSubtotal, taxableBase};
   }
   window.leonV2ComputeTotal=leonV2ComputeTotal; // mismo motivo que leonV2CalcFinancing: se necesita fuera de este scope.
   // Crea o actualiza el expediente del cliente cada vez que se genera una propuesta, sin importar
@@ -3884,7 +4098,7 @@
     const items=isAdmin?(state.commissions||[]):(state.commissions||[]).filter(c=>c.beneficiaryId===state.currentUser.id);
     const rows=items.map(c=>({
       Beneficiario:c.beneficiaryName||'', Venta:c.quoteId||'', MontoVenta:Number(c.saleAmount)||0,
-      Tipo:c.type==='directa'?'Directa':('Referido N'+c.level), Porcentaje:c.percent||0,
+      Tipo:leonV2CommissionTypeLabel(c), Porcentaje:c.type==='referido_fijo'?'':(c.percent||0), MontoFijo:c.type==='referido_fijo'?(c.flatAmount!=null?c.flatAmount:c.amount):'',
       Monto:Number(c.amount)||0, Estado:c.status||'', Ajustada:c.adjusted?'Sí':'No', CreadoEl:c.createdAt||''
     }));
     leonV2DownloadCsv(rows,'leon_comisiones_'+new Date().toISOString().slice(0,10)+'.csv');
@@ -4412,6 +4626,19 @@
       const lumaEl=document.getElementById('v2-solar-luma-rate'); if(lumaEl && lumaEl.value==='') lumaEl.value=SOLAR_CONFIG.tarifaLuma;
       const ppaEl=document.getElementById('v2-solar-ppa-rate'); if(ppaEl && ppaEl.value==='') ppaEl.value=SOLAR_CONFIG.tarifaPpaSunrun;
       const escEl=document.getElementById('v2-solar-escalator'); if(escEl && escEl.value==='') escEl.value=(SOLAR_CONFIG.escaladorPpa*100).toFixed(1);
+      // Aviso temprano (no bloqueante todavía — el bloqueo real es al generar la propuesta en
+      // leonV2SubmitClient) si algo ya en el carrito no es financiable por Sunrun — ej. una batería
+      // Franklin WH marcada como "solo Cooperativa/Cash" en su ficha de producto.
+      const warnBox=document.getElementById('v2-solar-fin-warning');
+      if(warnBox){
+        const incompatibles=leonV2IncompatibleItemsForFinancing(state.cart||[], 'Sunrun');
+        if(incompatibles.length){
+          warnBox.classList.remove('hidden');
+          warnBox.innerHTML='<i class="fa-solid fa-triangle-exclamation mr-1"></i><b>Sunrun no financia:</b> '+incompatibles.map(i=>esc(i.name)).join(', ')+'. Quítalos del carrito o cambia el método de pago antes de generar la propuesta.';
+        } else {
+          warnBox.classList.add('hidden');
+        }
+      }
     } else {
       termWrap.classList.remove('hidden');
       const months=[]; for(let m=6;m<=96;m+=6)months.push(m);
@@ -4475,6 +4702,14 @@
     const id='L-'+Math.floor(10000+Math.random()*89999);
     const consultant=v2Help?document.getElementById('v2-consultant').value:null;
     const provider=document.getElementById('v2-fin-provider').value;
+    // Sunrun solo financia su propia gama de equipos certificados — bloquea aquí (no solo con un
+    // aviso) si algún producto del carrito quedó marcado como NO compatible con Sunrun, para nunca
+    // guardar una propuesta con una combinación de financiamiento imposible en la vida real.
+    const incompatibles=leonV2IncompatibleItemsForFinancing(items, provider);
+    if(incompatibles.length){
+      showToast('Estos equipos no se pueden financiar con '+provider+': '+incompatibles.map(i=>i.name).join(', ')+'. Quítalos del carrito o elige otro método de pago.','error');
+      return;
+    }
     let paymentType, financingMonths=0, financingRate=0, solarFields={};
     if(provider==='Cash'){
       paymentType='Cash — '+document.getElementById('v2-fin-cash-mode').value;
@@ -4528,7 +4763,8 @@
       ${t.discount?`<div class="flex justify-between p-3 bg-slate-50 rounded-xl"><span>Descuento</span><b>-${money(t.discount)}</b></div>`:''}
       ${t.install?`<div class="flex justify-between p-3 bg-slate-50 rounded-xl"><span>Instalación</span><b>${money(t.install)}</b></div>`:''}
       ${t.transport?`<div class="flex justify-between p-3 bg-slate-50 rounded-xl"><span>Transporte</span><b>${money(t.transport)}</b></div>`:''}
-      ${t.tax?`<div class="flex justify-between p-3 bg-slate-50 rounded-xl"><span>Impuesto</span><b>${money(t.tax)}</b></div>`:''}
+      ${t.exemptSubtotal?`<div class="flex justify-between p-3 bg-emerald-50 text-emerald-700 rounded-xl"><span>Exento de IVU</span><b>${money(t.exemptSubtotal)}</b></div>`:''}
+      ${t.tax?`<div class="flex justify-between p-3 bg-slate-50 rounded-xl"><span>Impuesto (IVU)</span><b>${money(t.tax)}</b></div>`:''}
       <div class="flex justify-between p-3 bg-ink-900 text-white rounded-xl sm:col-span-2"><span>Total</span><b>${money(t.total)}</b></div>
       ${t.monthly?`<div class="flex justify-between p-3 bg-brand-50 text-brand-700 rounded-xl sm:col-span-2"><span>Pago mensual estimado (${t.months} meses, sin interés)</span><b>${money(t.monthly)}</b></div>`:''}
     </div></div>`;
@@ -4647,6 +4883,14 @@
     if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection(state.quotes.includes(q)?'quotes':'quotesHistory');
   };
   window.leonV2PrintProposal=()=>{const id=document.getElementById('leon-v2-editor-modal').dataset.quoteId;leonV2PrintProposalById(id)};
+  // Acceso directo a precio/impuestos (IVU) desde dentro del mismo Editor de propuesta — antes solo
+  // se podía llegar ahí desde un botón-ícono pequeño en la tabla de Propuestas, lo cual el usuario
+  // reportó que no era suficientemente visible/alcanzable mientras edita la propuesta.
+  window.leonV2OpenPricingFromEditor=()=>{
+    const id=document.getElementById('leon-v2-editor-modal').dataset.quoteId;
+    if(!id)return;
+    leonV2OpenPricing(id);
+  };
   // Bloque de financiamiento del PDF — antes decía siempre "sin interés" sin importar el
   // proveedor, lo cual ya no es cierto para PCI/Cooperativa (interés real) ni tiene sentido
   // para Sunrun (PPA, no un préstamo). Arma el texto/tabla correctos según cada caso real.
@@ -4671,7 +4915,7 @@
   // Detalle del plan de Sellado de Techo asociado a una propuesta (si alguno de sus items viene de
   // la calculadora/asistente de Sellado de Techo) — usado tanto en el PDF como en el portal.
   function leonV2RoofSealPlanInfo(q){ const it=(q.items||[]).find(i=>i.roofSealingPlan); return it?it.roofSealingPlan:null; }
-  window.leonV2PrintProposalById=id=>{const q=findQuoteAnywhere(id);if(!q)return;const t=leonV2ComputeTotal(q);const rs=leonV2RoofSealPlanInfo(q);const w=window.open('','_blank');w.document.write(`<html><head><title>Propuesta ${esc(q.id)}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}h1{color:#0876c9}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}img{width:80px;height:60px;object-fit:contain} .total{font-size:22px;font-weight:800;text-align:right;margin-top:20px}.head{display:flex;justify-content:space-between;border-bottom:3px solid #0876c9;padding-bottom:18px}.box{background:#f5f9fd;padding:16px;border-radius:10px;margin-top:20px}.breakdown td{padding:6px 0;border:none}</style></head><body><div class="head"><div><h1>LEON HOME SOLUTIONS</h1><b>PROPUESTA COMERCIAL</b><div>${esc(q.id)}</div></div><div><b>Fecha</b><br>${esc(q.createdAt||'')}</div></div><div class="box"><b>CLIENTE</b><br>${esc(q.clientName)}<br>${esc(q.clientCompany||'')}<br>${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</div><div class="box"><b>CONSULTOR</b><br>${esc(q.vendorName||'Asignación pendiente')}<br>Origen: ${esc(q.origin||'')}</div>${rs?`<div class="box"><b>DETALLE DEL PLAN DE SELLADO DE TECHO</b><br>Área a sellar: <b>${rs.sqft.toLocaleString('en-US')} ft²</b> · Precio: <b>${money(rs.pricePerFt2)}/ft²</b>${rs.warrantyYears?' · Garantía: <b>'+leonV2YearsLabel(rs.warrantyYears)+'</b>':''}${rs.materials?'<br>Materiales/incluye: '+esc(rs.materials):''}</div>`:''}<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${q.items.map(i=>`<tr><td><img src="${esc(i.image||'')}" onerror="this.style.display='none'"> ${esc(i.name)}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${money(i.price*i.qty)}</td></tr>`).join('')}</tbody></table><table class="breakdown"><tbody><tr><td>Subtotal</td><td style="text-align:right">${money(t.subtotal)}</td></tr>${t.discount?`<tr><td>Descuento</td><td style="text-align:right">-${money(t.discount)}</td></tr>`:''}${t.install?`<tr><td>Instalación</td><td style="text-align:right">${money(t.install)}</td></tr>`:''}${t.transport?`<tr><td>Transporte</td><td style="text-align:right">${money(t.transport)}</td></tr>`:''}${t.tax?`<tr><td>Impuesto</td><td style="text-align:right">${money(t.tax)}</td></tr>`:''}</tbody></table><div class="total">TOTAL: ${money(t.total)}</div>${leonV2PrintFinancingBlock(q,t)}<div class="box">Condiciones: propuesta sujeta a disponibilidad, validación comercial y condiciones de financiación. Vigencia configurable por administración.</div>${q.acceptance?`<div class="box" style="background:#ecfdf5"><b>ACEPTACIÓN DIGITAL</b><br>${esc(q.acceptance.name)} — ${esc(new Date(q.acceptance.acceptedAt).toLocaleString())}<br>${q.acceptance.signatureDataUrl?`<img src="${q.acceptance.signatureDataUrl}" style="height:50px;margin-top:6px;display:block">`:''}<span style="font-size:11px;color:#555">Firma trazada a mano por la persona (no es un proveedor certificado con validez legal notarial).</span></div>`:''}<div style="margin-top:70px;display:flex;justify-content:space-between"><div>________________________<br>Cliente</div><div>________________________<br>Consultor</div></div><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()};
+  window.leonV2PrintProposalById=id=>{const q=findQuoteAnywhere(id);if(!q)return;const t=leonV2ComputeTotal(q);const rs=leonV2RoofSealPlanInfo(q);const w=window.open('','_blank');w.document.write(`<html><head><title>Propuesta ${esc(q.id)}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}h1{color:#0876c9}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}img{width:80px;height:60px;object-fit:contain} .total{font-size:22px;font-weight:800;text-align:right;margin-top:20px}.head{display:flex;justify-content:space-between;border-bottom:3px solid #0876c9;padding-bottom:18px}.box{background:#f5f9fd;padding:16px;border-radius:10px;margin-top:20px}.breakdown td{padding:6px 0;border:none}</style></head><body><div class="head"><div><h1>LEON HOME SOLUTIONS</h1><b>PROPUESTA COMERCIAL</b><div>${esc(q.id)}</div></div><div><b>Fecha</b><br>${esc(q.createdAt||'')}</div></div><div class="box"><b>CLIENTE</b><br>${esc(q.clientName)}<br>${esc(q.clientCompany||'')}<br>${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</div><div class="box"><b>CONSULTOR</b><br>${esc(q.vendorName||'Asignación pendiente')}<br>Origen: ${esc(q.origin||'')}</div>${rs?`<div class="box"><b>DETALLE DEL PLAN DE SELLADO DE TECHO</b><br>Área a sellar: <b>${rs.sqft.toLocaleString('en-US')} ft²</b> · Precio: <b>${money(rs.pricePerFt2)}/ft²</b>${rs.warrantyYears?' · Garantía: <b>'+leonV2YearsLabel(rs.warrantyYears)+'</b>':''}${rs.materials?'<br>Materiales/incluye: '+esc(rs.materials):''}</div>`:''}<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${q.items.map(i=>`<tr><td><img src="${esc(i.image||'')}" onerror="this.style.display='none'"> ${esc(i.name)}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${money(i.price*i.qty)}</td></tr>`).join('')}</tbody></table><table class="breakdown"><tbody><tr><td>Subtotal</td><td style="text-align:right">${money(t.subtotal)}</td></tr>${t.discount?`<tr><td>Descuento</td><td style="text-align:right">-${money(t.discount)}</td></tr>`:''}${t.install?`<tr><td>Instalación</td><td style="text-align:right">${money(t.install)}</td></tr>`:''}${t.transport?`<tr><td>Transporte</td><td style="text-align:right">${money(t.transport)}</td></tr>`:''}${t.exemptSubtotal?`<tr><td>Exento de IVU (equipos marcados como exentos)</td><td style="text-align:right">${money(t.exemptSubtotal)}</td></tr>`:''}${t.tax?`<tr><td>Impuesto (IVU)</td><td style="text-align:right">${money(t.tax)}</td></tr>`:''}</tbody></table><div class="total">TOTAL: ${money(t.total)}</div>${leonV2PrintFinancingBlock(q,t)}<div class="box">Condiciones: propuesta sujeta a disponibilidad, validación comercial y condiciones de financiación. Vigencia configurable por administración.</div>${q.acceptance?`<div class="box" style="background:#ecfdf5"><b>ACEPTACIÓN DIGITAL</b><br>${esc(q.acceptance.name)} — ${esc(new Date(q.acceptance.acceptedAt).toLocaleString())}<br>${q.acceptance.signatureDataUrl?`<img src="${q.acceptance.signatureDataUrl}" style="height:50px;margin-top:6px;display:block">`:''}<span style="font-size:11px;color:#555">Firma trazada a mano por la persona (no es un proveedor certificado con validez legal notarial).</span></div>`:''}<div style="margin-top:70px;display:flex;justify-content:space-between"><div>________________________<br>Cliente</div><div>________________________<br>Consultor</div></div><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()};
 
   function buildCRM(){
     const old=document.querySelector('#internal-view > .max-w-7xl'); if(!old)return; old.innerHTML=`<div class="leon-v2-shell"><div class="flex flex-col lg:flex-row justify-between gap-4 mb-6"><div><div class="v2-pill bg-white"><i class="fa-solid fa-shield-halved text-brand-600"></i><span id="v2-role-pill">Administrador</span></div><h2 class="text-3xl md:text-4xl font-black text-slate-900 mt-3" id="v2-greeting">Buenos días 👋</h2><p class="text-sm text-slate-500 mt-1">Tu espacio comercial se adapta automáticamente a tus permisos.</p><div id="v2-db-status" class="mt-2"></div></div><div class="flex items-center gap-3"><div class="relative"><button onclick="leonV2ToggleNotifications()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Notificaciones"><i class="fa-solid fa-bell"></i><span id="v2-notif-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-glass-lg z-50 max-h-96 overflow-y-auto"></div></div><div class="relative"><button onclick="leonV2ToggleChat()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Chat interno"><i class="fa-solid fa-comments"></i><span id="v2-chat-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-chat-panel" class="hidden fixed right-4 bottom-4 top-24 sm:top-auto sm:h-[520px] w-[92vw] sm:w-96 max-w-[92vw] bg-white border border-slate-200 rounded-2xl shadow-glass-lg z-50 flex flex-col overflow-hidden"><div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50"><b class="text-sm"><i class="fa-solid fa-comments text-brand-500 mr-2"></i>Chat del equipo</b><button onclick="leonV2ToggleChat(true)" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div><div id="v2-chat-messages" class="flex-grow overflow-y-auto p-4"></div><div id="v2-chat-gif-preview" class="hidden px-4 pb-1"></div><div class="border-t border-slate-100 p-3"><div class="flex gap-1 mb-2 flex-wrap">${['😀','😂','👍','🎉','🔥','❤️','😢','🙏','👏','💡'].map(em=>`<button type="button" onclick="leonV2InsertChatEmoji('${em}')" class="text-lg hover:scale-125 transition">${em}</button>`).join('')}<label class="ml-1 cursor-pointer text-slate-400 hover:text-brand-600 text-sm px-1" title="Adjuntar GIF/imagen"><i class="fa-solid fa-image"></i><input type="file" id="v2-chat-gif-file" accept="image/*" class="hidden" onchange="handleChatGifFile(event)"></label></div><form onsubmit="leonV2SendChatMessage(event)" class="flex gap-2"><input id="v2-chat-input" placeholder="Escribe un mensaje..." class="flex-grow px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black"><i class="fa-solid fa-paper-plane"></i></button></form></div></div></div><button onclick="leonV2OpenSection('clients')" class="px-4 py-3 rounded-xl border bg-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-2"></i>Buscar cliente</button><button onclick="logoutUser()" class="px-4 py-3 rounded-xl bg-red-50 text-red-600 text-xs font-black"><i class="fa-solid fa-right-from-bracket mr-2"></i>Salir</button></div></div><div class="grid lg:grid-cols-[230px_1fr] gap-6 v2-layout"><aside class="v2-nav h-fit"><div class="px-3 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Workspace</div><div id="v2-nav"></div></aside><section id="v2-main" class="min-w-0"></section></div></div>`;renderNav();renderDashboard();leonV2RefreshNotifications();if(typeof window.leonV2UpdateDbStatusBadge==='function')window.leonV2UpdateDbStatusBadge();
@@ -5769,12 +6013,26 @@
     leonV2RecalcPricingPreview();
     open('leon-v2-pricing-modal');
   };
+  // Muestra cuánto del subtotal está exento de IVU (ej. baterías solares marcadas como
+  // "Exento de IVU" en el catálogo) para que quede claro por qué el impuesto calculado es menor
+  // a lo esperado — nunca un descuento silencioso sin explicación.
+  function leonV2UpdatePricingExemptNote(t){
+    const note=document.getElementById('v2-price-exempt-note'), txt=document.getElementById('v2-price-exempt-text');
+    if(t.exemptSubtotal>0){
+      note.classList.remove('hidden');
+      txt.textContent='Exento de IVU: '+money(t.exemptSubtotal)+' en equipos marcados como exentos (ej. baterías solares) — el impuesto no se calcula sobre este monto.';
+    } else {
+      note.classList.add('hidden');
+    }
+  }
   window.leonV2RecalcPricingPreview=()=>{
     const q=v2PricingQuoteId?state.quotes.find(x=>x.id===v2PricingQuoteId):null;
     if(!q)return;
     if(q.financingProvider==='Sunrun'){
-      document.getElementById('v2-price-total-preview').textContent=money(leonV2ComputeTotal(q).total);
+      const t=leonV2ComputeTotal(q);
+      document.getElementById('v2-price-total-preview').textContent=money(t.total);
       document.getElementById('v2-price-monthly-preview').textContent=typeof q.solarPpaMonthlyYear1==='number'?money(q.solarPpaMonthlyYear1)+' / mes (PPA)':'—';
+      leonV2UpdatePricingExemptNote(t);
       return;
     }
     const draft={...q,
@@ -5788,6 +6046,7 @@
     const t=leonV2ComputeTotal(draft);
     document.getElementById('v2-price-total-preview').textContent=money(t.total);
     document.getElementById('v2-price-monthly-preview').textContent=t.monthly?money(t.monthly)+' / mes':'—';
+    leonV2UpdatePricingExemptNote(t);
   };
   window.leonV2SavePricing=()=>{
     const q=v2PricingQuoteId?state.quotes.find(x=>x.id===v2PricingQuoteId):null;
@@ -5991,11 +6250,34 @@
   function renderProposals(){const qs=leonV2ScopedQuotes((state.quotes||[]).concat(state.quotesHistory||[]));document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center"><div><h3 class="text-xl font-black">Propuestas</h3><p class="text-xs text-slate-500">Editor de documento, PDF, precio (CPQ) y portal del cliente por propuesta. Un cliente puede tener varias propuestas.</p></div></div><div class="overflow-x-auto mt-5">${qs.length?`<table class="w-full v2-table"><thead><tr><th>ID</th><th>Cliente</th><th>Origen</th><th>Consultor</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${qs.map(q=>`<tr><td><b>${esc(q.id)}</b><div class="text-[10px] text-slate-400">v${q.version||1} · ${esc(q.createdAt||'')}</div></td><td>${esc(q.clientName)}</td><td>${esc(q.origin||'Autogestionado')}</td><td>${esc(q.vendorName||'Pendiente')}</td><td><b>${money(leonV2ComputeTotal(q).total)}</b></td><td><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span>${(q.acceptance&&q.status!=='Aceptada')?`<div class="mt-1"><button onclick="leonV2VendorConfirmSale('${q.id}')" class="v2-tab active" style="background:#059669;border-color:#059669" title="El cliente ya firmó — confirma la venta para que pase a Cliente"><i class="fa-solid fa-check-double mr-1"></i>Confirmar venta</button></div>`:''}</td><td class="flex gap-1 flex-wrap">${state.quotes.includes(q)?`<button onclick="leonV2OpenPricing('${q.id}')" class="v2-tab"><i class="fa-solid fa-calculator"></i></button>`:''}<button onclick="leonV2OpenEditor('${q.id}')" class="v2-tab active">Editar</button><button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab" title="Descargar/imprimir PDF">PDF</button><button onclick="leonV2EmailProposal('${q.id}')" class="v2-tab" title="Enviar por correo"><i class="fa-solid fa-envelope"></i></button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button><button onclick="leonV2OpenCreditAppModal(null,'${q.id}')" class="v2-tab" title="Nueva solicitud de crédito para esta propuesta"><i class="fa-solid fa-file-invoice-dollar"></i></button>${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2DeleteQuote('${q.id}')" class="v2-tab" style="color:#dc2626" title="Eliminar propuesta"><i class="fa-solid fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay propuestas todavía. Se crean desde el catálogo público o desde Seguimiento de Ventas → Nuevo Lead / Propuesta.</div>'}</div></div>`}
 
   function renderCatalog(){
-    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex items-center justify-between mb-6 flex-wrap gap-3"><div><h3 class="text-xl font-black text-slate-900">Gestión de Catálogo</h3><p class="text-xs text-slate-500 mt-1">Añade, edita o elimina equipos. La imagen admite URL o archivo local (se comprime automáticamente).</p></div><div class="flex gap-2"><button onclick="leonV2PrintCatalogPdf()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-file-pdf mr-1"></i>Descargar catálogo (PDF)</button><button onclick="leonV2EmailCatalog()" class="bg-white border border-slate-200 hover:border-brand-400 text-slate-600 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-envelope mr-1"></i>Enviar por correo</button><button onclick="openCategoryModal()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-tags mr-1"></i>Categorías</button><button onclick="openProductModal()" class="bg-gradient-to-r from-brand-600 to-brand-400 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-1"></i>Añadir Equipo</button></div></div><div id="admin-products-list" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div><div class="text-center mt-6 hidden" id="admin-products-load-more-wrap"><button onclick="loadMoreAdminProducts()" class="bg-white border-2 border-brand-200 hover:border-brand-500 text-brand-700 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition">Cargar más <i class="fa-solid fa-chevron-down ml-1"></i></button></div></div>`;
+    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex items-center justify-between mb-6 flex-wrap gap-3"><div><h3 class="text-xl font-black text-slate-900">Gestión de Catálogo</h3><p class="text-xs text-slate-500 mt-1">Añade, edita o elimina equipos. La imagen admite URL o archivo local (se comprime automáticamente).</p></div><div class="flex gap-2"><button onclick="leonV2PrintCatalogPdf()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-file-pdf mr-1"></i>Descargar catálogo (PDF)</button><button onclick="leonV2ExportCatalogCsv()" title="Nombre, precio y comisión directa estimada de cada equipo — para uso interno del equipo" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-file-csv mr-1"></i>Descargar catálogo (CSV)</button><button onclick="leonV2EmailCatalog()" class="bg-white border border-slate-200 hover:border-brand-400 text-slate-600 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-envelope mr-1"></i>Enviar por correo</button><button onclick="openCategoryModal()" class="bg-white border border-brand-200 hover:border-brand-400 text-brand-700 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-tags mr-1"></i>Categorías</button><button onclick="openProductModal()" class="bg-gradient-to-r from-brand-600 to-brand-400 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-1"></i>Añadir Equipo</button></div></div><div id="admin-products-list" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div><div class="text-center mt-6 hidden" id="admin-products-load-more-wrap"><button onclick="loadMoreAdminProducts()" class="bg-white border-2 border-brand-200 hover:border-brand-500 text-brand-700 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition">Cargar más <i class="fa-solid fa-chevron-down ml-1"></i></button></div></div>`;
     renderAdminProductsList();
   }
   // Catálogo en PDF — pensado para mostrarle al cliente un documento con fotos, precio y
   // descripción de cada equipo (no incluye ocultos, que son borradores internos).
+  // CSV interno de catálogo (nombre + precio, para trabajarlo en Excel/Sheets) — a diferencia del
+  // PDF/correo (pensado para compartir con clientes, por eso oculta lo marcado "oculto"), este CSV
+  // es de uso interno del equipo: incluye TODO el inventario (visible u oculto) y, a pedido, la
+  // comisión directa estimada por producto según la regla vigente — así el vendedor ve de un
+  // vistazo cuánto se gana por cada equipo, no solo el precio de venta.
+  function leonV2BuildCatalogCsvRows(){
+    const list=(state.products||[]);
+    const directPct=Number((state.commissionRules||{}).direct)||0;
+    return list.map(p=>({
+      Nombre:p.name||'', Categoria:categoryLabel(p.category||'Otros'), Codigo:p.code||'',
+      Precio:Number(p.price)||0, ['ComisionDirecta%']:directPct, ComisionDirectaEstimada:Math.round((Number(p.price)||0)*directPct)/100,
+      Stock:(typeof p.stock==='number')?p.stock:'', Agotado:p.agotado?'Sí':'No', OcultoDelPublico:p.oculto?'Sí':'No',
+      ExentoDeIVU:p.taxExempt?'Sí':'No',
+      FinanciamientosCompatibles:(Array.isArray(p.compatibleFinancing)&&p.compatibleFinancing.length)?p.compatibleFinancing.join(' / '):'Todos'
+    }));
+  }
+  window.leonV2BuildCatalogCsvRows=leonV2BuildCatalogCsvRows; // expuesto para pruebas automatizadas (función pura, sin efectos secundarios)
+  window.leonV2ExportCatalogCsv=function(){
+    const rows=leonV2BuildCatalogCsvRows();
+    if(!rows.length){ showToast('No hay productos en el catálogo para exportar.','info'); return; }
+    leonV2DownloadCsv(rows,'leon_catalogo_'+new Date().toISOString().slice(0,10)+'.csv');
+    leonV2Audit('Exportó CSV', 'Catálogo ('+rows.length+' filas)');
+  };
   window.leonV2PrintCatalogPdf=function(){
     const list=(state.products||[]).filter(p=>!p.oculto);
     if(!list.length){ showToast('No hay productos visibles para exportar.','info'); return; }
@@ -7041,31 +7323,88 @@
     renderUsersList();
     if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('users');
   };
-  // Genera el ledger de comisiones para UNA venta aceptada: comisión directa para quien vendió, y
-  // comisión de referido (override) para cada nivel de supervisores hacia arriba, aplicando una
-  // copia congelada de las reglas vigentes — cambiar los porcentajes después nunca reescribe una
-  // comisión ya generada, igual que en nómina real.
+  // Una venta es "solar" (comisión de referido por %) si trae equipo categoría Solar o se financió
+  // por Sunrun; cualquier otra combinación (baterías, HVAC, agua, domótica...) es "no-solar" y usa
+  // el monto fijo en USD por nivel (flatLevels) — así lo pidió el negocio explícitamente.
+  function leonV2IsSolarSale(q){
+    if(q.financingProvider==='Sunrun') return true;
+    return (q.items||[]).some(i=>i.category==='Solar');
+  }
+  window.leonV2IsSolarSale=leonV2IsSolarSale;
+  // "Activo para cobrar override": un supervisor solo cobra la comisión de referido de su equipo en
+  // un mes si ÉL MISMO cerró al menos `activeSalesThreshold` ventas propias ese mismo mes — para que
+  // quien trajo vendedores no se quede solo cobrando de lo que otros venden sin vender él también.
+  function leonV2SupervisorMonthlySalesCount(sup, monthKey){
+    const sellerOf=q=>(q.vendorEmail&&sup.email&&q.vendorEmail.toLowerCase()===sup.email.toLowerCase())||q.vendorName===sup.name;
+    return (state.quotesHistory||[]).filter(q=>q.status==='Aceptada' && leonV2QuoteMonthKey(q)===monthKey && sellerOf(q)).length;
+  }
+  function leonV2IsSupervisorActiveForOverride(sup, monthKey){
+    const threshold=Number((state.commissionRules||{}).activeSalesThreshold);
+    if(!threshold || threshold<=0) return true; // regla desactivada (umbral en 0) = nadie pierde el override
+    return leonV2SupervisorMonthlySalesCount(sup, monthKey) >= threshold;
+  }
+  window.leonV2SupervisorMonthlySalesCount=leonV2SupervisorMonthlySalesCount;
+  window.leonV2IsSupervisorActiveForOverride=leonV2IsSupervisorActiveForOverride;
+  // Etiquetas compartidas para mostrar el tipo/tasa de una comisión en cualquier tabla o reporte —
+  // una sola fuente para que "Directa"/"Referido N1"/"Referido fijo N1" y "%"/"fijo" nunca se
+  // muestren distinto entre el ledger, el drilldown, el CSV y el reporte de pagos.
+  function leonV2CommissionTypeLabel(c){
+    if(c.type==='directa') return 'Directa';
+    return (c.type==='referido_fijo'?'Referido fijo N':'Referido N')+c.level;
+  }
+  function leonV2CommissionRateLabel(c){
+    return c.type==='referido_fijo' ? (money(c.flatAmount!=null?c.flatAmount:c.amount)+' fijo') : ((c.percent||0)+'%');
+  }
+  window.leonV2CommissionTypeLabel=leonV2CommissionTypeLabel;
+  window.leonV2CommissionRateLabel=leonV2CommissionRateLabel;
+  // Genera el ledger de comisiones para UNA venta aceptada: comisión directa para quien vendió
+  // (siempre por %, sin importar si es solar o no — así se decidió), y comisión de referido
+  // (override) para cada nivel de supervisores hacia arriba — por % si la venta es solar, o monto
+  // fijo en USD si no lo es — aplicando una copia congelada de las reglas vigentes y del estado de
+  // "activo" de cada supervisor ESE mes. Cambiar las reglas después nunca reescribe una comisión ya
+  // generada, igual que en nómina real.
   function leonV2GenerateCommissions(q){
     const seller=state.users.find(u=>u.email&&q.vendorEmail&&u.email.toLowerCase()===q.vendorEmail.toLowerCase())||state.users.find(u=>u.name===q.vendorName);
     if(!seller) return;
     const saleAmount=leonV2ComputeTotal(q).total;
-    const rules=state.commissionRules||{direct:0,levels:[]};
+    const rules=state.commissionRules||{direct:0,levels:[],flatLevels:[]};
     const now=new Date().toISOString();
+    const monthKey=leonV2QuoteMonthKey(q);
+    const isSolar=leonV2IsSolarSale(q);
     if(!state.commissions) state.commissions=[];
     if(rules.direct>0){
       state.commissions.push({id:'com-'+Date.now()+'-d'+Math.floor(Math.random()*999), type:'directa', level:0, quoteId:q.id, saleAmount, beneficiaryId:seller.id, beneficiaryName:seller.name, percent:rules.direct, amount:saleAmount*rules.direct/100, status:'Pendiente', createdAt:now});
     }
     let current=seller;
-    (rules.levels||[]).forEach(rule=>{
-      if(!current||!current.supervisorId){current=null;return}
-      const sup=state.users.find(u=>u.id===current.supervisorId);
-      if(!sup){current=null;return}
-      state.commissions.push({id:'com-'+Date.now()+'-l'+rule.level+'-'+Math.floor(Math.random()*999), type:'referido', level:rule.level, quoteId:q.id, saleAmount, beneficiaryId:sup.id, beneficiaryName:sup.name, percent:rule.percent, amount:saleAmount*rule.percent/100, status:'Pendiente', createdAt:now});
-      current=sup;
-    });
-    leonV2Audit('Comisiones generadas', q.id+' · venta '+money(saleAmount));
+    if(isSolar){
+      (rules.levels||[]).forEach(rule=>{
+        if(!current||!current.supervisorId){current=null;return}
+        const sup=state.users.find(u=>u.id===current.supervisorId);
+        if(!sup){current=null;return}
+        if(leonV2IsSupervisorActiveForOverride(sup, monthKey)){
+          state.commissions.push({id:'com-'+Date.now()+'-l'+rule.level+'-'+Math.floor(Math.random()*999), type:'referido', level:rule.level, quoteId:q.id, saleAmount, beneficiaryId:sup.id, beneficiaryName:sup.name, percent:rule.percent, amount:saleAmount*rule.percent/100, status:'Pendiente', createdAt:now});
+        } else {
+          leonV2Audit('Comisión de referido no generada', sup.name+' no alcanzó el mínimo de ventas propias en '+monthKey+' — pierde el override ese mes ('+q.id+').');
+        }
+        current=sup;
+      });
+    } else {
+      (rules.flatLevels||[]).forEach(rule=>{
+        if(!current||!current.supervisorId){current=null;return}
+        const sup=state.users.find(u=>u.id===current.supervisorId);
+        if(!sup){current=null;return}
+        if(leonV2IsSupervisorActiveForOverride(sup, monthKey)){
+          state.commissions.push({id:'com-'+Date.now()+'-f'+rule.level+'-'+Math.floor(Math.random()*999), type:'referido_fijo', level:rule.level, quoteId:q.id, saleAmount, beneficiaryId:sup.id, beneficiaryName:sup.name, flatAmount:rule.amount, amount:rule.amount, status:'Pendiente', createdAt:now});
+        } else {
+          leonV2Audit('Comisión de referido no generada', sup.name+' no alcanzó el mínimo de ventas propias en '+monthKey+' — pierde el override ese mes ('+q.id+').');
+        }
+        current=sup;
+      });
+    }
+    leonV2Audit('Comisiones generadas', q.id+' · venta '+money(saleAmount)+(isSolar?' (Solar, % )':' (No-solar, monto fijo)'));
     if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('commissions');
   }
+  window.leonV2GenerateCommissions=leonV2GenerateCommissions;
 
   function leonV2Descendants(userId){
     const result=[];
@@ -7088,7 +7427,7 @@
     const sum=(arr)=>arr.reduce((s,c)=>s+c.amount,0);
     return {
       user:u, ventasPropias, ventasEquipo, propuestas:mine.length, aceptadas:mineAccepted.length, downlineCount:downline.length,
-      directa:sum(mc.filter(c=>c.type==='directa')), referidos:sum(mc.filter(c=>c.type==='referido')),
+      directa:sum(mc.filter(c=>c.type==='directa')), referidos:sum(mc.filter(c=>c.type==='referido'||c.type==='referido_fijo')),
       pendiente:sum(mc.filter(c=>c.status==='Pendiente')), aprobada:sum(mc.filter(c=>c.status==='Aprobada')), pagada:sum(mc.filter(c=>c.status==='Pagada')),
       total:sum(mc.filter(c=>c.status!=='Rechazada')), commissions:mc
     };
@@ -7142,7 +7481,7 @@
       </table>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr><th style="text-align:left;padding:6px 4px;border-bottom:2px solid #ddd;font-size:11px">Fecha de pago</th><th style="text-align:left;padding:6px 4px;border-bottom:2px solid #ddd;font-size:11px">Venta</th><th style="text-align:left;padding:6px 4px;border-bottom:2px solid #ddd;font-size:11px">Tipo</th><th style="text-align:right;padding:6px 4px;border-bottom:2px solid #ddd;font-size:11px">Monto</th></tr></thead>
-        <tbody>${paid.length?paid.map(c=>`<tr><td style="padding:6px 4px;border-bottom:1px solid #eee;font-size:12px">${fmt(c.paidAt)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;font-size:12px">${fmt(c.quoteId)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;font-size:12px">${c.type==='directa'?'Directa':'Referido N'+c.level}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${money(c.amount)}</td></tr>`).join(''):'<tr><td colspan="4" style="padding:10px 4px;color:#999;font-size:12px">Sin pagos registrados en '+year+'.</td></tr>'}</tbody>
+        <tbody>${paid.length?paid.map(c=>`<tr><td style="padding:6px 4px;border-bottom:1px solid #eee;font-size:12px">${fmt(c.paidAt)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;font-size:12px">${fmt(c.quoteId)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;font-size:12px">${leonV2CommissionTypeLabel(c)}</td><td style="padding:6px 4px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${money(c.amount)}</td></tr>`).join(''):'<tr><td colspan="4" style="padding:10px 4px;color:#999;font-size:12px">Sin pagos registrados en '+year+'.</td></tr>'}</tbody>
       </table>
       <div style="text-align:right;margin-top:10px;font-size:14px"><b>Total pagado en ${year}: ${money(total)}</b></div>
     </div>`;
@@ -7248,6 +7587,30 @@
           <div><input type="file" id="ae-idphoto-file" accept="image/*" class="hidden" onchange="handleAddEmployeeIdPhotoUpload(event)"><button type="button" onclick="document.getElementById('ae-idphoto-file').click()" class="bg-ink-900 hover:bg-ink-800 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Foto del ID</button><p class="text-[10px] text-slate-400 mt-1">Foto clara del frente del documento.</p></div>
         </div>
       </div>
+      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-file-invoice-dollar mr-1"></i>Seguro Social y fechas</h4>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Social Security (SSN)</label><input id="ae-ssn" type="password" autocomplete="off" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Se enmascara al guardar"><p class="text-[10px] text-slate-400 mt-1">Necesario para preparar el Formulario 480.</p></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Fecha de nacimiento</label><input id="ae-birthdate" type="date" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Fecha de contratación</label><input id="ae-hiredate" type="date" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+        </div>
+      </div>
+      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-phone-volume mr-1"></i>Contacto de emergencia</h4>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Nombre</label><input id="ae-emg-name" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Teléfono</label><input id="ae-emg-phone" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="787-410-0694"></div>
+        </div>
+      </div>
+      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-building-columns mr-1"></i>Depósito directo (opcional)</h4>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Entidad bancaria</label><input id="ae-bank-name" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. Banco Popular"></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Número de cuenta</label><input id="ae-bank-account" type="password" autocomplete="off" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Se enmascara al guardar"></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Routing number</label><input id="ae-bank-routing" type="password" autocomplete="off" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Se enmascara al guardar"></div>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2">Si no lo tienes a mano ahora, puedes completarlo después desde "Crear contrato".</p>
+      </div>
       <div><label class="text-[10px] font-black uppercase text-slate-500">Contraseña temporal *</label><input id="ae-password" type="password" required minlength="4" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="El empleado puede cambiarla después"><p class="text-[10px] text-slate-400 mt-1">Se muestra una sola vez al confirmar — compártela de forma segura.</p></div>
       <button type="submit" class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase tracking-widest">Crear empleado y continuar al contrato</button>
     </form>`;
@@ -7274,12 +7637,26 @@
     const address=document.getElementById('ae-address').value;
     const idType=document.getElementById('ae-idtype').value;
     const idNumberRaw=document.getElementById('ae-idnumber').value;
+    const ssnRaw=document.getElementById('ae-ssn').value;
+    const birthDate=document.getElementById('ae-birthdate').value||'';
+    const hireDate=document.getElementById('ae-hiredate').value||'';
+    const emergencyContactName=document.getElementById('ae-emg-name').value.trim();
+    const emergencyContactPhone=document.getElementById('ae-emg-phone').value.trim();
+    const bankName=document.getElementById('ae-bank-name').value.trim();
+    const bankAccountRaw=document.getElementById('ae-bank-account').value;
+    const bankRoutingRaw=document.getElementById('ae-bank-routing').value;
     const password=document.getElementById('ae-password').value;
     if(state.users.some(u=>u.email.toLowerCase()===email.toLowerCase())){ showToast('Ya existe un empleado con ese correo.','error'); return; }
     const pin=String(Math.floor(10000+Math.random()*90000));
+    // El depósito directo es opcional aquí — si el vendedor no trae esos datos a mano todavía, el
+    // contrato queda en null igual que antes y se completa después desde "Crear contrato" (no se
+    // fuerza un contrato a medias con método de pago/frecuencia inventados).
+    const hasBankInfo = !!(bankName || bankAccountRaw || bankRoutingRaw);
     const newUser={ id:'u-'+Date.now(), name, email, role, supervisorId, pin, password, photoUrl:'', phone, address,
       idType, idNumber: idNumberRaw?maskId(idNumberRaw):'', idPhotoUrl: addEmployeeIdPhotoPending||'',
-      contract:null, taxId:'', documents:[] };
+      birthDate, hireDate, emergencyContactName, emergencyContactPhone,
+      contract: hasBankInfo ? { bankName, payMethod:'ACH / Transferencia', accountMasked: bankAccountRaw?maskId(bankAccountRaw):null, routingMasked: bankRoutingRaw?maskId(bankRoutingRaw):null, frequency:null, payDay:null, effectiveDate:null, signatureDataUrl:null, signedAt:null, clausesAcceptedAt:null, createdAt:new Date().toISOString().slice(0,10), updatedAt:new Date().toISOString().slice(0,10) } : null,
+      taxId: ssnRaw?maskId(ssnRaw):'', documents:[] };
     state.users.push(newUser);
     if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('users');
     leonV2Audit('Empleado agregado', name+' — '+role);
@@ -7530,7 +7907,7 @@
       <div id="v2-emp-invites-panel" class="mt-5"></div>
       <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-5">${state.users.map(u=>`<div class="v2-card p-4">
         <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0">${u.photoUrl?`<img src="${esc(u.photoUrl)}" class="w-full h-full object-cover">`:`<i class="fa-solid fa-user text-slate-300"></i>`}</div><div class="min-w-0"><b class="text-sm block truncate">${esc(u.name)}</b><span class="text-[10px] text-slate-400 border border-slate-200 rounded px-1.5 py-0.5">${esc(u.role)}</span></div></div>
-        <div class="text-xs text-slate-500 mt-3 space-y-1"><div><i class="fa-solid fa-envelope w-4 text-slate-400"></i> ${esc(u.email)}</div><div><i class="fa-solid fa-phone w-4 text-slate-400"></i> ${esc(u.phone||'—')}</div></div>
+        <div class="text-xs text-slate-500 mt-3 space-y-1"><div><i class="fa-solid fa-envelope w-4 text-slate-400"></i> ${esc(u.email)}</div><div><i class="fa-solid fa-phone w-4 text-slate-400"></i> ${esc(u.phone||'—')}</div>${u.hireDate?`<div><i class="fa-solid fa-calendar-day w-4 text-slate-400"></i> Contratado: ${esc(u.hireDate)}</div>`:''}${u.emergencyContactName?`<div><i class="fa-solid fa-phone-volume w-4 text-slate-400"></i> Emergencia: ${esc(u.emergencyContactName)}${u.emergencyContactPhone?' · '+esc(u.emergencyContactPhone):''}</div>`:''}</div>
         <div class="flex flex-wrap gap-2 mt-3"><button onclick="leonV2OpenVendorContract('${u.id}')" class="v2-tab ${u.contract?'':'active'}"><i class="fa-solid fa-file-signature mr-1"></i>${u.contract?'Contrato':'Crear contrato'}</button>${u.contract?`<button onclick="leonV2PrintVendorContract('${u.id}')" class="v2-tab"><i class="fa-solid fa-file-pdf mr-1"></i>PDF</button>`:''}${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2OpenDeleteEmployeeConfirm('${u.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-trash mr-1"></i>Eliminar</button>`:''}</div>
         <div class="mt-3 pt-3 border-t border-slate-100"><div class="flex justify-between items-center"><span class="text-[10px] font-black uppercase text-slate-400">Documentos (${(u.documents||[]).length})</span><label class="text-brand-600 text-[11px] font-bold cursor-pointer"><i class="fa-solid fa-upload mr-1"></i>Subir<input type="file" class="hidden" onchange="handleEmployeeDocFile(event,'${u.id}')"></label></div>
           ${(u.documents||[]).length?`<div class="mt-2 space-y-1">${u.documents.map((d,i)=>`<div class="flex items-center justify-between text-[11px] bg-slate-50 rounded-lg px-2 py-1.5"><a href="${d.dataUrl}" download="${esc(d.name)}" class="text-slate-600 truncate flex-grow hover:text-brand-600"><i class="fa-solid fa-paperclip mr-1"></i>${esc(d.name)}</a><button onclick="leonV2RemoveEmployeeDoc('${u.id}',${i})" class="text-slate-400 hover:text-red-500 ml-2"><i class="fa-solid fa-trash"></i></button></div>`).join('')}</div>`:''}
@@ -7680,6 +8057,9 @@
       <tr><td>Dirección</td><td>${fmt(u.address)}</td></tr>
       <tr><td>Seguro Social / EIN</td><td>${fmt(u.taxId)}</td></tr>
       <tr><td>Identificación</td><td>${fmt(u.idType)} ${u.idNumber?'· '+esc(u.idNumber):''}</td></tr>
+      <tr><td>Fecha de nacimiento</td><td>${fmt(u.birthDate)}</td></tr>
+      <tr><td>Fecha de contratación</td><td>${fmt(u.hireDate)}</td></tr>
+      <tr><td>Contacto de emergencia</td><td>${u.emergencyContactName?fmt(u.emergencyContactName)+(u.emergencyContactPhone?' · '+esc(u.emergencyContactPhone):''):'—'}</td></tr>
     </table>
     ${u.idPhotoUrl?`<div style="margin-top:10px"><img src="${u.idPhotoUrl}" style="max-width:260px;border:1px solid #ddd;border-radius:6px"></div>`:''}
     <h2>Cláusulas del contrato</h2>
@@ -7772,11 +8152,14 @@
         <div class="grid xl:grid-cols-[1fr_1.3fr] gap-6 mt-6">
           <div class="v2-card p-6"><h4 class="font-black mb-4"><i class="fa-solid fa-sitemap text-brand-500 mr-2"></i>Árbol de Vendedores</h4><div id="v2-vendor-tree" class="space-y-1 max-h-[420px] overflow-y-auto"></div></div>
           <div class="v2-card p-6"><h4 class="font-black mb-4"><i class="fa-solid fa-percent text-brand-500 mr-2"></i>Reglas de Comisión</h4>
-            <div class="grid sm:grid-cols-2 gap-4"><div><label class="text-[10px] font-black uppercase text-slate-500">Comisión directa (venta propia)</label><div class="flex items-center gap-2 mt-1"><input id="v2-com-direct" type="number" min="0" max="100" step="0.5" value="${state.commissionRules.direct}" class="w-full border border-slate-200 rounded-xl px-4 py-3"><span class="text-sm font-bold text-slate-400">%</span></div></div></div>
-            <div class="mt-4"><label class="text-[10px] font-black uppercase text-slate-500">Niveles de referido (override hacia arriba)</label><div id="v2-com-levels" class="space-y-2 mt-2"></div></div>
-            <button onclick="leonV2AddCommissionLevel()" class="mt-3 text-xs font-bold text-brand-600"><i class="fa-solid fa-plus mr-1"></i>Agregar nivel</button>
+            <div class="grid sm:grid-cols-2 gap-4"><div><label class="text-[10px] font-black uppercase text-slate-500">Comisión directa (venta propia)</label><div class="flex items-center gap-2 mt-1"><input id="v2-com-direct" type="number" min="0" max="100" step="0.5" value="${state.commissionRules.direct}" class="w-full border border-slate-200 rounded-xl px-4 py-3"><span class="text-sm font-bold text-slate-400">%</span></div><p class="text-[10px] text-slate-400 mt-1">Aplica igual a ventas solares y no-solares.</p></div></div>
+            <div class="mt-4"><label class="text-[10px] font-black uppercase text-slate-500">Niveles de referido — ventas SOLARES (% override hacia arriba)</label><div id="v2-com-levels" class="space-y-2 mt-2"></div></div>
+            <button onclick="leonV2AddCommissionLevel()" class="mt-3 text-xs font-bold text-brand-600"><i class="fa-solid fa-plus mr-1"></i>Agregar nivel (%)</button>
+            <div class="mt-5 pt-4 border-t border-slate-100"><label class="text-[10px] font-black uppercase text-slate-500">Niveles de referido — ventas NO-SOLARES (monto fijo en USD)</label><p class="text-[10px] text-slate-400 mt-1 mb-2">Ej. baterías: el que refirió al vendedor cobra $50 (Nivel 1), y quien refirió a ese cobra $25 (Nivel 2).</p><div id="v2-com-flat-levels" class="space-y-2 mt-2"></div></div>
+            <button onclick="leonV2AddFlatCommissionLevel()" class="mt-3 text-xs font-bold text-brand-600"><i class="fa-solid fa-plus mr-1"></i>Agregar nivel ($)</button>
+            <div class="mt-5 pt-4 border-t border-slate-100"><label class="text-[10px] font-black uppercase text-slate-500">Ventas mínimas propias al mes para mantener el override</label><div class="flex items-center gap-2 mt-1"><input id="v2-com-active-threshold" type="number" min="0" step="1" value="${state.commissionRules.activeSalesThreshold||0}" class="w-32 border border-slate-200 rounded-xl px-4 py-3"><span class="text-xs text-slate-500">ventas propias cerradas ese mes (0 = sin requisito)</span></div><p class="text-[10px] text-slate-400 mt-1">Si un supervisor no llega a este número de ventas PROPIAS en el mes, no cobra el override de referido de su equipo ese mes — para que quien trae vendedores también venda.</p></div>
             <button onclick="leonV2SaveCommissionRules()" class="w-full mt-5 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase">Guardar reglas</button>
-            <div class="p-3 rounded-xl bg-amber-50 border border-amber-100 text-[11px] text-amber-800 mt-4"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Cambiar estas reglas solo afecta ventas futuras — las comisiones ya generadas quedan congeladas con el porcentaje que tenían al momento de la venta, igual que en nómina real.</div>
+            <div class="p-3 rounded-xl bg-amber-50 border border-amber-100 text-[11px] text-amber-800 mt-4"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Cambiar estas reglas solo afecta ventas futuras — las comisiones ya generadas quedan congeladas con el porcentaje o monto que tenían al momento de la venta, igual que en nómina real.</div>
           </div>
         </div>
         <div class="v2-card p-6 mt-6"><div class="flex items-center justify-between mb-6"><h4 class="font-black text-sm flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Eficacia de Cierre por Vendedor</h4><span class="v2-pill">% propuestas aceptadas</span></div><div id="v2-dash-bars-eficacia"></div></div>
@@ -7794,6 +8177,7 @@
       `;
       renderVendorTree();
       renderCommissionLevels();
+      renderFlatCommissionLevels();
       renderCommissionLedger(true);
       renderCommissionEfficiencyBars();
       renderPaymentsReport();
@@ -7842,7 +8226,7 @@
     paid.forEach(c=>{ byVendor[c.beneficiaryName]=(byVendor[c.beneficiaryName]||0)+c.amount; });
     const totalPaid=paid.reduce((s,c)=>s+c.amount,0);
     box.innerHTML=`<div class="grid sm:grid-cols-2 gap-3 mb-4">${Object.entries(byVendor).map(([name,amt])=>`<div class="v2-card p-4"><div class="text-[10px] uppercase font-black text-slate-500">${esc(name)}</div><div class="text-lg font-black text-emerald-600 mt-1">${money(amt)}</div></div>`).join('')}</div>
-      <table class="w-full v2-table"><thead><tr><th>Fecha de pago</th><th>Beneficiario</th><th>Venta</th><th>Tipo</th><th>Monto</th></tr></thead><tbody>${paid.sort((a,b)=>new Date(b.paidAt)-new Date(a.paidAt)).map(c=>`<tr><td>${esc(c.paidAt)}</td><td><b>${esc(c.beneficiaryName)}</b></td><td>${esc(c.quoteId)}</td><td>${c.type==='directa'?'Directa':'Referido N'+c.level}</td><td><b>${money(c.amount)}</b></td></tr>`).join('')}</tbody></table>
+      <table class="w-full v2-table"><thead><tr><th>Fecha de pago</th><th>Beneficiario</th><th>Venta</th><th>Tipo</th><th>Monto</th></tr></thead><tbody>${paid.sort((a,b)=>new Date(b.paidAt)-new Date(a.paidAt)).map(c=>`<tr><td>${esc(c.paidAt)}</td><td><b>${esc(c.beneficiaryName)}</b></td><td>${esc(c.quoteId)}</td><td>${leonV2CommissionTypeLabel(c)}</td><td><b>${money(c.amount)}</b></td></tr>`).join('')}</tbody></table>
       <div class="text-right mt-3 font-black text-sm">Total pagado en el rango: <span class="text-emerald-600">${money(totalPaid)}</span></div>`;
   }
   window.leonV2PrintPaymentsReport=function(){
@@ -7875,11 +8259,12 @@
     const html=`<div class="flex justify-between items-start gap-4"><div class="flex items-center gap-4"><div class="w-16 h-16 rounded-full border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0">${u.photoUrl?`<img src="${esc(u.photoUrl)}" class="w-full h-full object-cover">`:`<i class="fa-solid fa-user text-slate-300 text-2xl"></i>`}</div><div><div class="v2-pill mb-2">VENDEDOR</div><h3 class="text-2xl font-black">${esc(u.name)}</h3><p class="text-sm text-slate-500">${esc(u.role)} · ${esc(u.email)}${u.phone?' · '+esc(u.phone):''}</p></div></div><button onclick="leonV2Close('leon-v2-vendor-drilldown')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-6">${kpi('Ventas propias',money(stats.ventasPropias),stats.aceptadas+' aceptadas de '+stats.propuestas,'fa-sack-dollar')}${kpi('Ventas del equipo',money(stats.ventasEquipo),stats.downlineCount+' persona(s) debajo','fa-people-group')}${kpi('Comisión total',money(stats.total),'Directa + referidos','fa-hand-holding-dollar')}${kpi('Pendiente de pago',money(stats.pendiente+stats.aprobada),'Pendiente + aprobada','fa-hourglass-half')}</div>
     <div class="v2-card p-5 mt-6"><div class="flex justify-between items-center mb-3"><h4 class="font-black text-sm"><i class="fa-solid fa-id-card text-brand-500 mr-2"></i>Perfil y datos de pago</h4><button onclick="leonV2OpenVendorContract('${u.id}')" class="v2-tab active"><i class="fa-solid fa-file-signature mr-1"></i>${u.contract?'Editar contrato':'Crear contrato'}</button></div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs mb-4"><div><div class="text-[10px] uppercase font-black text-slate-400">Seguro Social / EIN</div><div class="mt-1 font-mono">${esc(u.taxId||'Sin registrar')}</div></div><div><div class="text-[10px] uppercase font-black text-slate-400">Fecha de nacimiento</div><div class="mt-1">${esc(u.birthDate||'—')}</div></div><div><div class="text-[10px] uppercase font-black text-slate-400">Fecha de contratación</div><div class="mt-1">${esc(u.hireDate||'—')}</div></div><div><div class="text-[10px] uppercase font-black text-slate-400">Contacto de emergencia</div><div class="mt-1">${u.emergencyContactName?esc(u.emergencyContactName)+(u.emergencyContactPhone?' · '+esc(u.emergencyContactPhone):''):'—'}</div></div></div>
       ${u.contract?`<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs"><div><div class="text-[10px] uppercase font-black text-slate-400">Dirección</div><div class="mt-1">${esc(u.address||'—')}</div></div><div><div class="text-[10px] uppercase font-black text-slate-400">Entidad bancaria</div><div class="mt-1">${esc(c.bankName||'—')}</div></div><div><div class="text-[10px] uppercase font-black text-slate-400">Método de pago</div><div class="mt-1">${esc(c.payMethod||'—')}</div></div><div><div class="text-[10px] uppercase font-black text-slate-400">Cuenta / Routing</div><div class="mt-1 font-mono">${esc(c.accountMasked||'—')} / ${esc(c.routingMasked||'—')}</div></div><div><div class="text-[10px] uppercase font-black text-slate-400">Frecuencia</div><div class="mt-1">${esc(c.frequency||'—')}</div></div><div><div class="text-[10px] uppercase font-black text-slate-400">Día(s) de pago</div><div class="mt-1">${esc(c.payDay||'—')}</div></div><div><div class="text-[10px] uppercase font-black text-slate-400">Efectivo desde</div><div class="mt-1">${esc(c.effectiveDate||'—')}</div></div><div><div class="text-[10px] uppercase font-black text-slate-400">PIN de acceso</div><div class="mt-1 font-mono">${esc(u.pin||'—')}</div></div></div>`:'<div class="v2-empty">Este vendedor todavía no tiene contrato — usa "Crear contrato" para registrar sus datos de pago.</div>'}
     </div>
     <div class="grid lg:grid-cols-2 gap-6 mt-6">
       <div class="v2-card p-5"><h4 class="font-black text-sm mb-3">Personas debajo (${children.length})</h4>${children.length?children.map(c=>`<div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg mb-2 cursor-pointer" onclick="leonV2OpenVendorDrilldown('${c.id}')"><b class="text-sm">${esc(c.name)}</b><span class="text-[10px] text-slate-400">${esc(c.role)}</span></div>`).join(''):'<div class="text-sm text-slate-400">No tiene referidos directos.</div>'}</div>
-      <div class="v2-card p-5"><h4 class="font-black text-sm mb-3">Comisiones recientes</h4>${recent.length?recent.map(c=>`<div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg mb-2"><div><b class="text-xs">${esc(c.quoteId)}</b><div class="text-[10px] text-slate-400">${c.type==='directa'?'Directa':'Referido N'+c.level} · ${c.percent}%</div></div><div class="text-right"><div class="text-sm font-bold">${money(c.amount)}</div><span class="v2-status bg-blue-50 text-blue-700">${esc(c.status)}</span></div></div>`).join(''):'<div class="text-sm text-slate-400">Sin comisiones todavía.</div>'}</div>
+      <div class="v2-card p-5"><h4 class="font-black text-sm mb-3">Comisiones recientes</h4>${recent.length?recent.map(c=>`<div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg mb-2"><div><b class="text-xs">${esc(c.quoteId)}</b><div class="text-[10px] text-slate-400">${leonV2CommissionTypeLabel(c)} · ${leonV2CommissionRateLabel(c)}</div></div><div class="text-right"><div class="text-sm font-bold">${money(c.amount)}</div><span class="v2-status bg-blue-50 text-blue-700">${esc(c.status)}</span></div></div>`).join(''):'<div class="text-sm text-slate-400">Sin comisiones todavía.</div>'}</div>
     </div>`;
     document.getElementById('v2-vendor-drilldown-content').innerHTML=html;
     open('leon-v2-vendor-drilldown');
@@ -7903,13 +8288,38 @@
     renderCommissionLevels();
     if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('commissionRules');
   };
+  // Niveles de referido para ventas NO-solares (baterías, etc.) — mismo patrón que
+  // renderCommissionLevels/leonV2Add-RemoveCommissionLevel, pero en USD fijos en vez de %.
+  function renderFlatCommissionLevels(){
+    const box=document.getElementById('v2-com-flat-levels'); if(!box)return;
+    box.innerHTML=(state.commissionRules.flatLevels||[]).map((l,i)=>`<div class="flex items-center gap-2"><span class="text-xs font-bold text-slate-500 w-16">Nivel ${l.level}</span><span class="text-xs text-slate-400">$</span><input type="number" min="0" step="1" value="${l.amount}" data-flat-level-idx="${i}" class="v2-com-flat-level-input flex-grow border border-slate-200 rounded-xl px-3 py-2 text-sm"><button onclick="leonV2RemoveFlatCommissionLevel(${i})" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-trash"></i></button></div>`).join('')||'<div class="text-xs text-slate-400">Sin niveles de referido fijo configurados.</div>';
+  }
+  window.leonV2AddFlatCommissionLevel=()=>{
+    if(!leonV2Can('manageCommissionRules')){ showToast('Solo un administrador puede cambiar las reglas de comisión.','error'); return }
+    const levels=state.commissionRules.flatLevels||[];
+    const nextLevel=levels.length?Math.max(...levels.map(l=>l.level))+1:1;
+    levels.push({level:nextLevel, amount:10});
+    state.commissionRules.flatLevels=levels;
+    renderFlatCommissionLevels();
+    if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('commissionRules');
+  };
+  window.leonV2RemoveFlatCommissionLevel=idx=>{
+    if(!leonV2Can('manageCommissionRules')){ showToast('Solo un administrador puede cambiar las reglas de comisión.','error'); return }
+    state.commissionRules.flatLevels.splice(idx,1);
+    renderFlatCommissionLevels();
+    if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('commissionRules');
+  };
   window.leonV2SaveCommissionRules=()=>{
     if(!leonV2Can('manageCommissionRules')){ showToast('Solo un administrador puede cambiar las reglas de comisión.','error'); return }
     const direct=Number(document.getElementById('v2-com-direct').value)||0;
     const inputs=document.querySelectorAll('.v2-com-level-input');
     inputs.forEach(inp=>{const idx=Number(inp.dataset.levelIdx); if(state.commissionRules.levels[idx])state.commissionRules.levels[idx].percent=Number(inp.value)||0});
+    const flatInputs=document.querySelectorAll('.v2-com-flat-level-input');
+    flatInputs.forEach(inp=>{const idx=Number(inp.dataset.flatLevelIdx); if(state.commissionRules.flatLevels[idx])state.commissionRules.flatLevels[idx].amount=Number(inp.value)||0});
+    const activeThreshold=Math.max(0, Number(document.getElementById('v2-com-active-threshold').value)||0);
     state.commissionRules.direct=direct;
-    leonV2Audit('Reglas de comisión actualizadas', 'Directa '+direct+'% + '+state.commissionRules.levels.length+' nivel(es)');
+    state.commissionRules.activeSalesThreshold=activeThreshold;
+    leonV2Audit('Reglas de comisión actualizadas', 'Directa '+direct+'% + '+state.commissionRules.levels.length+' nivel(es) % (solar) + '+(state.commissionRules.flatLevels||[]).length+' nivel(es) fijo (no-solar) + umbral activo '+activeThreshold+' venta(s)/mes');
     showToast('Reglas de comisión guardadas. Aplican a partir de la próxima venta aceptada.','success');
     if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('commissionRules');
   };
@@ -7917,7 +8327,7 @@
     const box=document.getElementById('v2-commission-ledger'); if(!box)return;
     const me=state.currentUser;
     const items=(isAdmin?(state.commissions||[]):(state.commissions||[]).filter(c=>c.beneficiaryId===me.id)).slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-    box.innerHTML=items.length?`<table class="w-full v2-table"><thead><tr><th>Beneficiario</th><th>Venta</th><th>Tipo</th><th>%</th><th>Monto</th><th>Estado</th>${isAdmin?'<th>Acciones</th>':''}</tr></thead><tbody>${items.map(c=>`<tr><td><b>${esc(c.beneficiaryName)}</b></td><td>${esc(c.quoteId)}<div class="text-[10px] text-slate-400">${money(c.saleAmount)}</div></td><td>${c.type==='directa'?'Directa':'Referido N'+c.level}</td><td>${c.percent}%</td><td><b>${money(c.amount)}</b>${c.adjusted?'<div class=\"text-[9px] text-amber-600\">Ajustada</div>':''}</td><td><span class="v2-status ${c.status==='Pagada'?'bg-emerald-50 text-emerald-700':c.status==='Aprobada'?'bg-blue-50 text-blue-700':c.status==='Rechazada'?'bg-red-50 text-red-700':'bg-amber-50 text-amber-700'}">${esc(c.status)}</span></td>${isAdmin?`<td class="flex gap-1 flex-wrap">${c.status==='Pendiente'?`<button onclick="leonV2SetCommissionStatus('${c.id}','Aprobada')" class="v2-tab active">Aprobar</button>`:''}${c.status==='Aprobada'?`<button onclick="leonV2SetCommissionStatus('${c.id}','Pagada')" class="v2-tab active">Pagar</button>`:''}${(c.status==='Pendiente'||c.status==='Aprobada')?`<button onclick="leonV2SetCommissionStatus('${c.id}','Rechazada')" class="v2-tab" style="color:#dc2626">Rechazar</button>`:''}<button onclick="leonV2OpenAdjustCommission('${c.id}')" class="v2-tab">Ajustar</button></td>`:''}</tr>`).join('')}</tbody></table>`:'<div class="v2-empty">Sin comisiones generadas todavía — se crean automáticamente al aceptar una propuesta.</div>';
+    box.innerHTML=items.length?`<table class="w-full v2-table"><thead><tr><th>Beneficiario</th><th>Venta</th><th>Tipo</th><th>Tasa</th><th>Monto</th><th>Estado</th>${isAdmin?'<th>Acciones</th>':''}</tr></thead><tbody>${items.map(c=>`<tr><td><b>${esc(c.beneficiaryName)}</b></td><td>${esc(c.quoteId)}<div class="text-[10px] text-slate-400">${money(c.saleAmount)}</div></td><td>${leonV2CommissionTypeLabel(c)}</td><td>${leonV2CommissionRateLabel(c)}</td><td><b>${money(c.amount)}</b>${c.adjusted?'<div class=\"text-[9px] text-amber-600\">Ajustada</div>':''}</td><td><span class="v2-status ${c.status==='Pagada'?'bg-emerald-50 text-emerald-700':c.status==='Aprobada'?'bg-blue-50 text-blue-700':c.status==='Rechazada'?'bg-red-50 text-red-700':'bg-amber-50 text-amber-700'}">${esc(c.status)}</span></td>${isAdmin?`<td class="flex gap-1 flex-wrap">${c.status==='Pendiente'?`<button onclick="leonV2SetCommissionStatus('${c.id}','Aprobada')" class="v2-tab active">Aprobar</button>`:''}${c.status==='Aprobada'?`<button onclick="leonV2SetCommissionStatus('${c.id}','Pagada')" class="v2-tab active">Pagar</button>`:''}${(c.status==='Pendiente'||c.status==='Aprobada')?`<button onclick="leonV2SetCommissionStatus('${c.id}','Rechazada')" class="v2-tab" style="color:#dc2626">Rechazar</button>`:''}<button onclick="leonV2OpenAdjustCommission('${c.id}')" class="v2-tab">Ajustar</button></td>`:''}</tr>`).join('')}</tbody></table>`:'<div class="v2-empty">Sin comisiones generadas todavía — se crean automáticamente al aceptar una propuesta.</div>';
   }
   window.leonV2SetCommissionStatus=(id, status)=>{
     if(!leonV2Can('reviewCommissions')){ showToast('Solo un administrador puede aprobar, pagar o rechazar comisiones.','error'); return }
