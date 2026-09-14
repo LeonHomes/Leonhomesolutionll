@@ -412,6 +412,10 @@
                 </nav>
 
                 <div class="flex items-center gap-3">
+                    <button id="v2-pwa-install-btn" onclick="leonV2InstallApp()" title="Instalar esta app en tu dispositivo (abre sin barra de navegador)" class="hidden p-2.5 rounded-xl glass-pill hover:bg-brand-50 text-brand-700 transition items-center gap-2 shadow-sm hover:shadow-md hover:-translate-y-0.5 duration-300">
+                        <i class="fa-solid fa-arrow-down-to-line text-lg"></i>
+                        <span class="hidden sm:inline font-bold text-xs uppercase tracking-wider">Instalar app</span>
+                    </button>
                     <button id="cart-header-btn" onclick="toggleCartModal()" class="relative p-2.5 rounded-xl glass-pill hover:bg-brand-50 text-brand-700 transition flex items-center gap-2 shadow-sm hover:shadow-md hover:-translate-y-0.5 duration-300">
                         <i class="fa-solid fa-file-invoice-dollar text-lg"></i>
                         <span class="hidden sm:inline font-bold text-xs uppercase tracking-wider text-slate-700">Mi Propuesta</span>
@@ -1061,10 +1065,6 @@
             // Proyectos e instalaciones — se crean automáticamente al aceptar una propuesta.
             projects: [],
             projectStages: ['Proyecto','Instalación programada','En instalación','Completado'],
-            // Chat interno de equipo — un solo canal compartido (no mensajes directos por ahora).
-            // Se sincroniza como bitácora (un documento nuevo por mensaje, nunca se reescribe) —
-            // ver FB_LOG_COLLECTIONS y leonV2DbAppendLog más abajo, en leon-v2-script.
-            chatMessages: [],
             // Tareas/recordatorios de seguimiento — una por cliente, asignable a cualquier miembro
             // del equipo, con fecha de vencimiento. Se sincroniza como colección normal (con id),
             // ver FB_LIST_COLLECTIONS más abajo.
@@ -1138,6 +1138,8 @@
             // Conecta los oyentes de Firestore en tiempo real (si Firebase cargó bien). A partir
             // de aquí, cualquier cambio hecho desde OTRO dispositivo/pestaña llega solo, sin recargar.
             if (typeof window.leonV2InitFirebaseSync === 'function') window.leonV2InitFirebaseSync();
+            // Prepara el manifest/service worker para que el navegador pueda ofrecer "Instalar app".
+            if (typeof window.leonV2InitPwaInstall === 'function') window.leonV2InitPwaInstall();
         });
 
         // ===================== HERO: entrada escalonada del copy =====================
@@ -2198,6 +2200,10 @@
                     ? `<i class="fa-solid fa-clapperboard text-brand-400 text-xl"></i>`
                     : `<img src="${state.siteContent.heroImageUrl || DEFAULT_HERO_IMG}" class="w-full h-full object-cover">`;
             }
+            // El ícono de la app instalable (ver más abajo, "APP INSTALABLE (PWA)") usa este mismo
+            // logo — si suben uno nuevo desde el CMS, se regenera para que la PRÓXIMA instalación
+            // ya lo traiga (una app que alguien ya instaló conserva el ícono con el que se instaló).
+            if (typeof window.leonV2BuildAndApplyManifest === 'function') window.leonV2BuildAndApplyManifest();
         }
 
         function handleCmsLogoUpload(event) {
@@ -2214,6 +2220,119 @@
                 showToast('Logo actualizado en el sitio.', 'success');
             }).catch(err => { console.error(err); statusEl.innerText = 'No se pudo procesar la imagen.'; showToast('No se pudo procesar la imagen.', 'error'); });
         }
+
+        // ===================== APP INSTALABLE (PWA) =====================
+        // Ojo con lo que esto SÍ es y lo que NO es: esto NO genera un archivo .apk firmado (eso hace
+        // falta para subirlo a Play Store o instalarlo "suelto" en Android, y requiere una herramienta
+        // aparte fuera de un solo archivo HTML — por ejemplo PWABuilder.com, subiendo esta misma URL
+        // ya publicada). Lo que SÍ hace: convierte esta página en una PWA (Progressive Web App) real —
+        // Chrome/Edge/Android ofrecen "Instalar app" solo, queda con el ícono de LEON en el
+        // escritorio/cajón de apps, y ABRE EN SU PROPIA VENTANA SIN BARRA DE DIRECCIONES, que es
+        // exactamente el efecto que se pidió. Requisitos que pone el navegador, no se pueden saltar
+        // desde aquí: la página debe verse por HTTPS (o localhost) — abierta como archivo local
+        // (file://) o desde WhatsApp/preview, el navegador nunca ofrece instalar nada — y hace falta
+        // un manifest + un service worker, ambos generados aquí mismo en memoria (Blob), para que
+        // este siga siendo un solo archivo .html sin depender de subir nada más al servidor. En
+        // iPhone/iPad, Safari nunca dispara el aviso automático — ahí se instala a mano desde el
+        // botón Compartir → "Agregar a inicio" (se le explica al usuario si toca el botón ahí).
+        let v2PwaDeferredPrompt = null;
+        // Dibuja el logo actual (o el monograma "L" por defecto del favicon) sobre un cuadrado de
+        // tamaño `size`, con fondo degradado de marca — PNG ya armado, porque instalar con un SVG
+        // crudo es menos confiable en algunos Android que con un PNG normal.
+        function leonV2BuildAppIconDataUrl(size) {
+            return new Promise(resolve => {
+                try {
+                    const faviconEl = document.getElementById('site-favicon');
+                    const src = (state.siteContent && state.siteContent.logoUrl) || (faviconEl && faviconEl.href) || '';
+                    if (!src) { resolve(null); return; }
+                    const img = new Image();
+                    img.onload = () => {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = size; canvas.height = size;
+                            const ctx = canvas.getContext('2d');
+                            const grad = ctx.createLinearGradient(0, 0, size, size);
+                            grad.addColorStop(0, '#0a1a2e'); grad.addColorStop(0.55, '#025fae'); grad.addColorStop(1, '#1893f5');
+                            ctx.fillStyle = grad; ctx.fillRect(0, 0, size, size);
+                            // "Contain": el logo cabe completo dentro del cuadrado, centrado, con margen
+                            // — nunca se recorta ni se deforma sin importar la proporción real del archivo.
+                            const pad = size * 0.14;
+                            const scale = Math.min((size - pad * 2) / img.width, (size - pad * 2) / img.height);
+                            const w = img.width * scale, h = img.height * scale;
+                            ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+                            resolve(canvas.toDataURL('image/png'));
+                        } catch (err) { resolve(null); }
+                    };
+                    img.onerror = () => resolve(null);
+                    img.src = src;
+                } catch (err) { resolve(null); }
+            });
+        }
+        // Arma el manifest.json "al vuelo" (como Blob, sin subir un archivo aparte) y lo conecta al
+        // <link rel="manifest"> del <head>. start_url/scope van como URL absoluta (no relativa) a
+        // propósito: un manifest servido desde un Blob no tiene una "carpeta" real contra la cual
+        // resolver una ruta relativa, así que una ruta absoluta evita que el navegador la interprete mal.
+        window.leonV2BuildAndApplyManifest = function () {
+            Promise.all([leonV2BuildAppIconDataUrl(192), leonV2BuildAppIconDataUrl(512)]).then(([icon192, icon512]) => {
+                const icons = [];
+                if (icon192) icons.push({ src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' });
+                if (icon512) icons.push({ src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' });
+                if (!icons.length) return; // sin logo ni favicon disponible todavía — no hay nada honesto que ofrecer como ícono
+                const baseUrl = location.href.split('#')[0].split('?')[0];
+                const manifest = {
+                    name: 'LEON Home Solutions', short_name: 'LEON',
+                    description: 'Sistema de ventas y CRM de LEON Home Solutions',
+                    start_url: baseUrl, scope: baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1),
+                    display: 'standalone', // <- esto es lo que quita la barra de direcciones al abrir la app ya instalada
+                    background_color: '#f6faff', theme_color: '#025fae', icons
+                };
+                try {
+                    const url = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }));
+                    let link = document.getElementById('site-manifest');
+                    if (!link) { link = document.createElement('link'); link.id = 'site-manifest'; link.rel = 'manifest'; document.head.appendChild(link); }
+                    link.href = url;
+                } catch (err) { console.warn('PWA: no se pudo generar el manifest', err); }
+            });
+        };
+        // Service worker mínimo: lo único que hace falta para que el navegador considere la página
+        // "instalable" (Chrome exige uno registrado, con manejador de fetch). Deja pasar toda petición
+        // a la red tal cual — no cachea nada por su cuenta, para no complicar la sincronización en
+        // tiempo real con Firestore ni servir una versión vieja de la página por accidente.
+        function leonV2RegisterServiceWorker() {
+            if (!('serviceWorker' in navigator)) return;
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') return; // el navegador lo rechazaría igual
+            try {
+                const swCode = "self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{});";
+                const url = URL.createObjectURL(new Blob([swCode], { type: 'text/javascript' }));
+                navigator.serviceWorker.register(url, { scope: './' }).catch(err => console.warn('PWA: no se pudo registrar el service worker — la app sigue funcionando normal, pero el navegador quizás no ofrezca instalarla.', err));
+            } catch (err) { console.warn('PWA: error preparando el service worker', err); }
+        }
+        window.leonV2InitPwaInstall = function () {
+            leonV2BuildAndApplyManifest();
+            leonV2RegisterServiceWorker();
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                v2PwaDeferredPrompt = e;
+                const btn = document.getElementById('v2-pwa-install-btn');
+                if (btn) { btn.classList.remove('hidden'); btn.classList.add('flex'); }
+            });
+            window.addEventListener('appinstalled', () => {
+                v2PwaDeferredPrompt = null;
+                const btn = document.getElementById('v2-pwa-install-btn');
+                if (btn) { btn.classList.add('hidden'); btn.classList.remove('flex'); }
+                if (typeof showToast === 'function') showToast('¡Instalada! Ábrela desde el ícono de LEON en tu dispositivo — ya no hace falta el navegador.', 'success');
+            });
+        };
+        window.leonV2InstallApp = function () {
+            if (!v2PwaDeferredPrompt) {
+                // iOS Safari (y algún navegador viejo) nunca disparan el aviso automático — ahí "instalar"
+                // se hace a mano desde el botón de compartir, así que se explica en vez de no hacer nada.
+                if (typeof showToast === 'function') showToast('En iPhone/iPad: toca el botón Compartir de Safari y elige "Agregar a inicio". En otros navegadores este botón aparece solo cuando la página ya cumple los requisitos para instalarse (conexión segura HTTPS, entre otros).', 'info');
+                return;
+            }
+            v2PwaDeferredPrompt.prompt();
+            v2PwaDeferredPrompt.userChoice.finally(() => { v2PwaDeferredPrompt = null; });
+        };
 
         function handleCmsHeroUpload(event) {
             const file = event.target.files[0];
@@ -3093,13 +3212,19 @@
           <div id="v2-solar-bill-ocr-status" class="hidden mt-2 text-xs"></div>
         </div>
         <div id="v2-solar-historical-wrap" class="hidden mb-4">
+          <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 mb-3">
+            <label class="text-[10px] font-black uppercase text-emerald-700 block mb-1"><i class="fa-solid fa-chart-column mr-1"></i>Leer TODA la gráfica de "Historial de Consumo (kWh)" de una vez (recomendado)</label>
+            <label class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-emerald-300 text-emerald-700 text-[11px] font-bold"><i class="fa-solid fa-camera"></i>Subir foto de la gráfica<input type="file" accept="image/*" class="hidden" onchange="handleLumaBillPhotoChart(event)"></label>
+            <p class="text-[10px] text-emerald-700/80 mt-1">Sube la página de la factura que trae la gráfica de barras con los 12-13 meses. El sistema lee el numerito impreso arriba de cada barra y lo empareja con su mes — llena los 12 campos de abajo de un solo golpe. Tú revisas y corriges antes de calcular.</p>
+            <div id="v2-solar-hist-chart-ocr-status" class="hidden mt-2 text-xs"></div>
+          </div>
           <div class="p-3 rounded-xl bg-white border border-slate-200 mb-3">
-            <label class="text-[10px] font-black uppercase text-slate-500 block mb-1">Autocompletar un mes desde foto de factura (opcional)</label>
+            <label class="text-[10px] font-black uppercase text-slate-500 block mb-1">O autocompletar un solo mes desde la foto de esa factura (opcional)</label>
             <div class="flex flex-wrap items-center gap-2">
               <select id="v2-solar-hist-ocr-month" class="border border-slate-200 rounded-lg px-2 py-2 text-xs"><option value="1">Ene</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Abr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Ago</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dic</option></select>
               <label class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand-50 border border-brand-200 text-brand-700 text-[11px] font-bold"><i class="fa-solid fa-camera"></i>Subir foto<input type="file" accept="image/*" class="hidden" onchange="handleLumaBillPhotoHistorical(event)"></label>
             </div>
-            <p class="text-[10px] text-slate-400 mt-1">Sube la foto de la factura de ese mes (repite por cada mes que tengas) — no puede leer la gráfica de barras, solo el texto impreso. Tú confirmas el mes y el número antes de aplicarlo.</p>
+            <p class="text-[10px] text-slate-400 mt-1">Sube la foto de la factura de ese mes (repite por cada mes que tengas) — lee solo el texto impreso de esa factura. Tú confirmas el mes y el número antes de aplicarlo.</p>
             <div id="v2-solar-hist-ocr-status" class="hidden mt-2 text-xs"></div>
           </div>
           <label class="text-[10px] font-black uppercase text-slate-500 mb-2 block">Consumo histórico por mes (kWh) — deja en blanco los meses que no tengas</label>
@@ -3492,10 +3617,12 @@
   }
 
   // ===================== LECTURA DE FACTURA LUMA POR FOTO (OCR) =====================
-  // Esta app es un solo archivo HTML sin servidor detrás — no hay forma confiable de "leer" la
-  // GRÁFICA de barras que trae la factura (esos cuadritos de consumo por mes son una imagen, no
-  // texto). Lo que SÍ se puede leer con OCR es el TEXTO IMPRESO de la factura: el total a pagar y
-  // los kWh utilizados del período. Por eso el flujo es: OCR intenta leer esos números → SIEMPRE
+  // Esta app es un solo archivo HTML sin servidor detrás — no hay forma de "ver" la altura de las
+  // barras de la gráfica (eso sí es una imagen pura). Pero la gráfica de "Historial de Consumo (kWh)"
+  // de LUMA trae un numerito IMPRESO arriba de cada barra (550, 850, etc.) — eso SÍ es texto, y el OCR
+  // lo puede leer igual que lee el total a pagar de una factura normal. leonV2ParseLumaChartWords, más
+  // abajo, usa la POSICIÓN (no solo el texto) de cada palabra reconocida para saber qué numerito va con
+  // qué mes. Por eso el flujo sigue igual de honesto que antes: OCR intenta leer los números → SIEMPRE
   // se muestran editables para que el vendedor confirme o corrija → nunca se aplican solos.
   // Tesseract.js se carga solo la primera vez que se usa (no en cada carga de la página).
   let v2TesseractLoadPromise=null;
@@ -3511,12 +3638,109 @@
     });
     return v2TesseractLoadPromise;
   }
+  // Un solo "worker" reutilizado para toda la sesión, en vez de crear uno de cero cada vez que se sube
+  // una foto (que es lo que hacía Tesseract.recognize() por su cuenta): crear un worker descarga e
+  // inicializa el modelo de reconocimiento, y eso es la parte más lenta de todo el proceso — de ahí el
+  // reporte de "dura mucho leyendo la factura". Reusarlo hace que, después de la primera foto de la
+  // sesión, las siguientes se lean varias veces más rápido. PSM "texto disperso" (11) porque una
+  // gráfica con numeritos sueltos y etiquetas cortas no es un párrafo — con el modo de página normal
+  // Tesseract pierde tiempo intentando organizar columnas/párrafos que aquí no existen.
+  let v2TesseractWorkerPromise=null;
+  function leonV2GetTesseractWorker(){
+    if(v2TesseractWorkerPromise) return v2TesseractWorkerPromise;
+    v2TesseractWorkerPromise=leonV2LoadTesseract().then(Tesseract=>{
+      if(typeof Tesseract.createWorker!=='function') return null; // versión sin worker persistente — cae al modo de una sola pasada
+      return Tesseract.createWorker('eng').then(worker=>
+        worker.setParameters({tessedit_pageseg_mode:'11'}).then(()=>worker).catch(()=>worker)
+      );
+    }).catch(err=>{ v2TesseractWorkerPromise=null; throw err; });
+    return v2TesseractWorkerPromise;
+  }
+  // Reduce la foto ANTES de mandarla al lector: una foto de celular puede venir en 3000+ píxeles de
+  // ancho, y eso hace que el OCR tarde muchísimo más sin ganar nada de precisión — de hecho reducirla
+  // y subir el contraste a blanco/negro AYUDA a leer numeritos pequeños e impresos como los de esta
+  // gráfica. Si algo falla (imagen corrupta, navegador viejo), se manda la foto original sin tocar.
+  function leonV2PreprocessBillImage(file){
+    return new Promise(resolve=>{
+      try{
+        const img=new Image();
+        const url=URL.createObjectURL(file);
+        img.onload=()=>{
+          try{
+            const maxW=1400;
+            const scale=img.width>maxW?maxW/img.width:1;
+            const w=Math.max(1,Math.round(img.width*scale)), h=Math.max(1,Math.round(img.height*scale));
+            const canvas=document.createElement('canvas');
+            canvas.width=w; canvas.height=h;
+            const ctx=canvas.getContext('2d');
+            ctx.drawImage(img,0,0,w,h);
+            const imgData=ctx.getImageData(0,0,w,h);
+            const d=imgData.data;
+            for(let i=0;i<d.length;i+=4){
+              const gray=d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114;
+              const v=gray>150?255:(gray<90?0:gray); // empuja hacia blanco o negro, deja el resto igual
+              d[i]=d[i+1]=d[i+2]=v;
+            }
+            ctx.putImageData(imgData,0,0);
+            URL.revokeObjectURL(url);
+            canvas.toBlob(blob=>resolve(blob||file),'image/png');
+          }catch(err){ URL.revokeObjectURL(url); resolve(file); }
+        };
+        img.onerror=()=>{ URL.revokeObjectURL(url); resolve(file); };
+        img.src=url;
+      }catch(err){ resolve(file); }
+    });
+  }
   const V2_MESES_ES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const V2_MESES_EN=['january','february','march','april','may','june','july','august','september','october','november','december'];
   const V2_MESES_CORTOS=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   // "1,234.56" ó "1.234,56" — LUMA imprime en formato US (coma=miles, punto=decimales), así que se
   // asume ese orden; solo importa para el prellenado, el vendedor siempre puede corregir el número.
   function leonV2ParseLooseNumber(s){ if(!s)return NaN; return parseFloat(String(s).replace(/,/g,'')); }
+  // Lee la gráfica de barras completa: usa la posición horizontal (bbox.x0) de cada palabra que
+  // Tesseract reconoció para separar "esto es un numerito de consumo" de "esto es una etiqueta de
+  // mes" (Ene, Feb, Ene-21, Ene-22...), y empareja cada número con la etiqueta de mes más cercana en
+  // el eje horizontal — así reconstruye el orden cronológico sin necesitar "ver" las barras. Si la
+  // gráfica trae 13 meses (LUMA repite el mismo mes de dos años distintos, ej. Ene-21 y Ene-22), el
+  // valor del mes MÁS RECIENTE es el que queda (el emparejamiento por cercanía en x hace que gane el
+  // de la derecha). Devuelve null si no hay suficientes datos reconocibles como para armar la tabla —
+  // en ese caso el vendedor sigue pudiendo llenar los meses a mano o foto por foto.
+  function leonV2ParseLumaChartWords(data){
+    const words=data && Array.isArray(data.words) ? data.words : [];
+    if(!words.length) return null;
+    const monthRe=/^(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)/i;
+    const months=[], numbers=[];
+    words.forEach(w=>{
+      const raw=(w && w.text || '').trim();
+      if(!raw || !w.bbox) return;
+      const x0=w.bbox.x0;
+      const mm=raw.match(monthRe);
+      if(mm){
+        const idx=V2_MESES_CORTOS.findIndex(m=>m.toLowerCase()===mm[1].toLowerCase());
+        if(idx!==-1){ months.push({idx,x0}); return; }
+      }
+      const digits=raw.replace(/[^\d]/g,'');
+      // Solo números "sueltos" de 2-4 dígitos en un rango realista de consumo mensual (kWh) — así no
+      // se confunde un año ("2021"), un precio con centavos, o la tarifa por kWh (que trae "$0.xx" y
+      // el punto decimal la delata) con el consumo real.
+      if(/^\d{2,4}$/.test(digits) && raw.indexOf('.')===-1 && raw.indexOf('$')===-1){
+        const n=parseInt(digits,10);
+        if(n>=30 && n<=4000 && !/^(19|20)\d{2}$/.test(digits)) numbers.push({n,x0});
+      }
+    });
+    if(months.length<3 || numbers.length<3) return null; // muy poco reconocido — no vale la pena arriesgar una tabla mal armada
+    const byMonth={};
+    numbers.forEach(numEntry=>{
+      let best=null, bestDist=Infinity;
+      months.forEach(mEntry=>{
+        const dist=Math.abs(mEntry.x0-numEntry.x0);
+        if(dist<bestDist){ bestDist=dist; best=mEntry; }
+      });
+      if(best && bestDist<260) byMonth[best.idx]=numEntry.n; // en un mes repetido (13 barras), el número más a la derecha es el que queda
+    });
+    return Object.keys(byMonth).length ? byMonth : null;
+  }
+  window.leonV2ParseLumaChartWords=leonV2ParseLumaChartWords; // expuesto para pruebas automatizadas (función pura, sin efectos secundarios)
   function leonV2ParseLumaBillText(text){
     const norm=String(text||'').replace(/\r/g,'');
     const lower=norm.toLowerCase();
@@ -3545,12 +3769,22 @@
     return {kwh, amount, monthIndex};
   }
   window.leonV2ParseLumaBillText=leonV2ParseLumaBillText; // expuesto para pruebas automatizadas (función pura, sin efectos secundarios)
+  // Devuelve {simple, data}: `simple` es el parseo de texto de siempre (total a pagar, kWh, mes —
+  // para el flujo "una foto = un mes/una factura"), y `data` es la respuesta cruda de Tesseract
+  // (incluye `data.words` con la posición de cada palabra) para el flujo de la gráfica completa, que
+  // necesita saber DÓNDE está cada numerito, no solo cuáles hay.
   function leonV2OcrExtractFromImage(file, statusEl){
-    if(statusEl){ statusEl.classList.remove('hidden'); statusEl.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando lector de facturas (solo la primera vez)...'; }
-    return leonV2LoadTesseract().then(Tesseract=>{
-      if(statusEl) statusEl.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i>Leyendo la factura, un momento...';
-      return Tesseract.recognize(file,'eng');
-    }).then(({data})=>leonV2ParseLumaBillText(data&&data.text));
+    if(statusEl){ statusEl.classList.remove('hidden'); statusEl.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i>Preparando la foto...'; }
+    return leonV2PreprocessBillImage(file).then(prepared=>{
+      if(statusEl) statusEl.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando lector de facturas (solo la primera vez)...';
+      return leonV2GetTesseractWorker().then(worker=>{
+        if(statusEl) statusEl.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i>Leyendo la factura, un momento...';
+        if(worker) return worker.recognize(prepared);
+        // Sin worker persistente disponible (versión vieja de la librería) — cae al modo de una
+        // sola pasada de siempre, más lento pero siempre funciona.
+        return leonV2LoadTesseract().then(Tesseract=>Tesseract.recognize(prepared,'eng'));
+      });
+    }).then(({data})=>({simple:leonV2ParseLumaBillText(data&&data.text), data}));
   }
   // Método "Pago mensual": intenta leer el total a pagar y, si también encuentra los kWh del
   // período, calcula la TARIFA REAL de ese cliente (total÷kWh) en vez de usar siempre el default
@@ -3558,7 +3792,7 @@
   window.handleLumaBillPhotoMonthly=function(event){
     const file=event.target.files[0]; if(!file)return;
     const statusEl=document.getElementById('v2-solar-bill-ocr-status');
-    leonV2OcrExtractFromImage(file, statusEl).then(r=>{
+    leonV2OcrExtractFromImage(file, statusEl).then(({simple:r})=>{
       if(r.kwh==null && r.amount==null){
         statusEl.innerHTML='<i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600"></i>No pudimos leer números claros en la foto — escribe la factura manualmente abajo.';
         return;
@@ -3589,7 +3823,7 @@
   window.handleLumaBillPhotoHistorical=function(event){
     const file=event.target.files[0]; if(!file)return;
     const statusEl=document.getElementById('v2-solar-hist-ocr-status');
-    leonV2OcrExtractFromImage(file, statusEl).then(r=>{
+    leonV2OcrExtractFromImage(file, statusEl).then(({simple:r})=>{
       const monthSel=document.getElementById('v2-solar-hist-ocr-month');
       if(r.monthIndex!=null && monthSel) monthSel.value=String(r.monthIndex+1);
       if(r.kwh==null){
@@ -3610,6 +3844,39 @@
     const field=document.getElementById('v2-solar-hist-'+idx);
     if(field) field.value=detectedEl.value;
     showToast('Consumo aplicado a '+V2_MESES_CORTOS[idx-1]+' — revisa el número antes de calcular.','success');
+  };
+  // Método "Gráfica completa": una sola foto con los 12-13 meses de la gráfica de barras. Lee TODOS
+  // los numeritos de una vez (ver leonV2ParseLumaChartWords) y los muestra en una tabla editable —
+  // nada se aplica a los campos de "Mes #" hasta que el vendedor pulse "Aplicar todos los meses".
+  window.handleLumaBillPhotoChart=function(event){
+    const file=event.target.files[0]; if(!file)return;
+    const statusEl=document.getElementById('v2-solar-hist-chart-ocr-status');
+    leonV2OcrExtractFromImage(file, statusEl).then(({data})=>{
+      const byMonth=leonV2ParseLumaChartWords(data);
+      if(!byMonth){
+        statusEl.innerHTML='<i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600"></i>No pudimos reconocer suficientes números en la gráfica (foto borrosa, muy inclinada, o poca luz) — sube la foto de cada factura por separado abajo, o escribe los meses a mano.';
+        return;
+      }
+      window.__leonV2ChartDetected=byMonth;
+      const rows=V2_MESES_CORTOS.map((label,idx)=>{
+        const val=byMonth[idx];
+        return `<div><label class="text-[9px] text-emerald-700">${label}</label><input type="number" id="v2-chart-detected-${idx}" value="${val!=null?val:''}" step="1" placeholder="—" class="w-full mt-0.5 border border-emerald-200 rounded-lg px-2 py-1.5 text-xs bg-white"></div>`;
+      }).join('');
+      statusEl.innerHTML=`<div class="p-3 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800"><b class="text-[11px] uppercase tracking-wide">Detectado en la gráfica — revisa/corrige antes de aplicar</b><div class="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-2">${rows}</div><button type="button" onclick="leonV2ApplyOcrChart()" class="mt-3 w-full py-2 rounded-lg bg-emerald-600 text-white text-[11px] font-black uppercase">Aplicar todos los meses</button></div>`;
+    }).catch(err=>{
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML='<i class="fa-solid fa-triangle-exclamation mr-1 text-red-600"></i>'+esc(err&&err.message||'No se pudo leer la gráfica.');
+    });
+  };
+  window.leonV2ApplyOcrChart=function(){
+    let applied=0;
+    V2_MESES_CORTOS.forEach((label,idx)=>{
+      const detectedEl=document.getElementById('v2-chart-detected-'+idx);
+      if(!detectedEl || detectedEl.value==='') return;
+      const field=document.getElementById('v2-solar-hist-'+(idx+1));
+      if(field){ field.value=detectedEl.value; applied++; }
+    });
+    showToast(applied?applied+' mes(es) aplicados — revisa los números antes de calcular el sistema.':'No había ningún valor para aplicar.', applied?'success':'info');
   };
 
   // Motor de cotización (CPQ): un único cálculo compartido por el portal del cliente, el PDF y el
@@ -4209,10 +4476,7 @@
   }
 
   const FB_LIST_COLLECTIONS = ['categories','products','users','quotes','quotesHistory','clients','trash','commissions','tickets','projects','followupTasks','properties','roofAssessments','employeeInvites','creditApps'];
-  // chatMessages vive como bitácora (un documento nuevo por mensaje, ver leonV2DbAppendLog) — igual
-  // que auditLog/securityLog, así reescribir el historial completo no cuesta una escritura enorme
-  // cada vez que alguien manda un mensaje.
-  const FB_LOG_COLLECTIONS = ['auditLog','securityLog','chatMessages'];
+  const FB_LOG_COLLECTIONS = ['auditLog','securityLog'];
   const FB_META_DOCS = ['siteContent','commissionRules','pipelineStatuses','ticketStatuses','projectStages','loginLockouts'];
   let fbApplyingRemote = false; // true mientras aplicamos un cambio QUE YA VINO de Firestore, para no reenviarlo
 
@@ -4230,22 +4494,59 @@
     return false;
   }
 
-  // Sube de una vez todos los elementos actuales de state[key] a su colección de Firestore.
-  // Se llama al final de cada acción que crea o edita algo (no borra remotos que ya no estén
-  // localmente — los borrados se hacen aparte con leonV2DbDelete, justo donde se quita el
-  // elemento de state, para no perder ese registro).
+  // Sube los elementos de state[key] a su colección de Firestore. Se llama al final de cada acción
+  // que crea o edita algo (no borra remotos que ya no estén localmente — los borrados se hacen aparte
+  // con leonV2DbDelete, justo donde se quita el elemento de state, para no perder ese registro).
+  //
+  // IMPORTANTE — por qué esto compara contra una copia antes de escribir: la primera versión de esta
+  // función reescribía TODA la colección completa (cada elemento, sin importar si cambió) cada vez
+  // que se editaba UN SOLO elemento. Eso funciona bien con pocos datos, pero según se acumulan meses
+  // de clientes/propuestas/fotos (muchas veces en base64, o sea pesadas), cada clic vuelve a mandar
+  // TODOS los documentos de esa colección a Firestore — de ahí el reporte real "el sistema ahora está
+  // muy lento" según crece la base de datos, aunque el código nunca haya cambiado. La solución: guardar
+  // en memoria una "foto" (JSON) de cada documento tal como quedó la última vez que SÍ se confirmó su
+  // escritura, y en cada llamada solo incluir en el lote los documentos cuyo contenido sea distinto a
+  // esa foto. Así, editar un cliente entre 500 solo sube ESE cliente, no los otros 499 sin tocar.
+  const __leonV2LastSynced = {}; // { [key]: Map(id -> JSON del último documento confirmado en Firestore) }
+  function leonV2SyncedCache(key){
+    if(!__leonV2LastSynced[key]) __leonV2LastSynced[key] = new Map();
+    return __leonV2LastSynced[key];
+  }
+  // Firestore rechaza un batch de más de 500 operaciones — con la colección completa reescribiéndose
+  // de una vez (primera carga, restaurar respaldo) una lista larga podía chocar con ese límite en
+  // silencio. Se trocea en lotes de 400 (margen de sobra) y se mandan uno detrás del otro.
+  function leonV2CommitInChunks(writes){
+    const CHUNK=400;
+    const chunks=[];
+    for(let i=0;i<writes.length;i+=CHUNK) chunks.push(writes.slice(i,i+CHUNK));
+    let p=Promise.resolve();
+    chunks.forEach(chunk=>{
+      p=p.then(()=>{
+        const batch=window.__fbDb.batch();
+        chunk.forEach(w=>batch.set(w.ref, w.item));
+        return batch.commit().then(()=>chunk.forEach(w=>leonV2SyncedCache(w.key).set(w.id, w.json)));
+      });
+    });
+    return p;
+  }
   window.leonV2SyncCollection = function(key){
     if(!window.__fbDb || fbApplyingRemote) return;
     const arr = state[key];
     if(!Array.isArray(arr) || !arr.length) return;
+    const cache = leonV2SyncedCache(key);
+    const writes = [];
     try{
-      const batch = window.__fbDb.batch();
       arr.forEach(item=>{
         if(!item || item.id==null) return;
+        const sid = String(item.id);
+        let json;
+        try{ json = JSON.stringify(item); }catch(e){ return; }
+        if(cache.get(sid) === json) return; // sin cambios desde la última sincronización confirmada — no hace falta reescribirlo
         if(leonV2TooBigForFirestore(item, key+'/'+item.id)) return;
-        batch.set(window.__fbDb.collection(key).doc(String(item.id)), item);
+        writes.push({ref: window.__fbDb.collection(key).doc(sid), item, key, id: sid, json});
       });
-      batch.commit().catch(err=>console.error('Firebase: error al sincronizar '+key, err));
+      if(!writes.length) return; // nada cambió en esta colección — evita un batch vacío
+      leonV2CommitInChunks(writes).catch(err=>console.error('Firebase: error al sincronizar '+key, err));
     }catch(err){ console.error('Firebase: error al sincronizar '+key, err); }
   };
 
@@ -4313,9 +4614,6 @@
       if(internalView && !internalView.classList.contains('hidden') && activeBtn && activeBtn.dataset.sec && typeof leonV2OpenSection==='function'){
         leonV2OpenSection(activeBtn.dataset.sec);
       }
-      // El chat es un panel flotante (no una sección de navegación), así que se refresca aparte,
-      // sin importar qué sección esté activa — igual que las notificaciones.
-      if(typeof window.leonV2RefreshChat==='function') window.leonV2RefreshChat();
     }catch(err){ console.error('Error al re-renderizar tras sincronizar:', err); }
   }
 
@@ -4388,6 +4686,12 @@
         // Firestore — ver el bloque TUMBAS LOCALES más arriba.
         const docs = leonV2FilterTombstoned(key, snap.docs.map(d=>d.data()));
         if(docs.length || !(state[key]&&state[key].length)) state[key] = docs; // no borra lo local si Firestore aún está vacío (primera carga)
+        // Deja la "foto" de leonV2SyncCollection al día con lo que Firestore realmente tiene — si no
+        // se hace esto, un cambio hecho en OTRO dispositivo se vería como "distinto a lo último que
+        // subí yo" la próxima vez que este navegador sincronice esa colección, y lo volvería a subir
+        // sin necesidad (inofensivo, pero desperdicia el ahorro de la sincronización por diferencias).
+        const cache = leonV2SyncedCache(key);
+        docs.forEach(d=>{ if(d && d.id!=null){ try{ cache.set(String(d.id), JSON.stringify(d)); }catch(e){} } });
         fbApplyingRemote = false;
         leonV2RerenderAfterSync();
       }, err=>console.error('Firebase: error escuchando '+key, err));
@@ -4918,7 +5222,7 @@
   window.leonV2PrintProposalById=id=>{const q=findQuoteAnywhere(id);if(!q)return;const t=leonV2ComputeTotal(q);const rs=leonV2RoofSealPlanInfo(q);const w=window.open('','_blank');w.document.write(`<html><head><title>Propuesta ${esc(q.id)}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}h1{color:#0876c9}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}img{width:80px;height:60px;object-fit:contain} .total{font-size:22px;font-weight:800;text-align:right;margin-top:20px}.head{display:flex;justify-content:space-between;border-bottom:3px solid #0876c9;padding-bottom:18px}.box{background:#f5f9fd;padding:16px;border-radius:10px;margin-top:20px}.breakdown td{padding:6px 0;border:none}</style></head><body><div class="head"><div><h1>LEON HOME SOLUTIONS</h1><b>PROPUESTA COMERCIAL</b><div>${esc(q.id)}</div></div><div><b>Fecha</b><br>${esc(q.createdAt||'')}</div></div><div class="box"><b>CLIENTE</b><br>${esc(q.clientName)}<br>${esc(q.clientCompany||'')}<br>${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</div><div class="box"><b>CONSULTOR</b><br>${esc(q.vendorName||'Asignación pendiente')}<br>Origen: ${esc(q.origin||'')}</div>${rs?`<div class="box"><b>DETALLE DEL PLAN DE SELLADO DE TECHO</b><br>Área a sellar: <b>${rs.sqft.toLocaleString('en-US')} ft²</b> · Precio: <b>${money(rs.pricePerFt2)}/ft²</b>${rs.warrantyYears?' · Garantía: <b>'+leonV2YearsLabel(rs.warrantyYears)+'</b>':''}${rs.materials?'<br>Materiales/incluye: '+esc(rs.materials):''}</div>`:''}<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${q.items.map(i=>`<tr><td><img src="${esc(i.image||'')}" onerror="this.style.display='none'"> ${esc(i.name)}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${money(i.price*i.qty)}</td></tr>`).join('')}</tbody></table><table class="breakdown"><tbody><tr><td>Subtotal</td><td style="text-align:right">${money(t.subtotal)}</td></tr>${t.discount?`<tr><td>Descuento</td><td style="text-align:right">-${money(t.discount)}</td></tr>`:''}${t.install?`<tr><td>Instalación</td><td style="text-align:right">${money(t.install)}</td></tr>`:''}${t.transport?`<tr><td>Transporte</td><td style="text-align:right">${money(t.transport)}</td></tr>`:''}${t.exemptSubtotal?`<tr><td>Exento de IVU (equipos marcados como exentos)</td><td style="text-align:right">${money(t.exemptSubtotal)}</td></tr>`:''}${t.tax?`<tr><td>Impuesto (IVU)</td><td style="text-align:right">${money(t.tax)}</td></tr>`:''}</tbody></table><div class="total">TOTAL: ${money(t.total)}</div>${leonV2PrintFinancingBlock(q,t)}<div class="box">Condiciones: propuesta sujeta a disponibilidad, validación comercial y condiciones de financiación. Vigencia configurable por administración.</div>${q.acceptance?`<div class="box" style="background:#ecfdf5"><b>ACEPTACIÓN DIGITAL</b><br>${esc(q.acceptance.name)} — ${esc(new Date(q.acceptance.acceptedAt).toLocaleString())}<br>${q.acceptance.signatureDataUrl?`<img src="${q.acceptance.signatureDataUrl}" style="height:50px;margin-top:6px;display:block">`:''}<span style="font-size:11px;color:#555">Firma trazada a mano por la persona (no es un proveedor certificado con validez legal notarial).</span></div>`:''}<div style="margin-top:70px;display:flex;justify-content:space-between"><div>________________________<br>Cliente</div><div>________________________<br>Consultor</div></div><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()};
 
   function buildCRM(){
-    const old=document.querySelector('#internal-view > .max-w-7xl'); if(!old)return; old.innerHTML=`<div class="leon-v2-shell"><div class="flex flex-col lg:flex-row justify-between gap-4 mb-6"><div><div class="v2-pill bg-white"><i class="fa-solid fa-shield-halved text-brand-600"></i><span id="v2-role-pill">Administrador</span></div><h2 class="text-3xl md:text-4xl font-black text-slate-900 mt-3" id="v2-greeting">Buenos días 👋</h2><p class="text-sm text-slate-500 mt-1">Tu espacio comercial se adapta automáticamente a tus permisos.</p><div id="v2-db-status" class="mt-2"></div></div><div class="flex items-center gap-3"><div class="relative"><button onclick="leonV2ToggleNotifications()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Notificaciones"><i class="fa-solid fa-bell"></i><span id="v2-notif-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-glass-lg z-50 max-h-96 overflow-y-auto"></div></div><div class="relative"><button onclick="leonV2ToggleChat()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Chat interno"><i class="fa-solid fa-comments"></i><span id="v2-chat-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-chat-panel" class="hidden fixed right-4 bottom-4 top-24 sm:top-auto sm:h-[520px] w-[92vw] sm:w-96 max-w-[92vw] bg-white border border-slate-200 rounded-2xl shadow-glass-lg z-50 flex flex-col overflow-hidden"><div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50"><b class="text-sm"><i class="fa-solid fa-comments text-brand-500 mr-2"></i>Chat del equipo</b><button onclick="leonV2ToggleChat(true)" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div><div id="v2-chat-messages" class="flex-grow overflow-y-auto p-4"></div><div id="v2-chat-gif-preview" class="hidden px-4 pb-1"></div><div class="border-t border-slate-100 p-3"><div class="flex gap-1 mb-2 flex-wrap">${['😀','😂','👍','🎉','🔥','❤️','😢','🙏','👏','💡'].map(em=>`<button type="button" onclick="leonV2InsertChatEmoji('${em}')" class="text-lg hover:scale-125 transition">${em}</button>`).join('')}<label class="ml-1 cursor-pointer text-slate-400 hover:text-brand-600 text-sm px-1" title="Adjuntar GIF/imagen"><i class="fa-solid fa-image"></i><input type="file" id="v2-chat-gif-file" accept="image/*" class="hidden" onchange="handleChatGifFile(event)"></label></div><form onsubmit="leonV2SendChatMessage(event)" class="flex gap-2"><input id="v2-chat-input" placeholder="Escribe un mensaje..." class="flex-grow px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black"><i class="fa-solid fa-paper-plane"></i></button></form></div></div></div><button onclick="leonV2OpenSection('clients')" class="px-4 py-3 rounded-xl border bg-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-2"></i>Buscar cliente</button><button onclick="logoutUser()" class="px-4 py-3 rounded-xl bg-red-50 text-red-600 text-xs font-black"><i class="fa-solid fa-right-from-bracket mr-2"></i>Salir</button></div></div><div class="grid lg:grid-cols-[230px_1fr] gap-6 v2-layout"><aside class="v2-nav h-fit"><div class="px-3 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Workspace</div><div id="v2-nav"></div></aside><section id="v2-main" class="min-w-0"></section></div></div>`;renderNav();renderDashboard();leonV2RefreshNotifications();if(typeof window.leonV2UpdateDbStatusBadge==='function')window.leonV2UpdateDbStatusBadge();
+    const old=document.querySelector('#internal-view > .max-w-7xl'); if(!old)return; old.innerHTML=`<div class="leon-v2-shell"><div class="flex flex-col lg:flex-row justify-between gap-4 mb-6"><div><div class="v2-pill bg-white"><i class="fa-solid fa-shield-halved text-brand-600"></i><span id="v2-role-pill">Administrador</span></div><h2 class="text-3xl md:text-4xl font-black text-slate-900 mt-3" id="v2-greeting">Buenos días 👋</h2><p class="text-sm text-slate-500 mt-1">Tu espacio comercial se adapta automáticamente a tus permisos.</p><div id="v2-db-status" class="mt-2"></div></div><div class="flex items-center gap-3"><div class="relative"><button onclick="leonV2ToggleNotifications()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Notificaciones"><i class="fa-solid fa-bell"></i><span id="v2-notif-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-glass-lg z-50 max-h-96 overflow-y-auto"></div></div><button onclick="leonV2OpenSection('clients')" class="px-4 py-3 rounded-xl border bg-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-2"></i>Buscar cliente</button><button onclick="logoutUser()" class="px-4 py-3 rounded-xl bg-red-50 text-red-600 text-xs font-black"><i class="fa-solid fa-right-from-bracket mr-2"></i>Salir</button></div></div><div class="grid lg:grid-cols-[230px_1fr] gap-6 v2-layout"><aside class="v2-nav h-fit"><div class="px-3 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Workspace</div><div id="v2-nav"></div></aside><section id="v2-main" class="min-w-0"></section></div></div>`;renderNav();renderDashboard();leonV2RefreshNotifications();if(typeof window.leonV2UpdateDbStatusBadge==='function')window.leonV2UpdateDbStatusBadge();
   }
   const navItems=[['dashboard','fa-chart-pie','Dashboard'],['clients','fa-address-card','Clientes'],['pipeline','fa-filter-circle-dollar','Seguimiento de Ventas'],['creditapps','fa-file-invoice-dollar','Solicitudes de Crédito'],['ventas','fa-cash-register','Ventas'],['historial','fa-clock-rotate-left','Historial'],['catalog','fa-boxes-stacked','Catálogo'],['roofintel','fa-house-chimney-crack','Roof Intelligence'],['proposals','fa-file-signature','Propuestas'],['payroll','fa-sitemap','Comisiones'],['empleados','fa-users-gear','Empleados'],['tickets','fa-ticket','Tickets'],['projects','fa-helmet-safety','Proyectos'],['reports','fa-chart-line','Reportes'],['branding','fa-pen-ruler','Sitio Web'],['users','fa-user-shield','Usuarios'],['trash','fa-trash-can','Papelera'],['audit','fa-clipboard-list','Auditoría'],['settings','fa-gear','Configuración']];
   // Qué secciones del panel puede ver cada rol — única fuente de verdad (antes vivía inline dentro
@@ -5026,95 +5330,6 @@
     const willOpen=box.classList.contains('hidden');
     box.classList.toggle('hidden');
     if(willOpen) leonV2RefreshNotifications();
-  };
-
-  // ===================== CHAT INTERNO DE EQUIPO =====================
-  // Un solo canal compartido (no mensajes directos por ahora) — cada mensaje es una entrada en
-  // state.chatMessages, sincronizada como bitácora (leonV2DbAppendLog) para que llegue en tiempo
-  // real a cualquier otro dispositivo conectado, igual que auditLog/securityLog.
-  let chatPendingGif = null;
-  let chatLastSeenCount = 0;
-  function leonV2RenderChatMessages(){
-    const box=document.getElementById('v2-chat-messages'); if(!box)return;
-    const msgs=(state.chatMessages||[]).slice().sort((a,b)=>new Date(a.at)-new Date(b.at));
-    const myId=state.currentUser&&state.currentUser.id;
-    box.innerHTML=msgs.length?msgs.map(m=>{
-      const mine=m.from&&m.from.id===myId;
-      return `<div class="flex ${mine?'justify-end':'justify-start'} mb-3"><div class="max-w-[80%] ${mine?'bg-brand-600 text-white':'bg-slate-100 text-slate-800'} rounded-2xl px-3 py-2">${!mine?`<div class="text-[10px] font-black opacity-70 mb-0.5">${esc((m.from&&m.from.name)||'Equipo')}</div>`:''}${m.text?`<div class="text-sm break-words whitespace-pre-wrap">${esc(m.text)}</div>`:''}${m.gifUrl?`<img src="${m.gifUrl}" class="rounded-lg mt-1 max-w-full max-h-48 object-contain">`:''}<div class="text-[9px] opacity-60 mt-1">${esc(new Date(m.at).toLocaleTimeString())}</div></div></div>`;
-    }).join(''):'<div class="text-center text-xs text-slate-400 py-8">Todavía no hay mensajes. ¡Saluda al equipo!</div>';
-    box.scrollTop=box.scrollHeight;
-  }
-  window.leonV2RefreshChat=function(){
-    leonV2RenderChatMessages();
-    const badge=document.getElementById('v2-chat-count');
-    const panel=document.getElementById('v2-chat-panel');
-    const panelOpen=panel&&!panel.classList.contains('hidden');
-    const count=(state.chatMessages||[]).length;
-    if(badge){
-      const unread=Math.max(0,count-chatLastSeenCount);
-      if(!panelOpen&&unread>0){badge.textContent=unread>9?'9+':unread;badge.classList.remove('hidden')}
-      else badge.classList.add('hidden');
-    }
-  };
-  window.leonV2ToggleChat=function(forceClose){
-    const panel=document.getElementById('v2-chat-panel'); if(!panel)return;
-    if(forceClose===true){panel.classList.add('hidden');return}
-    const willOpen=panel.classList.contains('hidden');
-    panel.classList.toggle('hidden');
-    if(willOpen){
-      chatLastSeenCount=(state.chatMessages||[]).length;
-      leonV2RenderChatMessages();
-      document.getElementById('v2-chat-count')?.classList.add('hidden');
-      document.getElementById('v2-chat-input')?.focus();
-    }
-  };
-  window.leonV2InsertChatEmoji=function(emoji){
-    const input=document.getElementById('v2-chat-input'); if(!input)return;
-    const start=input.selectionStart??input.value.length;
-    const end=input.selectionEnd??input.value.length;
-    input.value=input.value.slice(0,start)+emoji+input.value.slice(end);
-    input.focus();
-    const pos=start+emoji.length;
-    input.setSelectionRange(pos,pos);
-  };
-  window.handleChatGifFile=function(event){
-    const file=event.target.files[0]; if(!file)return;
-    if(!file.type.startsWith('image/')){ showToast('El archivo debe ser una imagen o GIF.','error'); return; }
-    if(file.size>700000){ showToast('El GIF/imagen es muy pesado (máx. ~700KB) para el chat compartido.','error'); event.target.value=''; return; }
-    const reader=new FileReader();
-    reader.onload=()=>{
-      chatPendingGif=reader.result;
-      const prev=document.getElementById('v2-chat-gif-preview');
-      if(prev){ prev.innerHTML=`<div class="inline-flex items-center gap-2"><img src="${reader.result}" class="h-16 rounded-lg border border-slate-200"><button type="button" onclick="leonV2ClearChatGif()" class="text-slate-400 text-xs"><i class="fa-solid fa-xmark"></i></button></div>`; prev.classList.remove('hidden'); }
-    };
-    reader.readAsDataURL(file);
-  };
-  window.leonV2ClearChatGif=function(){
-    chatPendingGif=null;
-    const prev=document.getElementById('v2-chat-gif-preview');
-    if(prev){ prev.innerHTML=''; prev.classList.add('hidden'); }
-    const inp=document.getElementById('v2-chat-gif-file'); if(inp)inp.value='';
-  };
-  window.leonV2SendChatMessage=function(e){
-    e.preventDefault();
-    const input=document.getElementById('v2-chat-input');
-    const text=(input.value||'').trim();
-    if(!text&&!chatPendingGif) return;
-    const entry={
-      id:'chat-'+Date.now()+'-'+Math.floor(Math.random()*99999),
-      text,
-      gifUrl:chatPendingGif||null,
-      from:{ id:(state.currentUser&&state.currentUser.id)||'anon', name:(state.currentUser&&state.currentUser.name)||'Equipo', photoUrl:(state.currentUser&&state.currentUser.photoUrl)||'' },
-      at:new Date().toISOString()
-    };
-    if(!state.chatMessages)state.chatMessages=[];
-    state.chatMessages.push(entry);
-    if(state.chatMessages.length>500) state.chatMessages=state.chatMessages.slice(-500);
-    if(typeof window.leonV2DbAppendLog==='function') window.leonV2DbAppendLog('chatMessages', entry);
-    input.value='';
-    leonV2ClearChatGif();
-    chatLastSeenCount=state.chatMessages.length;
-    leonV2RenderChatMessages();
   };
 
   // ===================== TICKETS DE SERVICIO =====================
