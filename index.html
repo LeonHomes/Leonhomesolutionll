@@ -2116,6 +2116,17 @@
         // A diferencia de la barra de progreso falsa que tenía antes esta demo, esto SÍ recodifica
         // los píxeles: redimensiona a maxDimension y reexporta como JPEG con la calidad indicada.
         // El tamaño resultante es real (se mide el propio data URL generado), no un número inventado.
+        //
+        // AUTO-REDUCCIÓN: Firestore rechaza cualquier documento de más de ~1MB, y varios registros
+        // (invitación de empleado con foto de ID + firma, evaluación de techo con fotos, solicitud de
+        // crédito con foto de factura, etc.) guardan más de una imagen en el MISMO documento — así que
+        // aunque UNA foto pase el límite, la suma de varias en un mismo registro podía superarlo, y esa
+        // foto se quedaba "solo en este dispositivo" (ver leonV2TooBigForFirestore). En vez de solo
+        // avisar después del hecho, aquí mismo, si el resultado sigue pesando demasiado, se reintenta
+        // automáticamente con menos calidad y menos resolución (hasta 3 intentos) antes de entregar el
+        // resultado final — así la foto que se guarda ya cabe, sin que la persona tenga que adivinar
+        // qué tan "liviana" debe ser su foto.
+        const V2_IMG_SAFE_BYTES = 550000; // margen cómodo por debajo del límite real de Firestore (~1MB), dejando espacio para el resto de los campos del documento
         function compressImageFile(file, maxDimension = 1200, quality = 0.82) {
             return new Promise((resolve, reject) => {
                 const originalSize = file.size;
@@ -2125,21 +2136,33 @@
                     const img = new Image();
                     img.onerror = () => reject(new Error('Archivo de imagen no válido.'));
                     img.onload = () => {
-                        let { width, height } = img;
-                        if (width > maxDimension || height > maxDimension) {
-                            const scale = maxDimension / Math.max(width, height);
-                            width = Math.round(width * scale);
-                            height = Math.round(height * scale);
+                        const renderAt = (dim, q) => {
+                            let { width, height } = img;
+                            if (width > dim || height > dim) {
+                                const scale = dim / Math.max(width, height);
+                                width = Math.round(width * scale);
+                                height = Math.round(height * scale);
+                            }
+                            const canvas = document.createElement('canvas');
+                            canvas.width = width; canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            const dataUrl = canvas.toDataURL('image/jpeg', q);
+                            const base64Len = dataUrl.length - dataUrl.indexOf(',') - 1;
+                            const compressedSize = Math.round(base64Len * 0.75);
+                            return { dataUrl, width, height, compressedSize };
+                        };
+                        let dim = maxDimension, q = quality;
+                        let out = renderAt(dim, q);
+                        let attempts = 0;
+                        while (out.compressedSize > V2_IMG_SAFE_BYTES && attempts < 3) {
+                            q = Math.max(0.45, q * 0.72);
+                            dim = Math.max(500, Math.round(dim * 0.75));
+                            out = renderAt(dim, q);
+                            attempts++;
                         }
-                        const canvas = document.createElement('canvas');
-                        canvas.width = width; canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-                        const base64Len = dataUrl.length - dataUrl.indexOf(',') - 1;
-                        const compressedSize = Math.round(base64Len * 0.75);
-                        const reductionPct = originalSize > 0 ? Math.max(0, Math.round((1 - compressedSize / originalSize) * 100)) : 0;
-                        resolve({ dataUrl, originalSize, compressedSize, reductionPct, width, height });
+                        const reductionPct = originalSize > 0 ? Math.max(0, Math.round((1 - out.compressedSize / originalSize) * 100)) : 0;
+                        resolve({ dataUrl: out.dataUrl, originalSize, compressedSize: out.compressedSize, reductionPct, width: out.width, height: out.height });
                     };
                     img.src = e.target.result;
                 };
@@ -3338,6 +3361,8 @@
 <div id="leon-v2-project-modal" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-xl"><div id="v2-project-modal-content"></div></div></div>
 <!-- LEON V2: Proyectos e Instalaciones — detalle (imágenes, tareas, técnico) -->
 <div id="leon-v2-project-detail" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-4xl"><div id="v2-project-detail-content"></div></div></div>
+<!-- LEON V2: Hoja de Entrega, Garantía y Confirmación de Pago — se firma al entregar el equipo al cliente -->
+<div id="leon-v2-delivery-sheet" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-2xl"><div id="v2-delivery-sheet-content"></div></div></div>
 <!-- LEON V2: Solicitud de Crédito — crear/editar (checklist PCI de financiamiento) -->
 <div id="leon-v2-creditapp-modal" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-3xl"><div id="v2-creditapp-modal-content"></div></div></div>
 <!-- LEON V2: rechazar propuesta con motivo estructurado (desde Seguimiento de Ventas) -->
@@ -4711,10 +4736,32 @@
   };
 
   // Config simple (no es una lista de elementos con id) → un documento fijo en "meta".
+  //
+  // CASO ESPECIAL "siteContent": este objeto guarda el logo, el banner (foto o video) Y la galería
+  // completa de proyectos juntos. Antes se mandaba TODO como un solo documento de Firestore — si la
+  // galería tenía varias fotos, la suma con el logo/banner pasaba fácilmente el límite de ~1MB de
+  // Firestore, y leonV2TooBigForFirestore rechazaba el documento ENTERO: el logo y el banner dejaban
+  // de sincronizarse (se veían bien solo en el dispositivo que los subió) por culpa del PESO DE LA
+  // GALERÍA, aunque el logo/banner por sí solos cupieran de sobra. De ahí el reporte real "el logo y
+  // el fondo no se ven desde el celular". Arreglo: separar la galería en su propio documento
+  // (meta/siteGallery) para que su peso nunca le impida sincronizar el logo/banner (meta/siteContent),
+  // ni viceversa — ver el listener correspondiente en leonV2InitFirebaseSync más abajo.
   window.leonV2SyncMeta = function(key){
     if(!window.__fbDb || fbApplyingRemote) return;
     const value = state[key];
     if(value===undefined) return;
+    if(key==='siteContent' && value && typeof value==='object' && Array.isArray(value.gallery)){
+      const rest = {}; Object.keys(value).forEach(k=>{ if(k!=='gallery') rest[k]=value[k]; });
+      if(!leonV2TooBigForFirestore(rest, 'meta/siteContent')){
+        try{ window.__fbDb.collection('meta').doc('siteContent').set({data:rest}).catch(err=>console.error('Firebase: error al sincronizar meta/siteContent', err)); }
+        catch(err){ console.error('Firebase: error al sincronizar meta/siteContent', err); }
+      }
+      if(!leonV2TooBigForFirestore(value.gallery, 'meta/siteGallery')){
+        try{ window.__fbDb.collection('meta').doc('siteGallery').set({data:value.gallery}).catch(err=>console.error('Firebase: error al sincronizar meta/siteGallery', err)); }
+        catch(err){ console.error('Firebase: error al sincronizar meta/siteGallery', err); }
+      }
+      return;
+    }
     if(leonV2TooBigForFirestore(value, 'meta/'+key)) return;
     try{
       window.__fbDb.collection('meta').doc(key).set({data:value}).catch(err=>console.error('Firebase: error al sincronizar meta/'+key, err));
@@ -4838,11 +4885,37 @@
         const d = doc.data();
         if(!d || !('data' in d)) return;
         fbApplyingRemote = true;
-        state[key] = d.data;
+        // 'siteContent' llega SIN 'gallery' (se guarda aparte, ver leonV2SyncMeta) — si se
+        // reemplazara state.siteContent entero con esto se perdería la galería que ya está en
+        // memoria (o la que traiga el listener de meta/siteGallery de abajo, en cualquier orden).
+        // Excepción de migración: un documento GUARDADO ANTES de este arreglo todavía trae su
+        // propia 'gallery' incrustada (formato viejo) — si existe, se usa esa como punto de partida
+        // en vez del arreglo local (que podría ser solo la galería de demostración), para no
+        // "perder" temporalmente las fotos reales del cliente hasta que algo vuelva a guardar y
+        // termine de migrarlas al documento nuevo (meta/siteGallery).
+        if(key==='siteContent'){
+          const legacyGallery = Array.isArray(d.data.gallery) ? d.data.gallery : null;
+          const keepGallery = legacyGallery || ((state.siteContent && Array.isArray(state.siteContent.gallery)) ? state.siteContent.gallery : []);
+          state.siteContent = Object.assign({}, d.data, {gallery: keepGallery});
+        } else {
+          state[key] = d.data;
+        }
         fbApplyingRemote = false;
         leonV2RerenderAfterSync();
       }, err=>console.error('Firebase: error escuchando meta/'+key, err));
     });
+    // Galería del sitio: documento aparte de 'siteContent' (ver leonV2SyncMeta) para que su peso
+    // nunca bloquee la sincronización del logo/banner ni al revés.
+    window.__fbDb.collection('meta').doc('siteGallery').onSnapshot(doc=>{
+      if(!doc.exists) return;
+      const d = doc.data();
+      if(!d || !('data' in d) || !Array.isArray(d.data)) return;
+      fbApplyingRemote = true;
+      if(!state.siteContent) state.siteContent = {};
+      state.siteContent.gallery = d.data;
+      fbApplyingRemote = false;
+      leonV2RerenderAfterSync();
+    }, err=>console.error('Firebase: error escuchando meta/siteGallery', err));
     // Bitácoras: solo las 500 más recientes por fecha, para no leer historiales enormes.
     FB_LOG_COLLECTIONS.forEach(key=>{
       window.__fbDb.collection(key).orderBy('at','desc').limit(500).onSnapshot(snap=>{
@@ -5653,6 +5726,7 @@
       ${canManage?`<button onclick="leonV2Close('leon-v2-project-detail');leonV2OpenProjectModal('${p.id}')" class="v2-tab"><i class="fa-solid fa-pen mr-1"></i>Editar</button>`:''}
       ${leonV2Can('deleteProject')?`<button onclick="leonV2DeleteProject('${p.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-trash mr-1"></i>Eliminar</button>`:''}
       ${p.clientId?`<button onclick="leonV2Close('leon-v2-project-detail');leonV2OpenSection('clients');leonV2OpenClientDossier('${p.clientId}')" class="v2-tab"><i class="fa-solid fa-address-card mr-1"></i>Ver cliente</button>`:''}
+      <button onclick="leonV2OpenDeliverySheet('${p.id}')" class="v2-tab" style="color:#0876c9"><i class="fa-solid fa-file-signature mr-1"></i>${p.deliveryConfirmation?'Ver hoja de entrega':'Hoja de Entrega, Garantía y Pago'}</button>
     </div>
     <div class="grid sm:grid-cols-2 gap-3 mb-5">
       <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Etapa</label><select onchange="leonV2SetProjectStage('${p.id}', this.value)" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2">${(state.projectStages||[]).map(s=>`<option value="${s}" ${s===p.stage?'selected':''}>${s}</option>`).join('')}</select></div>
@@ -5681,6 +5755,116 @@
     </div>`;
   }
   window.leonV2OpenProjectDetail=id=>{ document.getElementById('v2-project-detail-content').innerHTML=leonV2ProjectDetailHtml(id); open('leon-v2-project-detail'); };
+
+  // ===================== HOJA DE ENTREGA, GARANTÍA Y CONFIRMACIÓN DE PAGO =====================
+  // Un solo documento que se firma UNA vez, al momento de entregarle el equipo al cliente, y que
+  // reúne las tres cosas que antes vivían sueltas (o no existían): (1) que el cliente confirma que
+  // recibió el/los equipo(s), (2) la garantía de cada equipo (por defecto 5 años, pero se puede
+  // ajustar porque no todos los equipos traen la misma garantía), y (3) la confirmación del método
+  // de pago con el que se cerró la venta — todo con los datos reales de la venta/propuesta ligada a
+  // este proyecto (p.quoteId) y una sola firma real (mismo mecanismo de canvas que el resto del
+  // sistema — ver FIRMA ELECTRÓNICA más arriba). Una vez firmada queda guardada en el proyecto
+  // (p.deliveryConfirmation) y de ahí en adelante se muestra en modo solo-lectura con opción de
+  // imprimir/PDF; solo un administrador puede "rehacerla" si hubo un error.
+  function leonV2DeliverySheetHtml(projectId){
+    const p=(state.projects||[]).find(x=>x.id===projectId);
+    if(!p) return '<div class="v2-empty">Proyecto no encontrado.</div>';
+    const q = p.quoteId ? findQuoteAnywhere(p.quoteId) : null;
+    const items = (q && Array.isArray(q.items) && q.items.length) ? q.items : [];
+    const total = q ? leonV2ComputeTotal(q).total : null;
+    const paymentType = (q && q.paymentType) || 'Por definir';
+    const me = state.currentUser;
+    const isAdmin = me && me.role==='Administrador';
+    if(p.deliveryConfirmation){
+      const dc = p.deliveryConfirmation;
+      return `<div class="flex items-start justify-between mb-4"><div><div class="v2-pill mb-2"><i class="fa-solid fa-circle-check"></i> FIRMADA</div><h3 class="text-xl font-black">Hoja de Entrega, Garantía y Pago</h3><p class="text-xs text-slate-500 mt-1">${esc(p.id)}${p.clientName?' · '+esc(p.clientName):''}</p></div><button onclick="leonV2Close('leon-v2-delivery-sheet')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="space-y-3 text-sm">
+        <div class="p-3 rounded-xl bg-slate-50"><b>Recibido por:</b> ${esc(dc.receivedByName)}<br><b>Fecha:</b> ${esc(new Date(dc.confirmedAt).toLocaleString())}</div>
+        <div class="p-3 rounded-xl bg-slate-50"><b>Método de pago confirmado:</b> ${esc(dc.paymentType)}${dc.paymentTotal!=null?' — Total: '+money(dc.paymentTotal):''}</div>
+        ${dc.items&&dc.items.length?`<div class="p-3 rounded-xl bg-slate-50"><b>Equipos entregados y garantía:</b><table class="w-full mt-2 text-xs"><thead><tr class="text-left text-slate-400"><th>Equipo</th><th>Cant.</th><th>Garantía</th></tr></thead><tbody>${dc.items.map(i=>`<tr><td>${esc(i.name)}</td><td>${i.qty}</td><td>${i.warrantyYears?leonV2YearsLabel(i.warrantyYears):'—'}</td></tr>`).join('')}</tbody></table></div>`:''}
+        <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100"><b>Firma del cliente:</b><br>${dc.signatureDataUrl?`<img src="${dc.signatureDataUrl}" class="h-16 mt-2 border border-emerald-200 rounded bg-white">`:'—'}</div>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-5">
+        <button onclick="leonV2PrintDeliverySheet('${p.id}')" class="v2-tab"><i class="fa-solid fa-print mr-1"></i>Imprimir / PDF</button>
+        ${isAdmin?`<button onclick="leonV2RedoDeliverySheet('${p.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-rotate-left mr-1"></i>Rehacer (borra la firma actual)</button>`:''}
+      </div>`;
+    }
+    const itemRows = items.length ? items.map((it,i)=>`<tr><td class="py-1">${esc(it.name)}</td><td class="py-1 text-center">${it.qty}</td><td class="py-1"><input id="ds-warranty-${i}" type="number" min="0" step="1" value="5" class="w-20 border border-slate-200 rounded-lg px-2 py-1 text-xs"> años</td></tr>`).join('') : '<tr><td colspan="3" class="text-slate-400 text-xs py-2">Este proyecto no tiene una propuesta/venta ligada — agrega el equipo entregado manualmente en las notas si hace falta.</td></tr>';
+    return `<div class="flex items-start justify-between mb-4"><div><div class="v2-pill mb-2"><i class="fa-solid fa-file-signature"></i> AL ENTREGAR EL EQUIPO</div><h3 class="text-xl font-black">Hoja de Entrega, Garantía y Pago</h3><p class="text-xs text-slate-500 mt-1">${esc(p.id)}${p.clientName?' · '+esc(p.clientName):''}</p></div><button onclick="leonV2Close('leon-v2-delivery-sheet')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+    <form onsubmit="leonV2SubmitDeliverySheet(event,'${p.id}')" class="space-y-4">
+      <div class="p-3 rounded-xl bg-brand-50/40 border border-brand-100 text-xs text-slate-600"><i class="fa-solid fa-circle-info mr-1"></i>Al firmar, el cliente confirma que (1) recibió el equipo descrito abajo, (2) está de acuerdo con la garantía indicada de cada equipo, y (3) confirma que el método de pago abajo es correcto.</div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Nombre de quien recibe el equipo *</label><input id="ds-name" required value="${esc(p.clientName||'')}" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none"></div>
+      <div>
+        <label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Equipo(s) entregado(s) y garantía (la garantía varía según el equipo)</label>
+        <table class="w-full text-sm"><thead><tr class="text-left text-[10px] uppercase text-slate-400"><th>Equipo</th><th>Cant.</th><th>Garantía</th></tr></thead><tbody>${itemRows}</tbody></table>
+      </div>
+      <div class="p-3 rounded-xl bg-slate-50"><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Método de pago (de la venta)</label><div class="text-sm font-bold">${esc(paymentType)}</div>${total!=null?`<div class="text-xs text-slate-500 mt-1">Total: ${money(total)}</div>`:''}</div>
+      <label class="flex items-start gap-2 text-xs text-slate-600 cursor-pointer"><input type="checkbox" id="ds-confirm-check" required class="mt-0.5"> Confirmo que recibí el/los equipo(s) arriba en buen estado, que estoy de acuerdo con la garantía indicada, y que el método de pago mostrado es correcto.</label>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block"><i class="fa-solid fa-signature mr-1"></i>Firma *</label>${leonV2SignaturePadHtml('ds-signature')}</div>
+      <button type="submit" class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-check mr-2"></i>Confirmar y guardar</button>
+    </form>`;
+  }
+  window.leonV2OpenDeliverySheet=function(projectId){
+    document.getElementById('v2-delivery-sheet-content').innerHTML=leonV2DeliverySheetHtml(projectId);
+    open('leon-v2-delivery-sheet');
+    if(!(state.projects||[]).find(x=>x.id===projectId)?.deliveryConfirmation) leonV2InitSignaturePad('ds-signature');
+  };
+  window.leonV2SubmitDeliverySheet=function(e,projectId){
+    e.preventDefault();
+    const p=(state.projects||[]).find(x=>x.id===projectId); if(!p){showToast('Proyecto no encontrado.','error');return;}
+    const q = p.quoteId ? findQuoteAnywhere(p.quoteId) : null;
+    const items = (q && Array.isArray(q.items) && q.items.length) ? q.items : [];
+    const name=(document.getElementById('ds-name').value||'').trim();
+    if(!name){ showToast('Escribe el nombre de quien recibe el equipo.','error'); return; }
+    if(!document.getElementById('ds-confirm-check').checked){ showToast('Debes marcar la confirmación antes de firmar.','error'); return; }
+    const signature = typeof leonV2GetSignatureDataUrl==='function' ? leonV2GetSignatureDataUrl('ds-signature') : null;
+    if(!signature){ showToast('Debes firmar antes de guardar.','error'); return; }
+    const itemsWithWarranty = items.map((it,i)=>{
+      const el=document.getElementById('ds-warranty-'+i);
+      const warrantyYears = el ? (parseInt(el.value,10)||0) : 0;
+      return { name: it.name, qty: it.qty, warrantyYears };
+    });
+    const q2 = q ? leonV2ComputeTotal(q).total : null;
+    p.deliveryConfirmation = {
+      receivedByName: name,
+      paymentType: (q && q.paymentType) || 'Por definir',
+      paymentTotal: q2,
+      items: itemsWithWarranty,
+      signatureDataUrl: signature,
+      confirmedAt: new Date().toISOString(),
+      confirmedBy: (state.currentUser&&state.currentUser.name)||'Equipo'
+    };
+    leonV2Audit('Hoja de entrega/garantía/pago firmada', p.id+' — recibido por '+name);
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('projects');
+    document.getElementById('v2-delivery-sheet-content').innerHTML=leonV2DeliverySheetHtml(projectId);
+    if(document.getElementById('v2-project-detail-content')&&document.getElementById('leon-v2-project-detail').classList.contains('show')) document.getElementById('v2-project-detail-content').innerHTML=leonV2ProjectDetailHtml(projectId);
+    if(document.getElementById('v2-projects-list'))renderProjectsList();
+    showToast('Hoja de entrega guardada.','success');
+  };
+  window.leonV2RedoDeliverySheet=function(projectId){
+    if(!leonV2Can('systemBackup') && !(state.currentUser&&state.currentUser.role==='Administrador')){ showToast('Solo un administrador puede rehacer una hoja ya firmada.','error'); return; }
+    const p=(state.projects||[]).find(x=>x.id===projectId); if(!p)return;
+    delete p.deliveryConfirmation;
+    leonV2Audit('Hoja de entrega/garantía/pago reiniciada', p.id);
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('projects');
+    document.getElementById('v2-delivery-sheet-content').innerHTML=leonV2DeliverySheetHtml(projectId);
+    leonV2InitSignaturePad('ds-signature');
+  };
+  window.leonV2PrintDeliverySheet=function(projectId){
+    const p=(state.projects||[]).find(x=>x.id===projectId); if(!p||!p.deliveryConfirmation){showToast('Esta hoja todavía no se ha firmado.','error');return;}
+    const dc=p.deliveryConfirmation;
+    const w=window.open('','_blank');
+    w.document.write(`<html><head><title>Hoja de Entrega ${esc(p.id)}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}h1{color:#0876c9}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}.head{display:flex;justify-content:space-between;border-bottom:3px solid #0876c9;padding-bottom:18px}.box{background:#f5f9fd;padding:16px;border-radius:10px;margin-top:16px}</style></head><body>
+    <div class="head"><div><h1>LEON HOME SOLUTIONS</h1><b>HOJA DE ENTREGA, GARANTÍA Y CONFIRMACIÓN DE PAGO</b><div>${esc(p.id)}</div></div><div><b>Fecha</b><br>${esc(new Date(dc.confirmedAt).toLocaleString())}</div></div>
+    <div class="box"><b>CLIENTE / RECIBIDO POR</b><br>${esc(dc.receivedByName)}${p.clientName&&p.clientName!==dc.receivedByName?' ('+esc(p.clientName)+')':''}</div>
+    <div class="box"><b>MÉTODO DE PAGO CONFIRMADO</b><br>${esc(dc.paymentType)}${dc.paymentTotal!=null?' — Total: '+money(dc.paymentTotal):''}</div>
+    ${dc.items&&dc.items.length?`<table><thead><tr><th>Equipo entregado</th><th>Cantidad</th><th>Garantía</th></tr></thead><tbody>${dc.items.map(i=>`<tr><td>${esc(i.name)}</td><td>${i.qty}</td><td>${i.warrantyYears?leonV2YearsLabel(i.warrantyYears):'—'}</td></tr>`).join('')}</tbody></table>`:''}
+    <div class="box">El firmante confirma haber recibido el/los equipo(s) arriba en buen estado, estar de acuerdo con la garantía de cada uno, y que el método de pago indicado es correcto.</div>
+    <div style="margin-top:50px">${dc.signatureDataUrl?`<img src="${dc.signatureDataUrl}" style="height:60px;display:block;border-bottom:1px solid #172033;padding-bottom:6px">`:''}<div style="margin-top:6px">Firma — ${esc(dc.receivedByName)}</div></div>
+    <script>window.onload=()=>window.print()<\/script></body></html>`);
+    w.document.close();
+  };
+
   window.leonV2SetProjectStage=(id,stage)=>{
     const p=(state.projects||[]).find(x=>x.id===id); if(!p)return;
     const prev=p.stage; p.stage=stage;
