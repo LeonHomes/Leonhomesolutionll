@@ -367,7 +367,12 @@
 </head>
 <body class="bg-[#f6faff] text-slate-700 antialiased min-h-screen flex flex-col justify-between" style="background:radial-gradient(1400px 700px at 12% -8%, #f3f6fa 0%, transparent 55%), linear-gradient(165deg, #e8ecf1 0%, #dde3ea 28%, #eef1f5 52%, #dce2e9 76%, #e9edf2 100%);">
 
-    <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+    <!-- z-[300]: por encima de CUALQUIER modal (.v2-modal usa z-index:100). Antes tenían el MISMO
+         z-index, y como los modales aparecen después en el HTML, un modal abierto (con su fondo
+         oscuro semi-transparente) tapaba visualmente cualquier aviso — el reporte real era "el
+         error de la contraseña sí aparece pero queda escondido detrás/debajo". Con esto, un aviso
+         siempre se ve por encima de cualquier ventana abierta, tenga la que tenga adentro. -->
+    <div id="toast-container" class="fixed top-5 right-5 z-[300] flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- Promo banner -->
     <div id="promo-banner" class="bg-gradient-to-r from-brand-700 via-brand-600 to-brand-500 text-white text-center py-2.5 px-4 text-[11px] sm:text-xs font-black uppercase tracking-widest relative z-40 flex items-center justify-center gap-3 shadow-md">
@@ -3144,6 +3149,8 @@
 .v2-tab{padding:9px 13px;border-radius:10px;font-size:11px;font-weight:900;color:#64748b}
 .v2-tab.active{background:#eaf5ff;color:#0876c9}
 .v2-modal{position:fixed;inset:0;background:rgba(3,10,20,.72);backdrop-filter:blur(8px);z-index:100;display:none;align-items:center;justify-content:center;padding:16px}
+/* CSS plana (no depende del compilador JIT de Tailwind) para garantizar que los toasts/avisos SIEMPRE se vean por encima de cualquier modal abierto. */
+#toast-container{z-index:300!important;position:fixed}
 .v2-modal.show{display:flex}
 .v2-modal-box{background:#fff;border-radius:26px;max-width:900px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 30px 90px rgba(0,0,0,.3)}
 .v2-product-media{background:linear-gradient(145deg,#06111f,#12395b);min-height:420px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;gap:14px}
@@ -3316,6 +3323,7 @@
       <div class="sm:col-span-2"><label class="text-[10px] font-black uppercase text-slate-500">Enlace de ubicación (Google Maps)</label><input id="v2-edit-client-location-url" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
       <div><label class="text-[10px] font-black uppercase text-slate-500">Tipo de identificación</label><select id="v2-edit-client-id-type" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="">No especificar</option><option value="SSN">Social Security Number (SSN)</option><option value="ID">ID / Identificación</option><option value="Pasaporte">Pasaporte</option><option value="Licencia">Licencia de conducir</option><option value="Otro">Otro documento</option></select></div>
       <div><label class="text-[10px] font-black uppercase text-slate-500">Número de identificación</label><input id="v2-edit-client-id-number" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Dejar en blanco para no cambiar"><p class="text-[10px] text-slate-400 mt-1">Se enmascara al guardar — solo se conservan los últimos 4 caracteres.</p></div>
+      <div class="sm:col-span-2"><label class="text-[10px] font-black uppercase text-slate-500">Consultor / vendedor asignado</label><select id="v2-edit-client-consultor" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="">Sin asignar</option></select><p class="text-[10px] text-slate-400 mt-1">Quién da seguimiento a este cliente — se puede reasignar en cualquier momento.</p></div>
     </div>
     <div class="flex justify-end gap-3 mt-6"><button type="button" onclick="leonV2CloseClientEdit()" class="px-5 py-3 rounded-xl bg-slate-100 text-slate-600 font-black text-xs uppercase">Cancelar</button><button type="submit" class="px-6 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase shadow-lg shadow-brand-500/25"><i class="fa-solid fa-floppy-disk mr-2"></i>Guardar cambios</button></div>
   </form>
@@ -6439,6 +6447,20 @@
     document.getElementById('v2-edit-client-location-url').value=c.locationUrl||'';
     document.getElementById('v2-edit-client-id-type').value=c.idType||'';
     document.getElementById('v2-edit-client-id-number').value='';
+    // Mismo criterio de roles "asignables" que ya se usa en Propuestas (leonV2ConsultantAssignCellHtml)
+    // y en venta manual — cualquier rol que trabaje con clientes puede quedar como consultor.
+    const consultorSel=document.getElementById('v2-edit-client-consultor');
+    if(consultorSel){
+      const eligibles=(state.users||[]).filter(u=>['Vendedor','Nuevo Consultor','Call Center','Administrador'].includes(u.role));
+      consultorSel.innerHTML='<option value="">Sin asignar</option>'+eligibles.map(u=>`<option value="${u.id}" ${c.consultorId===u.id?'selected':''}>${esc(u.name)} — ${esc(u.role)}</option>`).join('');
+      // Cliente antiguo sin consultorId guardado (solo tenía el nombre en texto, de cuando venía
+      // de una cotización) — intenta emparejar por nombre para no mostrar "Sin asignar" de la nada
+      // en un cliente que en realidad sí tenía consultor.
+      if(!c.consultorId && c.consultorName){
+        const match=eligibles.find(u=>u.name===c.consultorName);
+        if(match) consultorSel.value=match.id;
+      }
+    }
     leonV2Close('leon-v2-client-dossier');
     open('leon-v2-client-edit');
   };
@@ -6461,6 +6483,16 @@
     setIfChanged('idType',idType,'tipo de identificación');
     const idRaw=document.getElementById('v2-edit-client-id-number').value.trim();
     if(idRaw){ c.idNumber=maskId(idRaw); changes.push('número de identificación') }
+    const consultorSel=document.getElementById('v2-edit-client-consultor');
+    if(consultorSel){
+      const newConsultorId=consultorSel.value||null;
+      if((c.consultorId||null)!==newConsultorId){
+        const u=newConsultorId?(state.users||[]).find(x=>x.id===newConsultorId):null;
+        c.consultorId=newConsultorId;
+        c.consultorName=u?u.name:null;
+        changes.push('consultor asignado');
+      }
+    }
     if(!changes.length){ showToast('No hubo cambios para guardar.','info'); leonV2CloseClientEdit(); return }
     const actor=(state.currentUser&&state.currentUser.name)||'Equipo';
     const now=new Date().toISOString();
@@ -8386,6 +8418,22 @@
           <div><input type="file" id="eo-idphoto-file" accept="image/*" class="hidden" onchange="handleOnboardingIdPhotoUpload(event)"><button type="button" onclick="document.getElementById('eo-idphoto-file').click()" class="bg-ink-900 hover:bg-ink-800 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Foto del ID *</button><p class="text-[10px] text-slate-400 mt-1">Foto clara del frente del documento — obligatoria.</p></div>
         </div>
       </div>
+      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-file-invoice-dollar mr-1"></i>Seguro Social y fecha de nacimiento</h4>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Social Security (SSN)</label><input id="eo-ssn" type="password" autocomplete="off" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Se enmascara al guardar"><p class="text-[10px] text-slate-400 mt-1">Necesario para preparar el Formulario 480.</p></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Fecha de nacimiento</label><input id="eo-birthdate" type="date" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+        </div>
+      </div>
+      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-building-columns mr-1"></i>Depósito directo (opcional)</h4>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Entidad bancaria</label><input id="eo-bank-name" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. Banco Popular"></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Número de cuenta</label><input id="eo-bank-account" type="password" autocomplete="off" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Se enmascara al guardar"></div>
+          <div><label class="text-[10px] font-black uppercase text-slate-500">Routing number</label><input id="eo-bank-routing" type="password" autocomplete="off" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Se enmascara al guardar"></div>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2">Si no lo tienes a mano ahora, se puede completar después.</p>
+      </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200">
         <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3"><i class="fa-solid fa-file-contract mr-1"></i>Cláusulas del contrato</h4>
         <div class="max-h-64 overflow-y-auto pr-1">${leonV2ContractClausesHtml()}</div>
@@ -8438,6 +8486,21 @@
     invite.idType = document.getElementById('eo-idtype').value;
     invite.idNumber = maskId(document.getElementById('eo-idnumber').value);
     invite.idPhotoUrl = v2OnboardingIdPhotoPending;
+    // Mismos campos que "Agregar empleado" (SSN, fecha de nacimiento, depósito directo) — antes
+    // solo estaban en el formulario manual del administrador, y el enlace de autoservicio se
+    // quedaba corto pidiendo menos información que si se agregaba a mano. Todos opcionales salvo
+    // lo que ya era obligatorio arriba, igual que en el formulario manual.
+    const ssnRaw=(document.getElementById('eo-ssn').value||'').trim();
+    if(ssnRaw) invite.ssn=maskId(ssnRaw);
+    invite.birthDate=document.getElementById('eo-birthdate').value||'';
+    const bankName=(document.getElementById('eo-bank-name').value||'').trim();
+    const bankAccountRaw=(document.getElementById('eo-bank-account').value||'').trim();
+    const bankRoutingRaw=(document.getElementById('eo-bank-routing').value||'').trim();
+    if(bankName||bankAccountRaw||bankRoutingRaw){
+      invite.bankName=bankName;
+      invite.bankAccountMasked=bankAccountRaw?maskId(bankAccountRaw):null;
+      invite.bankRoutingMasked=bankRoutingRaw?maskId(bankRoutingRaw):null;
+    }
     invite.signatureDataUrl = signature;
     invite.signedAt = new Date().toISOString();
     invite.clausesAcceptedAt = new Date().toISOString();
@@ -8496,6 +8559,8 @@
         <div class="p-3 rounded-xl bg-slate-50"><div class="text-[10px] font-black uppercase text-slate-400">Dirección</div>${esc(i.address||'—')}</div>
         <div class="p-3 rounded-xl bg-slate-50"><div class="text-[10px] font-black uppercase text-slate-400">Contacto de emergencia</div>${esc(i.emergencyName||'—')} ${i.emergencyPhone?'· '+esc(i.emergencyPhone):''}</div>
         <div class="p-3 rounded-xl bg-slate-50"><div class="text-[10px] font-black uppercase text-slate-400">Identificación</div>${esc(i.idType||'—')} ${i.idNumber?'· '+esc(i.idNumber):''}</div>
+        <div class="p-3 rounded-xl bg-slate-50"><div class="text-[10px] font-black uppercase text-slate-400">Seguro Social / Fecha nacimiento</div>${esc(i.ssn||'—')} ${i.birthDate?'· '+esc(i.birthDate):''}</div>
+        <div class="p-3 rounded-xl bg-slate-50"><div class="text-[10px] font-black uppercase text-slate-400">Depósito directo</div>${i.bankName||i.bankAccountMasked||i.bankRoutingMasked?esc(i.bankName||'—')+' · Cuenta '+esc(i.bankAccountMasked||'—')+' · Routing '+esc(i.bankRoutingMasked||'—'):'No proporcionado'}</div>
       </div>
       ${i.idPhotoUrl?`<div><div class="text-[10px] font-black uppercase text-slate-400 mb-1">Foto del ID</div><img src="${esc(i.idPhotoUrl)}" class="max-w-[240px] rounded-lg border border-slate-200"></div>`:''}
       <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-800"><i class="fa-solid fa-check mr-1"></i>Cláusulas aceptadas${i.clausesAcceptedAt?' el '+esc(new Date(i.clausesAcceptedAt).toLocaleString()):''}.</div>
@@ -8510,10 +8575,15 @@
     const i=(state.employeeInvites||[]).find(x=>x.id===id); if(!i) return;
     if(state.users.some(u=>u.email.toLowerCase()===i.email.toLowerCase())){ showToast('Ya existe un empleado con ese correo — revisa antes de aprobar de nuevo.','error'); return; }
     const pin=String(Math.floor(10000+Math.random()*90000));
+    // hasBankInfo: mismo criterio que "Agregar empleado" — si la persona no trajo el depósito
+    // directo a mano durante el registro, el contrato queda sin ese bloque en vez de inventar
+    // valores, y se completa después desde "Crear contrato".
+    const hasBankInfo = !!(i.bankName || i.bankAccountMasked || i.bankRoutingMasked);
     const newUser={ id:'u-'+Date.now(), name:i.name, email:i.email, role:i.role, supervisorId:null, pin, password:i.password,
       photoUrl:'', phone:i.phone||'', address:i.address||'', idType:i.idType||'', idNumber:i.idNumber||'', idPhotoUrl:i.idPhotoUrl||'',
-      taxId:'', documents:[],
-      contract:{ signatureDataUrl:i.signatureDataUrl||null, signedAt:i.signedAt||null, clausesAcceptedAt:i.clausesAcceptedAt||null, effectiveDate:new Date().toISOString().slice(0,10), createdAt:new Date().toISOString().slice(0,10), updatedAt:new Date().toISOString().slice(0,10) } };
+      birthDate:i.birthDate||'', hireDate:new Date().toISOString().slice(0,10), emergencyContactName:i.emergencyName||'', emergencyContactPhone:i.emergencyPhone||'',
+      taxId:i.ssn||'', documents:[],
+      contract: hasBankInfo ? { bankName:i.bankName||'', payMethod:'ACH / Transferencia', accountMasked:i.bankAccountMasked||null, routingMasked:i.bankRoutingMasked||null, frequency:null, payDay:null, effectiveDate:null, signatureDataUrl:i.signatureDataUrl||null, signedAt:i.signedAt||null, clausesAcceptedAt:i.clausesAcceptedAt||null, createdAt:new Date().toISOString().slice(0,10), updatedAt:new Date().toISOString().slice(0,10) } : { signatureDataUrl:i.signatureDataUrl||null, signedAt:i.signedAt||null, clausesAcceptedAt:i.clausesAcceptedAt||null, effectiveDate:new Date().toISOString().slice(0,10), createdAt:new Date().toISOString().slice(0,10), updatedAt:new Date().toISOString().slice(0,10) } };
     state.users.push(newUser);
     i.status='aprobado'; i.resolvedAt=new Date().toISOString();
     leonV2Audit('Invitación aprobada — cuenta creada', newUser.name+' — '+newUser.role);
