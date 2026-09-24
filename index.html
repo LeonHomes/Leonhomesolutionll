@@ -4840,6 +4840,30 @@
 
   // Arranca los oyentes en tiempo real (uno por colección/documento) y hace la primera carga.
   // Se llama una sola vez, desde DOMContentLoaded, después de que exista window.__fbDb.
+  // Red de seguridad para los oyentes en tiempo real: cada onSnapshot de abajo pone
+  // fbApplyingRemote=true mientras aplica lo que llegó de Firestore a `state` (para no reenviarlo
+  // de vuelta como si fuera un cambio local), y lo vuelve a poner en false al terminar. El problema:
+  // si CUALQUIER paso de en medio lanza una excepción no prevista (un documento con una forma
+  // inesperada, por ejemplo), ese "false" final nunca se ejecutaba — fbApplyingRemote se quedaba
+  // atascado en `true` PARA SIEMPRE el resto de la sesión, y como leonV2SyncCollection/leonV2SyncMeta
+  // se niegan a escribir mientras eso esté en true, el resultado era que TODO dejaba de guardarse o
+  // sincronizarse desde ese momento — exactamente el reporte de "la base de datos explotó, no veo
+  // nada funcionando" sin ningún aviso visible de qué pasó. Con este envoltorio, una falla en un solo
+  // oyente ya no puede tumbar el resto del sistema, y además se avisa una vez (no en cada intento).
+  let v2SyncSafetyNetWarned = false;
+  window.leonV2SafeApplyRemote = function leonV2SafeApplyRemote(label, fn){
+    fbApplyingRemote = true;
+    try{ fn(); }
+    catch(err){
+      console.error('Firebase: error aplicando datos en tiempo real ('+label+')', err);
+      if(!v2SyncSafetyNetWarned && typeof showToast==='function'){
+        v2SyncSafetyNetWarned = true;
+        showToast('Hubo un problema aplicando datos recién llegados de la base de datos ('+label+'). El resto del sistema debería seguir funcionando — si notas algo raro, actualiza la página.', 'warning');
+      }
+    }
+    fbApplyingRemote = false;
+    leonV2RerenderAfterSync();
+  }
   window.leonV2InitFirebaseSync = function(){
     window.leonV2UpdateDbStatusBadge();
     // Aplica las tumbas locales también al estado con el que arrancó esta pestaña (los equipos/
@@ -4888,20 +4912,19 @@
     });
     FB_LIST_COLLECTIONS.forEach(key=>{
       window.__fbDb.collection(key).onSnapshot(snap=>{
-        fbApplyingRemote = true;
-        // leonV2FilterTombstoned: si este navegador borró un id y la escritura remota no se
-        // confirmó a tiempo (o falló), no dejamos que este documento "resucite" al llegar de
-        // Firestore — ver el bloque TUMBAS LOCALES más arriba.
-        const docs = leonV2FilterTombstoned(key, snap.docs.map(d=>d.data()));
-        if(docs.length || !(state[key]&&state[key].length)) state[key] = docs; // no borra lo local si Firestore aún está vacío (primera carga)
-        // Deja la "foto" de leonV2SyncCollection al día con lo que Firestore realmente tiene — si no
-        // se hace esto, un cambio hecho en OTRO dispositivo se vería como "distinto a lo último que
-        // subí yo" la próxima vez que este navegador sincronice esa colección, y lo volvería a subir
-        // sin necesidad (inofensivo, pero desperdicia el ahorro de la sincronización por diferencias).
-        const cache = leonV2SyncedCache(key);
-        docs.forEach(d=>{ if(d && d.id!=null){ try{ cache.set(String(d.id), JSON.stringify(d)); }catch(e){} } });
-        fbApplyingRemote = false;
-        leonV2RerenderAfterSync();
+        leonV2SafeApplyRemote(key, ()=>{
+          // leonV2FilterTombstoned: si este navegador borró un id y la escritura remota no se
+          // confirmó a tiempo (o falló), no dejamos que este documento "resucite" al llegar de
+          // Firestore — ver el bloque TUMBAS LOCALES más arriba.
+          const docs = leonV2FilterTombstoned(key, snap.docs.map(d=>d.data()));
+          if(docs.length || !(state[key]&&state[key].length)) state[key] = docs; // no borra lo local si Firestore aún está vacío (primera carga)
+          // Deja la "foto" de leonV2SyncCollection al día con lo que Firestore realmente tiene — si no
+          // se hace esto, un cambio hecho en OTRO dispositivo se vería como "distinto a lo último que
+          // subí yo" la próxima vez que este navegador sincronice esa colección, y lo volvería a subir
+          // sin necesidad (inofensivo, pero desperdicia el ahorro de la sincronización por diferencias).
+          const cache = leonV2SyncedCache(key);
+          docs.forEach(d=>{ if(d && d.id!=null){ try{ cache.set(String(d.id), JSON.stringify(d)); }catch(e){} } });
+        });
       }, err=>console.error('Firebase: error escuchando '+key, err));
     });
     FB_META_DOCS.forEach(key=>{
@@ -4909,24 +4932,24 @@
         if(!doc.exists) return;
         const d = doc.data();
         if(!d || !('data' in d)) return;
-        fbApplyingRemote = true;
-        // 'siteContent' llega SIN 'gallery' (se guarda aparte, ver leonV2SyncMeta) — si se
-        // reemplazara state.siteContent entero con esto se perdería la galería que ya está en
-        // memoria (o la que traiga el listener de meta/siteGallery de abajo, en cualquier orden).
-        // Excepción de migración: un documento GUARDADO ANTES de este arreglo todavía trae su
-        // propia 'gallery' incrustada (formato viejo) — si existe, se usa esa como punto de partida
-        // en vez del arreglo local (que podría ser solo la galería de demostración), para no
-        // "perder" temporalmente las fotos reales del cliente hasta que algo vuelva a guardar y
-        // termine de migrarlas al documento nuevo (meta/siteGallery).
-        if(key==='siteContent'){
-          const legacyGallery = Array.isArray(d.data.gallery) ? d.data.gallery : null;
-          const keepGallery = legacyGallery || ((state.siteContent && Array.isArray(state.siteContent.gallery)) ? state.siteContent.gallery : []);
-          state.siteContent = Object.assign({}, d.data, {gallery: keepGallery});
-        } else {
-          state[key] = d.data;
-        }
-        fbApplyingRemote = false;
-        leonV2RerenderAfterSync();
+        leonV2SafeApplyRemote('meta/'+key, ()=>{
+          // 'siteContent' llega SIN 'gallery' (se guarda aparte, ver leonV2SyncMeta) — si se
+          // reemplazara state.siteContent entero con esto se perdería la galería que ya está en
+          // memoria (o la que traiga el listener de meta/siteGallery de abajo, en cualquier orden).
+          // Excepción de migración: un documento GUARDADO ANTES de este arreglo todavía trae su
+          // propia 'gallery' incrustada (formato viejo) — si existe, se usa esa como punto de partida
+          // en vez del arreglo local (que podría ser solo la galería de demostración), para no
+          // "perder" temporalmente las fotos reales del cliente hasta que algo vuelva a guardar y
+          // termine de migrarlas al documento nuevo (meta/siteGallery).
+          if(key==='siteContent'){
+            const rawData = d.data && typeof d.data==='object' ? d.data : {};
+            const legacyGallery = Array.isArray(rawData.gallery) ? rawData.gallery : null;
+            const keepGallery = legacyGallery || ((state.siteContent && Array.isArray(state.siteContent.gallery)) ? state.siteContent.gallery : []);
+            state.siteContent = Object.assign({}, state.siteContent, rawData, {gallery: keepGallery});
+          } else {
+            state[key] = d.data;
+          }
+        });
       }, err=>console.error('Firebase: error escuchando meta/'+key, err));
     });
     // Galería del sitio: documento aparte de 'siteContent' (ver leonV2SyncMeta) para que su peso
@@ -4935,20 +4958,18 @@
       if(!doc.exists) return;
       const d = doc.data();
       if(!d || !('data' in d) || !Array.isArray(d.data)) return;
-      fbApplyingRemote = true;
-      if(!state.siteContent) state.siteContent = {};
-      state.siteContent.gallery = d.data;
-      fbApplyingRemote = false;
-      leonV2RerenderAfterSync();
+      leonV2SafeApplyRemote('meta/siteGallery', ()=>{
+        if(!state.siteContent) state.siteContent = {};
+        state.siteContent.gallery = d.data;
+      });
     }, err=>console.error('Firebase: error escuchando meta/siteGallery', err));
     // Bitácoras: solo las 500 más recientes por fecha, para no leer historiales enormes.
     FB_LOG_COLLECTIONS.forEach(key=>{
       window.__fbDb.collection(key).orderBy('at','desc').limit(500).onSnapshot(snap=>{
-        fbApplyingRemote = true;
-        const docs = snap.docs.map(d=>d.data());
-        if(docs.length || !(state[key]&&state[key].length)) state[key] = docs;
-        fbApplyingRemote = false;
-        leonV2RerenderAfterSync();
+        leonV2SafeApplyRemote(key, ()=>{
+          const docs = snap.docs.map(d=>d.data());
+          if(docs.length || !(state[key]&&state[key].length)) state[key] = docs;
+        });
       }, err=>console.error('Firebase: error escuchando '+key, err));
     });
   };
