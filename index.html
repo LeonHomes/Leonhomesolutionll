@@ -36,8 +36,11 @@
         }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <!-- defer: Chart.js solo se usa dentro de una función que corre cuando el usuario abre un
+         reporte (mucho después de la carga inicial), así que no hace falta que bloquee el
+         primer pintado de la página — el navegador puede seguir dibujando el resto mientras
+         esto se descarga en paralelo. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <!-- ============ Conexión real a Firebase (base de datos en tiempo real) ============
          SDK "compat" (variable global `firebase`, no requiere Webpack/bundler — funciona con
          las etiquetas de script normales de este archivo). Si esta línea no logra cargar (sin internet,
