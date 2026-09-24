@@ -4690,12 +4690,26 @@
     });
     return p;
   }
+  // Campos conocidos que guardan fotos/firmas en base64 — casi siempre el motivo real de que un
+  // documento pase el límite de Firestore. Antes, si UN documento pesaba demasiado, se saltaba
+  // COMPLETO — así que un cambio pequeño (p.ej. aprobar una invitación, solo cambiar su "status")
+  // se perdía para siempre en silencio, atrapado detrás de una sola foto pesada de hace tiempo (de
+  // antes de que compressImageFile empezara a autorreducir el tamaño — ver más arriba). Ahora, como
+  // último recurso, se reintenta SIN esos campos para que al menos el resto del documento sí llegue.
+  const V2_HEAVY_PHOTO_FIELDS = ['idPhotoUrl','signatureDataUrl','photoUrl','heroImageUrl','heroVideoUrl'];
+  function leonV2StripHeavyFields(item){
+    const copy = Object.assign({}, item);
+    let stripped = false;
+    V2_HEAVY_PHOTO_FIELDS.forEach(f=>{ if(copy[f]){ copy[f]=null; stripped=true; } });
+    return {copy, stripped};
+  }
   window.leonV2SyncCollection = function(key){
-    if(!window.__fbDb || fbApplyingRemote) return;
+    if(!window.__fbDb || fbApplyingRemote) return Promise.resolve({ok:true,skipped:0,degraded:0});
     const arr = state[key];
-    if(!Array.isArray(arr) || !arr.length) return;
+    if(!Array.isArray(arr) || !arr.length) return Promise.resolve({ok:true,skipped:0,degraded:0});
     const cache = leonV2SyncedCache(key);
     const writes = [];
+    let skipped = 0, degraded = 0;
     try{
       arr.forEach(item=>{
         if(!item || item.id==null) return;
@@ -4703,12 +4717,23 @@
         let json;
         try{ json = JSON.stringify(item); }catch(e){ return; }
         if(cache.get(sid) === json) return; // sin cambios desde la última sincronización confirmada — no hace falta reescribirlo
-        if(leonV2TooBigForFirestore(item, key+'/'+item.id)) return;
+        if(leonV2TooBigForFirestore(item, key+'/'+item.id)){
+          const {copy, stripped} = leonV2StripHeavyFields(item);
+          if(!stripped){ skipped++; return; } // no había ninguna foto/firma que quitar — de verdad no cabe
+          let trimmedJson;
+          try{ trimmedJson = JSON.stringify(copy); }catch(e){ skipped++; return; }
+          if(cache.get(sid) === trimmedJson) return; // la versión sin fotos ya está al día — nada más que hacer
+          if(leonV2TooBigForFirestore(copy, key+'/'+item.id+' (sin fotos/firma)')){ skipped++; return; } // ni así cabe
+          degraded++;
+          writes.push({ref: window.__fbDb.collection(key).doc(sid), item: copy, key, id: sid, json: trimmedJson});
+          return;
+        }
         writes.push({ref: window.__fbDb.collection(key).doc(sid), item, key, id: sid, json});
       });
-      if(!writes.length) return; // nada cambió en esta colección — evita un batch vacío
-      leonV2CommitInChunks(writes).catch(err=>console.error('Firebase: error al sincronizar '+key, err));
-    }catch(err){ console.error('Firebase: error al sincronizar '+key, err); }
+      if(degraded && typeof showToast==='function') showToast('Aviso: '+degraded+' registro(s) de "'+key+'" tenían una foto/firma muy pesada para la base de datos compartida — se guardó el resto de la información (nombre, estado, etc.), pero esa foto no se sincronizó a otros dispositivos. Vuelve a subirla si hace falta.', 'warning');
+      if(!writes.length) return Promise.resolve({ok:true,skipped,degraded});
+      return leonV2CommitInChunks(writes).then(()=>({ok:true,skipped,degraded})).catch(err=>{ console.error('Firebase: error al sincronizar '+key, err); return {ok:false,skipped,degraded,err}; });
+    }catch(err){ console.error('Firebase: error al sincronizar '+key, err); return Promise.resolve({ok:false,skipped,degraded,err}); }
   };
 
   window.leonV2DbDelete = function(key, id){
@@ -8290,9 +8315,27 @@
       if(invite.status==='rechazado'){ leonV2ShowOnboardingMessage('Invitación no disponible','Esta invitación ya no está activa. Contacta a tu administrador si crees que es un error.','fa-circle-xmark'); return; }
       return;
     }
-    // Todavía no llega por Firestore (o no hay conexión a la base de datos) — reintenta unas
-    // cuantas veces antes de asumir que el enlace no es válido.
-    if(attempt < 8){ setTimeout(()=>window.leonV2CheckInviteLink(attempt+1), 500); return; }
+    // Todavía no está en memoria. Antes solo se esperaba a que el "oyente en tiempo real" general
+    // (onSnapshot de TODA la colección employeeInvites) terminara de llegar — pero ese oyente
+    // depende de que el SDK de Firebase ya haya cargado y conectado, lo cual en un celular
+    // abriendo esta página (pesada) por primera vez, con datos móviles, puede tardar bastante más
+    // de lo que se esperaba antes (~5 segundos en total) — de ahí el reporte real de "Enlace no
+    // encontrado" con un enlace que en realidad SÍ era válido. Arreglo con dos partes:
+    // (1) además de esperar el oyente general, se hace una BÚSQUEDA DIRECTA a Firestore por el
+    // token exacto — no depende de que la colección completa haya llegado, así que suele resolver
+    // en un solo viaje de red aunque el oyente en tiempo real siga tardando.
+    // (2) se alarga la ventana total de espera de ~5s a ~24s antes de rendirse, para conexiones lentas.
+    if(window.__fbDb && attempt % 3 === 0){
+      window.__fbDb.collection('employeeInvites').where('token','==',token).limit(1).get().then(snap=>{
+        if(snap.empty) return;
+        const data = snap.docs[0].data();
+        if(!data) return;
+        if(!state.employeeInvites) state.employeeInvites=[];
+        if(!state.employeeInvites.some(i=>i.token===token)) state.employeeInvites.push(data);
+        window.leonV2CheckInviteLink(0); // ya está en memoria — se re-evalúa de inmediato, sin esperar el próximo intento programado
+      }).catch(err=>console.error('Firebase: error buscando invitación por token', err));
+    }
+    if(attempt < 24){ setTimeout(()=>window.leonV2CheckInviteLink(attempt+1), 1000); return; }
     leonV2ShowOnboardingMessage('Enlace no encontrado','Este enlace de invitación no es válido, expiró, o todavía no ha terminado de sincronizar. Si acabas de recibirlo, espera un momento y actualiza la página.','fa-triangle-exclamation');
   };
   function leonV2ShowOnboardingMessage(title, body, icon){
@@ -8389,6 +8432,16 @@
   // persona lo complete) y 'completado' (la persona ya envió todo, esperando que un administrador
   // apruebe o rechace). Las resueltas ('aprobado'/'rechazado') no se listan aquí — su rastro queda
   // en Auditoría. Solo visible para Administrador (mismo criterio que los botones de la cabecera).
+  // "Ver más / Ver menos": antes se pintaban TODAS las invitaciones sin límite — con pocas se veía
+  // bien, pero con varias decenas la tarjeta se volvía interminable y daba la sensación de que la
+  // lista estaba "incompleta" o cortada (reporte real del administrador). Se recorta a
+  // V2_EMP_INVITES_PAGE_SIZE por defecto, con un botón para expandir/contraer cada lista por separado.
+  const V2_EMP_INVITES_PAGE_SIZE = 5;
+  let v2EmpInvitesExpanded = { completed:false, pending:false };
+  window.leonV2ToggleEmpInvitesExpanded = function(which){
+    v2EmpInvitesExpanded[which] = !v2EmpInvitesExpanded[which];
+    leonV2RefreshEmpInvitesPanel();
+  };
   window.leonV2RefreshEmpInvitesPanel = function(){
     const box = document.getElementById('v2-emp-invites-panel'); if(!box) return;
     if(!state.currentUser || state.currentUser.role!=='Administrador'){ box.innerHTML=''; return; }
@@ -8396,10 +8449,13 @@
     const pending = invites.filter(i=>i.status==='pendiente');
     const completed = invites.filter(i=>i.status==='completado');
     if(!pending.length && !completed.length){ box.innerHTML=''; return; }
+    const seeMoreBtn = (which, total)=> total>V2_EMP_INVITES_PAGE_SIZE ? `<button type="button" onclick="leonV2ToggleEmpInvitesExpanded('${which}')" class="text-[11px] font-black uppercase text-brand-600 hover:text-brand-800 mt-1"><i class="fa-solid fa-chevron-${v2EmpInvitesExpanded[which]?'up':'down'} mr-1"></i>${v2EmpInvitesExpanded[which]?'Ver menos':'Ver todas ('+total+')'}</button>` : '';
+    const completedShown = v2EmpInvitesExpanded.completed ? completed : completed.slice(0, V2_EMP_INVITES_PAGE_SIZE);
+    const pendingShown = v2EmpInvitesExpanded.pending ? pending : pending.slice(0, V2_EMP_INVITES_PAGE_SIZE);
     box.innerHTML = `<div class="v2-card p-5 bg-brand-50/30 border border-brand-100">
       <h4 class="font-black text-sm mb-3"><i class="fa-solid fa-envelope-open-text text-brand-500 mr-2"></i>Invitaciones</h4>
-      ${completed.length?`<div class="space-y-2 mb-3">${completed.map(i=>`<div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-white border border-amber-200 flex-wrap"><div class="min-w-0"><b class="text-sm">${esc(i.name)}</b> <span class="text-[10px] text-amber-700 font-black uppercase ml-1">Esperando revisión</span><div class="text-[11px] text-slate-400 truncate">${esc(i.email)} · ${esc(i.role)}</div></div><button onclick="leonV2OpenInviteReview('${i.id}')" class="v2-tab active shrink-0"><i class="fa-solid fa-magnifying-glass mr-1"></i>Revisar</button></div>`).join('')}</div>`:''}
-      ${pending.length?`<div class="space-y-2">${pending.map(i=>`<div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-white border border-slate-200 flex-wrap"><div class="min-w-0"><b class="text-sm">${esc(i.name)}</b> <span class="text-[10px] text-slate-400 font-black uppercase ml-1">Pendiente de completar</span><div class="text-[11px] text-slate-400 truncate">${esc(i.email)} · ${esc(i.role)}</div></div><div class="flex gap-1 shrink-0"><button onclick="leonV2CopyText('${esc(leonV2InviteLink(i.token))}')" class="v2-tab"><i class="fa-solid fa-copy mr-1"></i>Copiar enlace</button><button onclick="leonV2CancelInvite('${i.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-ban mr-1"></i>Cancelar</button></div></div>`).join('')}</div>`:''}
+      ${completed.length?`<div class="space-y-2 mb-3">${completedShown.map(i=>`<div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-white border border-amber-200 flex-wrap"><div class="min-w-0"><b class="text-sm">${esc(i.name)}</b> <span class="text-[10px] text-amber-700 font-black uppercase ml-1">Esperando revisión</span><div class="text-[11px] text-slate-400 truncate">${esc(i.email)} · ${esc(i.role)}</div></div><button onclick="leonV2OpenInviteReview('${i.id}')" class="v2-tab active shrink-0"><i class="fa-solid fa-magnifying-glass mr-1"></i>Revisar</button></div>`).join('')}${seeMoreBtn('completed', completed.length)}</div>`:''}
+      ${pending.length?`<div class="space-y-2">${pendingShown.map(i=>`<div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-white border border-slate-200 flex-wrap"><div class="min-w-0"><b class="text-sm">${esc(i.name)}</b> <span class="text-[10px] text-slate-400 font-black uppercase ml-1">Pendiente de completar</span><div class="text-[11px] text-slate-400 truncate">${esc(i.email)} · ${esc(i.role)}</div></div><div class="flex gap-1 shrink-0"><button onclick="leonV2CopyText('${esc(leonV2InviteLink(i.token))}')" class="v2-tab"><i class="fa-solid fa-copy mr-1"></i>Copiar enlace</button><button onclick="leonV2CancelInvite('${i.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-ban mr-1"></i>Cancelar</button></div></div>`).join('')}${seeMoreBtn('pending', pending.length)}</div>`:''}
     </div>`;
   };
   window.leonV2CancelInvite = function(id){
@@ -8439,13 +8495,27 @@
       contract:{ signatureDataUrl:i.signatureDataUrl||null, signedAt:i.signedAt||null, clausesAcceptedAt:i.clausesAcceptedAt||null, effectiveDate:new Date().toISOString().slice(0,10), createdAt:new Date().toISOString().slice(0,10), updatedAt:new Date().toISOString().slice(0,10) } };
     state.users.push(newUser);
     i.status='aprobado'; i.resolvedAt=new Date().toISOString();
-    if(typeof window.leonV2SyncCollection==='function'){ window.leonV2SyncCollection('users'); window.leonV2SyncCollection('employeeInvites'); }
     leonV2Audit('Invitación aprobada — cuenta creada', newUser.name+' — '+newUser.role);
     leonV2Close('leon-v2-invite-review');
     document.getElementById('v2-invite-review-content').innerHTML='';
-    showToast('Cuenta creada para '+newUser.name+'. PIN de acceso: '+pin+' (compártelo de forma segura — la contraseña ya la eligió el empleado).','success');
     if(typeof renderUsersList==='function') renderUsersList();
     renderEmpleados();
+    // IMPORTANTE: antes esto mostraba "éxito" sin esperar a ver si la escritura a la base de datos
+    // compartida realmente funcionó — si fallaba (p.ej. una foto de identificación muy pesada
+    // atascando el documento, ver leonV2SyncCollection), el administrador veía "Cuenta creada" pero
+    // al refrescar la página todo volvía a "esperando revisión", sin ninguna pista de qué pasó. Ahora
+    // se espera el resultado real antes de decir que quedó guardado.
+    if(typeof window.leonV2SyncCollection!=='function'){
+      showToast('Cuenta creada para '+newUser.name+'. PIN de acceso: '+pin+' (compártelo de forma segura — la contraseña ya la eligió el empleado).','success');
+      return;
+    }
+    Promise.all([window.leonV2SyncCollection('users'), window.leonV2SyncCollection('employeeInvites')]).then(([r1,r2])=>{
+      if(r1.ok!==false && r2.ok!==false){
+        showToast('Cuenta creada para '+newUser.name+'. PIN de acceso: '+pin+' (compártelo de forma segura — la contraseña ya la eligió el empleado).','success');
+      } else {
+        showToast('La cuenta de '+newUser.name+' se creó en este dispositivo, pero hubo un problema guardándola en la base de datos compartida — puede que no aparezca en otros dispositivos todavía. Revisa la conexión e inténtalo de nuevo desde Empleados.','error');
+      }
+    });
   };
   window.leonV2ConfirmRejectInvite = function(id){
     const i=(state.employeeInvites||[]).find(x=>x.id===id); if(!i) return;
