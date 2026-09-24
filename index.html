@@ -9,6 +9,15 @@
          Web", renderSiteBranding() reemplaza este href por el logo real, así el mismo archivo que
          suben para el header también queda como ícono de la pestaña, sin subir nada por separado. -->
     <link id="site-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230a1a2e%22/%3E%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23025fae%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%231893f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22url(%23g)%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2245%22%20font-family%3D%22Arial%2C%20Helvetica%2C%20sans-serif%22%20font-size%3D%2234%22%20font-weight%3D%22900%22%20fill%3D%22%23ffffff%22%20text-anchor%3D%22middle%22%3EL%3C/text%3E%3C/svg%3E">
+    <!-- preconnect: abre la conexión (DNS + TLS) a estos dominios externos en paralelo, apenas
+         empieza a leerse la página, en lugar de esperar a que cada script externo se descubra uno
+         por uno. No cambia el orden ni el momento en que se ejecuta nada — solo adelanta el
+         "saludo de red". -->
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -2134,10 +2143,24 @@
         // automáticamente con menos calidad y menos resolución (hasta 3 intentos) antes de entregar el
         // resultado final — así la foto que se guarda ya cabe, sin que la persona tenga que adivinar
         // qué tan "liviana" debe ser su foto.
-        const V2_IMG_SAFE_BYTES = 550000; // margen cómodo por debajo del límite real de Firestore (~1MB), dejando espacio para el resto de los campos del documento
+        const V2_IMG_SAFE_BYTES = 300000; // objetivo más agresivo (antes 550000) — a pedido del cliente, para que el
+        // sistema en general "pese" menos: menos datos que Firestore tiene que sincronizar en cada carga.
+        // Detecta UNA sola vez si este navegador de verdad sabe generar WebP (formato ~25-35% más liviano
+        // que JPEG con la misma calidad visual) — algunos navegadores viejos aceptan el pedido pero
+        // devuelven PNG en silencio, así que se verifica el resultado real en vez de asumir soporte.
+        let v2WebpSupported = null;
+        function v2SupportsWebp() {
+            if (v2WebpSupported !== null) return v2WebpSupported;
+            try {
+                const c = document.createElement('canvas'); c.width = 1; c.height = 1;
+                v2WebpSupported = c.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+            } catch (e) { v2WebpSupported = false; }
+            return v2WebpSupported;
+        }
         function compressImageFile(file, maxDimension = 1200, quality = 0.82) {
             return new Promise((resolve, reject) => {
                 const originalSize = file.size;
+                const outFormat = v2SupportsWebp() ? 'image/webp' : 'image/jpeg';
                 const reader = new FileReader();
                 reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
                 reader.onload = (e) => {
@@ -2155,7 +2178,7 @@
                             canvas.width = width; canvas.height = height;
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0, width, height);
-                            const dataUrl = canvas.toDataURL('image/jpeg', q);
+                            const dataUrl = canvas.toDataURL(outFormat, q);
                             const base64Len = dataUrl.length - dataUrl.indexOf(',') - 1;
                             const compressedSize = Math.round(base64Len * 0.75);
                             return { dataUrl, width, height, compressedSize };
@@ -2163,14 +2186,14 @@
                         let dim = maxDimension, q = quality;
                         let out = renderAt(dim, q);
                         let attempts = 0;
-                        while (out.compressedSize > V2_IMG_SAFE_BYTES && attempts < 3) {
-                            q = Math.max(0.45, q * 0.72);
-                            dim = Math.max(500, Math.round(dim * 0.75));
+                        while (out.compressedSize > V2_IMG_SAFE_BYTES && attempts < 4) {
+                            q = Math.max(0.4, q * 0.7);
+                            dim = Math.max(400, Math.round(dim * 0.72));
                             out = renderAt(dim, q);
                             attempts++;
                         }
                         const reductionPct = originalSize > 0 ? Math.max(0, Math.round((1 - out.compressedSize / originalSize) * 100)) : 0;
-                        resolve({ dataUrl: out.dataUrl, originalSize, compressedSize: out.compressedSize, reductionPct, width: out.width, height: out.height });
+                        resolve({ dataUrl: out.dataUrl, originalSize, compressedSize: out.compressedSize, reductionPct, width: out.width, height: out.height, format: outFormat });
                     };
                     img.src = e.target.result;
                 };
@@ -7027,18 +7050,14 @@
   // ============================================================================
 
   // ---------- Integrations Center: estado REAL de cada proveedor externo, sin inventar nada ----------
-  // Nunca marcamos "Conectado" un proveedor que necesite una clave/API secreta: esa clave viviría
-  // en el código fuente de este archivo, visible para cualquiera que abra el navegador (F12) — por
-  // eso Maps/Solar/Bing/OpenSolar quedan honestamente en amarillo/rojo hasta que exista un backend
-  // real que la resguarde. La arquitectura de proveedor (ImageryProvider) ya está lista: el día que
-  // haya backend, solo hace falta agregar el proveedor real aquí y reemplazar leonV2RoofApplyImagerySource.
+  // Solo se listan los proveedores que el negocio realmente usa hoy. Google Maps/Solar API, Bing/Azure
+  // Maps y OpenSolar se quitaron a pedido del cliente (no los usa) — la medición de techo sigue 100%
+  // funcional vía la herramienta de polígono manual, y la ubicación se maneja pegando el enlace de
+  // Google Maps o usando el GPS del navegador (ver leonV2PropertyUseLocation), sin depender de ninguna
+  // API de pago. Si en el futuro se necesita reactivar imagen satelital automática, la arquitectura de
+  // proveedor (ImageryProvider) sigue intacta en leonV2RoofApplyImagerySource.
   const ROOF_INTEGRATIONS = [
-    {name:'Google Maps / Vista Satelital', desc:'Ubicar la propiedad en mapa y ver imagen satelital automáticamente.', status:'yellow', note:'Requiere una API key de Google Maps resguardada en un backend — no puede vivir en este archivo. Mientras tanto: pega el enlace de Google Maps de la propiedad, o sube una captura de pantalla de la vista satélite como imagen de trabajo.'},
-    {name:'Google Solar API', desc:'Medición automática de techo y estimado solar desde satélite.', status:'yellow', note:'Requiere backend + cuenta paga de Google. Hoy la medición se hace de forma manual con la herramienta de polígono de abajo — 100% funcional, sin depender de esta API.'},
-    {name:'Bing Maps / Azure Maps', desc:'Proveedor alterno de imagen satelital.', status:'red', note:'No configurado todavía. Arquitectura de proveedor lista para conectarlo el día que haya backend y clave.'},
-    {name:'OpenSolar', desc:'Diseño solar avanzado e integración de propuestas.', status:'red', note:'No configurado — pendiente de cuenta/API de OpenSolar.'},
     {name:'Almacenamiento de fotos y documentos', desc:'Guardar fotos de inspección, imágenes de techo y documentos.', status: window.__fbDb?'green':'yellow', note: window.__fbDb?'Conectado — usa la misma base de datos Firestore en tiempo real del resto del sistema.':'Sin conexión a la base de datos ahora mismo (modo solo local en esta pestaña).'},
-    {name:'Correo automático', desc:'Enviar propuestas y notificaciones por correo sin intervención manual.', status:'red', note:'Requiere una Cloud Function o un servicio de correo (SendGrid, etc.) — no existe backend en esta demo.'},
     {name:'Generación de PDF', desc:'Propuestas y reportes descargables en PDF.', status:'green', note:'Conectado — real, vía impresión del navegador (Guardar como PDF), sin depender de ningún servicio externo pago.'},
     {name:'Firma digital', desc:'Captura de firma del cliente/técnico en pantalla.', status:'green', note:'Conectado — real, firma trazada a mano guardada como imagen (no es un proveedor certificado con validez legal notarial como DocuSign).'}
   ];
