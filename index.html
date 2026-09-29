@@ -3312,8 +3312,8 @@
         <div id="v2-solar-result" class="mt-4"></div>
       </div>
       <div class="grid md:grid-cols-2 gap-4">
-        <div><label class="text-[10px] font-black uppercase text-slate-500">Tipo de identificación</label><select id="v2-client-id-type" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="">No especificar</option><option value="SSN">Social Security Number (SSN)</option><option value="ID">ID / Identificación</option><option value="Pasaporte">Pasaporte</option><option value="Licencia">Licencia de conducir</option><option value="Otro">Otro documento</option></select></div>
-        <div><label class="text-[10px] font-black uppercase text-slate-500">Número de identificación</label><input id="v2-client-id-number" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Se enmascara al guardar"></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Tipo de identificación</label><select id="v2-client-id-type" onchange="leonV2ApplyIdTypeConstraints('v2-client-id-type','v2-client-id-number')" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="">No especificar</option><option value="SSN">Social Security Number (SSN)</option><option value="ID">ID / Identificación</option><option value="Pasaporte">Pasaporte</option><option value="Licencia">Licencia de conducir</option><option value="Otro">Otro documento</option></select></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Número de identificación</label><div class="relative mt-1"><input id="v2-client-id-number" type="password" autocomplete="off" class="w-full border border-slate-200 rounded-xl px-4 py-3 pr-10" placeholder="Se enmascara al guardar"><button type="button" onclick="leonV2ToggleFieldReveal('v2-client-id-number',this)" id="v2-client-id-number-eye" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" title="Ver mientras escribo (solo administrador)"><i class="fa-solid fa-eye"></i></button></div><p id="v2-client-id-number-hint" class="text-[10px] text-slate-400 mt-1"></p></div>
       </div>
       <div class="p-3 rounded-xl bg-amber-50 border border-amber-100 text-[11px] text-amber-800"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Este número se guarda enmascarado y solo vive en la memoria de esta pestaña — para manejar SSN/identificaciones reales hace falta cifrado y almacenamiento del lado del servidor, nunca localStorage ni variables del navegador.</div>
       <div class="p-4 rounded-2xl bg-blue-50 border border-blue-100 text-xs text-blue-800"><i class="fa-solid fa-circle-info mr-1"></i> La propuesta quedará asociada al cliente y al consultor seleccionado, conservando el origen asistido o autogestionado.</div>
@@ -3397,8 +3397,12 @@
 <div id="leon-v2-project-detail" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-4xl"><div id="v2-project-detail-content"></div></div></div>
 <!-- LEON V2: Hoja de Entrega, Garantía y Confirmación de Pago — se firma al entregar el equipo al cliente -->
 <div id="leon-v2-delivery-sheet" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-2xl"><div id="v2-delivery-sheet-content"></div></div></div>
+<!-- LEON V2: Edición no destructiva de una hoja de entrega ya firmada (garantía/fecha/manual) -->
+<div id="leon-v2-delivery-edit" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-xl"><div id="v2-delivery-edit-content"></div></div></div>
 <!-- LEON V2: Solicitud de Crédito — crear/editar (checklist PCI de financiamiento) -->
 <div id="leon-v2-creditapp-modal" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-3xl"><div id="v2-creditapp-modal-content"></div></div></div>
+<!-- LEON V2: Firma pública/virtual del cliente para la solicitud de crédito (sin sesión, vía ?creditsign=TOKEN) -->
+<div id="leon-v2-credit-sign" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-lg"><div id="v2-credit-sign-content"></div></div></div>
 <!-- LEON V2: rechazar propuesta con motivo estructurado (desde Seguimiento de Ventas) -->
 <div id="leon-v2-reject-quote" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-md"><div id="v2-reject-modal-content"></div></div></div>
 <!-- LEON ROOF INTELLIGENCE: workspace de evaluación de techo (imagen + medición por polígono) -->
@@ -3432,7 +3436,9 @@
       </div>
       <div id="v2-price-exempt-note" class="hidden p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-800"><i class="fa-solid fa-circle-check mr-1"></i> <span id="v2-price-exempt-text"></span></div>
       <div id="v2-price-months-wrap"><label class="text-[10px] font-black uppercase text-slate-500">Financiamiento</label><select id="v2-price-months" onchange="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="0">Contado — sin financiamiento</option><option value="6">6 meses</option><option value="12">12 meses</option><option value="18">18 meses</option><option value="24">24 meses</option><option value="30">30 meses</option><option value="36">36 meses</option><option value="42">42 meses</option><option value="48">48 meses</option><option value="54">54 meses</option><option value="60">60 meses</option><option value="66">66 meses</option><option value="72">72 meses</option><option value="78">78 meses</option><option value="84">84 meses</option><option value="90">90 meses</option><option value="96">96 meses</option></select></div>
-      <div id="v2-price-rate-wrap" class="hidden"><label class="text-[10px] font-black uppercase text-slate-500">Tasa de interés anual (%)</label><input id="v2-price-rate" type="number" min="0" step="0.01" value="0" oninput="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. 14.00"></div>
+      <div id="v2-price-notes-wrap" class="hidden"><label class="text-[10px] font-black uppercase text-slate-500">Notas internas de la propuesta</label><textarea id="v2-price-notes" rows="2" oninput="leonV2ApplyRateLockState()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 text-sm" placeholder="Notas para el equipo (nunca las ve el cliente)..."></textarea></div>
+      <div id="v2-price-rate-locked" class="hidden p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500"><i class="fa-solid fa-lock mr-1"></i> La tasa de interés real es información interna — el cliente nunca la ve. <span id="v2-price-rate-locked-reason"></span></div>
+      <div id="v2-price-rate-wrap" class="hidden"><label class="text-[10px] font-black uppercase text-slate-500">Tasa de interés anual (%) — según aprobación de crédito</label><input id="v2-price-rate" type="number" min="0" step="0.01" value="0" oninput="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. 14.00"><p class="text-[10px] text-slate-400 mt-1">Actualiza esto cuando el prestamista confirme la tasa real aprobada — el cliente verá la mensualidad recalculada, nunca el %.</p></div>
       <div id="v2-price-sunrun-note" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-100 text-xs text-amber-800"><i class="fa-solid fa-solar-panel mr-1"></i> Esta propuesta usa financiamiento Sunrun (PPA) — el pago mensual se fijó con la calculadora solar al crearla y no se recalcula aquí. Para cambiarlo, genera una nueva propuesta.</div>
       <div id="v2-price-disclaimer" class="p-4 rounded-2xl bg-blue-50 border border-blue-100 text-xs text-blue-800"><i class="fa-solid fa-circle-info mr-1"></i> El pago mensual estimado usa la fórmula real del proveedor seleccionado (interés compuesto para PCI/Cooperativa, fee fijo para Synchrony, sin interés para Cash).</div>
       <div class="grid sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-900 text-white">
@@ -3447,7 +3453,11 @@
 <!-- LEON V2: enhanced internal shell -->
 <script id="leon-v2-script">
 (function(){
-  const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0});
+  // Antes solo se fijaba minimumFractionDigits — cuando no se da maximumFractionDigits, JS lo pone
+  // en automático a 3 (nunca 2), así que cualquier número con decimales "feos" (ej. una mensualidad
+  // amortizada) se mostraba con 3 decimales en vez de los 2 normales de dinero ($315.257 en vez de
+  // $315.26). Fijar maximumFractionDigits:2 explícitamente arregla esto en TODO el sistema de una vez.
+  const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 
   // ===================== BUSCADOR CON AUTOCOMPLETAR (reemplaza los <select> gigantes) =====================
@@ -3538,7 +3548,8 @@
   const FINANCING_CONFIG = {
     synchronyFeePct: 0.27,      // Synchrony: fee único sobre el principal, luego se divide entre los meses (sin interés compuesto) — así lo describió el negocio.
     cooperativaDefaultRate: null, // Cooperativa: sin default — el vendedor escribe la tasa real aprobada (típico 10.99%–14% según crédito del cliente).
-    pciDefaultRate: 19.99       // PCI: "tasa fija" típica citada por el negocio — varía según la letra de score que devuelva Impirica, el vendedor puede ajustarla.
+    pciDefaultRate: 19.99,      // PCI: "tasa fija" típica citada por el negocio — varía según la letra de score que devuelva Impirica, el vendedor puede ajustarla.
+    pciMaxPrincipal: 11000      // Límite real de solicitud de PCI — a pedido del negocio, se bloquea ANTES de crear la propuesta si el total lo supera.
   };
   const SOLAR_CONFIG = {
     tarifaLuma: 0.27,           // $/kWh de LUMA usado para traducir factura ⇄ consumo
@@ -4270,6 +4281,40 @@
     if(v.length<=4) return v?('•'.repeat(Math.max(0,v.length-1))+v.slice(-1)):'';
     return '•'.repeat(v.length-4)+v.slice(-4);
   }
+  // Alterna entre ver y ocultar un campo sensible MIENTRAS SE ESCRIBE (nunca cambia qué se guarda —
+  // eso siempre pasa por maskId al enviar el formulario, sin importar el estado del ojito). El botón
+  // en sí solo se muestra para Administrador (ver leonV2ApplyAdminRevealVisibility) — un Vendedor u
+  // otro rol nunca tiene esta opción, ni siquiera mientras escribe.
+  window.leonV2ToggleFieldReveal=function(inputId, btnEl){
+    const input=document.getElementById(inputId); if(!input) return;
+    const icon=btnEl.querySelector('i');
+    if(input.type==='password'){ input.type='text'; if(icon){icon.classList.remove('fa-eye');icon.classList.add('fa-eye-slash');} }
+    else { input.type='password'; if(icon){icon.classList.remove('fa-eye-slash');icon.classList.add('fa-eye');} }
+  };
+  window.leonV2ApplyAdminRevealVisibility=function(btnId){
+    const btn=document.getElementById(btnId); if(!btn) return;
+    const isAdmin = !!(state.currentUser && state.currentUser.role==='Administrador');
+    btn.classList.toggle('hidden', !isAdmin);
+  };
+  // Longitud/formato esperado según el tipo de identificación elegido. El Seguro Social sí tiene un
+  // formato fijo y universal (9 dígitos en EE.UU./Puerto Rico), así que ese caso se valida de verdad;
+  // los demás (licencia, pasaporte, ID estatal) varían bastante en la vida real según el emisor, así
+  // que solo se limita un máximo razonable y se avisa, sin bloquear un número real más corto.
+  const V2_ID_TYPE_RULES = {
+    SSN: {maxlength:9, hint:'Seguro Social: 9 dígitos.', exact:9},
+    ID: {maxlength:15, hint:'Número de identificación estatal — formato variable.'},
+    Pasaporte: {maxlength:9, hint:'Pasaporte de EE.UU.: hasta 9 caracteres.'},
+    Licencia: {maxlength:8, hint:'Licencia de conducir de PR: usualmente hasta 8 dígitos.'},
+    Otro: {maxlength:30, hint:''}
+  };
+  window.leonV2ApplyIdTypeConstraints=function(selectId, inputId){
+    const sel=document.getElementById(selectId), input=document.getElementById(inputId);
+    const hint=document.getElementById(inputId+'-hint');
+    if(!sel||!input) return;
+    const rule=V2_ID_TYPE_RULES[sel.value];
+    if(rule){ input.maxLength=rule.maxlength; if(hint) hint.textContent=rule.hint; }
+    else { input.removeAttribute('maxlength'); if(hint) hint.textContent=''; }
+  };
   // Auditoría del lado del cliente: real (queda guardada y visible en el módulo Auditoría),
   // pero limitada a esta pestaña — no sobrevive un refresco ni se comparte entre usuarios.
   // Un registro de auditoría de verdad para producción vive en el servidor, nunca solo aquí.
@@ -4386,6 +4431,11 @@
   // crédito. "Otro" habilita un campo de texto para el detalle puntual.
   const REJECT_REASONS=['Canceló','No le interesa','No tienen dinero','No cualifica','Otro'];
   window.REJECT_REASONS=REJECT_REASONS;
+  // Motivos reales de una decisión de crédito (distintos de por qué se cae una propuesta en
+  // general) — incluye "Requiere codeudor", que no es un rechazo total: el vendedor debe saber que
+  // hace falta un co-firmante para poder seguir el proceso, no simplemente que se perdió la venta.
+  const CREDIT_REJECT_REASONS=['No cualifica','Requiere codeudor','Score de crédito insuficiente','Ingreso insuficiente','Cliente canceló la solicitud','Otro'];
+  window.CREDIT_REJECT_REASONS=CREDIT_REJECT_REASONS;
 
   // ================= SOLICITUDES DE CRÉDITO (financiamiento) =================
   // Sistema independiente de la propuesta (por diseño, a pedido explícito): una propuesta puede
@@ -5177,7 +5227,7 @@
     showToast(variant? ('Añadido a tu propuesta: '+variant.label+'.') : 'Producto añadido a tu propuesta.','success');
   };
 
-  window.leonV2ChooseFlow=flow=>{v2Flow=flow;v2ConsumptionOnlyMode=false;const banner=document.getElementById('v2-consumption-banner');if(banner)banner.classList.add('hidden');document.getElementById('v2-flow').value=flow;leonV2CloseChoice(); if(flow==='asesoria'){showToast('Perfecto. Completa tus datos y asignaremos la solicitud a un consultor.','info')} document.getElementById('v2-consultant').innerHTML=consultants().map(u=>`<option value="${esc(u.name)}">${esc(u.name)} — ${esc(u.role)}</option>`).join('')||'<option>Asignación automática</option>'; v2SolarLastResult=null; if(document.getElementById('v2-solar-result'))document.getElementById('v2-solar-result').innerHTML=''; leonV2UpdateFinancingOptions(); open('leon-v2-client-form');};
+  window.leonV2ChooseFlow=flow=>{v2Flow=flow;v2ConsumptionOnlyMode=false;const banner=document.getElementById('v2-consumption-banner');if(banner)banner.classList.add('hidden');document.getElementById('v2-flow').value=flow;leonV2CloseChoice(); if(flow==='asesoria'){showToast('Perfecto. Completa tus datos y asignaremos la solicitud a un consultor.','info')} document.getElementById('v2-consultant').innerHTML=consultants().map(u=>`<option value="${esc(u.name)}">${esc(u.name)} — ${esc(u.role)}</option>`).join('')||'<option>Asignación automática</option>'; v2SolarLastResult=null; if(document.getElementById('v2-solar-result'))document.getElementById('v2-solar-result').innerHTML=''; leonV2UpdateFinancingOptions(); open('leon-v2-client-form'); const idNumEl=document.getElementById('v2-client-id-number'); if(idNumEl)idNumEl.type='password'; leonV2ApplyAdminRevealVisibility('v2-client-id-number-eye'); leonV2ApplyIdTypeConstraints('v2-client-id-type','v2-client-id-number');};
 
   // Punto de entrada explícito para cotizar un sistema solar por consumo/factura eléctrica SIN
   // seleccionar ningún equipo primero — reutiliza el mismo formulario y la misma calculadora solar
@@ -5236,32 +5286,24 @@
       termWrap.classList.remove('hidden');
       const months=[]; for(let m=6;m<=96;m+=6)months.push(m);
       termSel.innerHTML=months.map(m=>`<option value="${m}">${m} meses</option>`).join('');
-      if(provider==='PCI' || provider==='Cooperativa'){
-        rateWrap.classList.remove('hidden');
-        if(provider==='PCI'){
-          if(rateInput.value==='') rateInput.value=FINANCING_CONFIG.pciDefaultRate;
-          rateHint.textContent='PCI cita 19.99% como tasa "fija" típica, pero varía según la letra de score que devuelva Impirica — ajusta al valor real aprobado.';
-        } else {
-          rateHint.textContent='Cooperativa financia hasta 96 meses entre 10.99% y 14% aproximadamente, según el crédito del cliente — escribe la tasa real aprobada.';
-        }
-      }
+      // La tasa de interés real es información interna del negocio — ni el cliente ni el vendedor la
+      // ven ni la fijan en este formulario público (rateWrap se queda oculto a propósito, ver
+      // leonV2SetApprovedRate). Se confirma más adelante, desde el panel interno, cuando el
+      // prestamista aprueba la solicitud de crédito real — hasta entonces la propuesta queda
+      // marcada "tasa pendiente de confirmar" (ver leonV2FinancingLabelText).
+      rateWrap.classList.add('hidden');
       leonV2RecalcFinRatePreview();
     }
   };
-  // Vista previa en vivo de la mensualidad real (con interés) mientras el vendedor escribe la
-  // tasa o cambia el plazo — para que no tenga que guardar la propuesta para ver el número.
+  // Antes mostraba la mensualidad "real" con la tasa que el cliente/vendedor acababa de escribir en
+  // este mismo formulario público — eso exponía la tasa interna. Ahora, para PCI/Cooperativa, solo
+  // avisa que el pago final se confirma tras la aprobación de crédito, sin pedir ni mostrar ningún %.
   window.leonV2RecalcFinRatePreview=()=>{
     const previewEl=document.getElementById('v2-fin-rate-preview');
     if(!previewEl) return;
     const provider=document.getElementById('v2-fin-provider')?.value;
     if(provider!=='PCI' && provider!=='Cooperativa'){ previewEl.textContent=''; return; }
-    const months=Number(document.getElementById('v2-fin-term')?.value)||0;
-    const rate=Number(document.getElementById('v2-fin-rate')?.value)||0;
-    const total=(state.cart||[]).reduce((s,x)=>s+x.price*x.qty,0);
-    if(!months || !total){ previewEl.textContent=''; return; }
-    if(!rate){ previewEl.innerHTML='<span class="text-amber-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Escribe la tasa de interés para ver la mensualidad real.</span>'; return; }
-    const r=window.leonV2CalcFinancing(provider, total, months, {rate});
-    previewEl.textContent = r ? ('Mensualidad estimada: '+money(r.monthly)+'/mes (interés total: '+money(r.totalInterest)+')') : '';
+    previewEl.innerHTML='<i class="fa-solid fa-circle-info mr-1"></i>La mensualidad final se confirma luego de la aprobación de la solicitud de crédito.';
   };
   window.leonV2SetHelp=val=>{v2Help=val;document.getElementById('v2-help-yes').classList.toggle('selected',val===true);document.getElementById('v2-help-no').classList.toggle('selected',val===false);document.getElementById('v2-consultant-wrap').classList.toggle('hidden',!val);if(val)document.getElementById('v2-consultant').required=true};
   // Geolocalización real (API estándar del navegador, requiere permiso del usuario) para que el
@@ -5322,9 +5364,20 @@
       };
     } else {
       const term=Number(document.getElementById('v2-fin-term').value)||0;
+      // PCI tiene un límite real de solicitud de $11,000 — no depende de la tasa ni de nada que se
+      // pueda ajustar aquí, así que se bloquea ANTES de llegar a pedir una tasa que de todos modos
+      // no se le va a poder aprobar al cliente con este proveedor.
+      if(provider==='PCI' && total>FINANCING_CONFIG.pciMaxPrincipal){
+        showToast('PCI tiene un límite de solicitud de '+money(FINANCING_CONFIG.pciMaxPrincipal)+' — este total ('+money(total)+') lo supera. Elige otro método de pago (Cooperativa, Synchrony Bank) o reduce el carrito.','error');
+        return;
+      }
+      // La tasa real solo se sabe cuando el prestamista aprueba la solicitud de crédito — pedírsela
+      // al cliente/vendedor AQUÍ (antes de siquiera solicitar el crédito) no tiene sentido y exponía
+      // la tasa interna al cliente. La propuesta ahora se puede generar sin tasa todavía — queda
+      // marcada "pendiente de confirmar" hasta que un administrador la actualice tras la aprobación
+      // (ver leonV2SetApprovedRate, desde el panel interno).
       if((provider==='PCI'||provider==='Cooperativa')){
-        financingRate=Number(document.getElementById('v2-fin-rate').value)||0;
-        if(!financingRate){showToast('Escribe la tasa de interés anual aprobada antes de generar la propuesta.','warning');return}
+        financingRate=0;
       }
       paymentType=provider+' — '+term+' meses'+(financingRate?(' @ '+financingRate+'%'):'');
       financingMonths=term;
@@ -5359,7 +5412,7 @@
       ${t.exemptSubtotal?`<div class="flex justify-between p-3 bg-emerald-50 text-emerald-700 rounded-xl"><span>Exento de IVU</span><b>${money(t.exemptSubtotal)}</b></div>`:''}
       ${t.tax?`<div class="flex justify-between p-3 bg-slate-50 rounded-xl"><span>Impuesto (IVU)</span><b>${money(t.tax)}</b></div>`:''}
       <div class="flex justify-between p-3 bg-ink-900 text-white rounded-xl sm:col-span-2"><span>Total</span><b>${money(t.total)}</b></div>
-      ${t.monthly?`<div class="flex justify-between p-3 bg-brand-50 text-brand-700 rounded-xl sm:col-span-2"><span>Pago mensual estimado (${t.months} meses, sin interés)</span><b>${money(t.monthly)}</b></div>`:''}
+      ${t.monthly?`<div class="flex justify-between p-3 bg-brand-50 text-brand-700 rounded-xl sm:col-span-2"><span>${leonV2FinancingLabelText(q,t)}</span><b>${money(t.monthly)}</b></div>`:''}
     </div></div>`;
     let decisionHtml;
     if(q.acceptance){
@@ -5484,6 +5537,25 @@
     if(!id)return;
     leonV2OpenPricing(id);
   };
+  // Texto correcto del renglón de "pago mensual estimado" según el proveedor real — punto ÚNICO
+  // para esto (antes el PDF ya lo calculaba bien vía leonV2PrintFinancingBlock, pero el portal del
+  // cliente en leonV2OpenPortal tenía su PROPIA copia vieja que decía "sin interés" siempre, sin
+  // importar el proveedor — así que un cliente financiando a 19.99% con PCI veía "sin interés" en
+  // su propia propuesta. Ahora ambos usan esta misma función, así nunca más se desincronizan.
+  function leonV2FinancingLabelText(q,t){
+    const provider=q.financingProvider;
+    if(provider==='Sunrun'){
+      return 'Pago mensual estimado (PPA Sunrun, Año 1 — sube cada año según escalador)';
+    }
+    if(provider==='Synchrony Bank'){
+      return `Pago mensual estimado (${t.months} meses, fee de financiamiento ${FINANCING_CONFIG.synchronyFeePct*100}% incluido)`;
+    }
+    if((provider==='PCI'||provider==='Cooperativa') && t.financing){
+      const rateTxt=t.financing.rateMissing?'tasa pendiente de confirmar':('tasa '+t.financing.rate.toFixed(2)+'% anual');
+      return `Pago mensual estimado (${t.months} meses, ${rateTxt})`;
+    }
+    return `Pago mensual estimado (${t.months} meses, sin interés)`;
+  }
   // Bloque de financiamiento del PDF — antes decía siempre "sin interés" sin importar el
   // proveedor, lo cual ya no es cierto para PCI/Cooperativa (interés real) ni tiene sentido
   // para Sunrun (PPA, no un préstamo). Arma el texto/tabla correctos según cada caso real.
@@ -5496,14 +5568,7 @@
         <p style="font-size:11px;color:#666;margin-top:8px">Proyección a ${q.solarPpaProjection?q.solarPpaProjection.length:15} años con escalador de ${((q.solarEscalador||0)*100).toFixed(1)}%/año. Estimado sujeto a evaluación técnica final en sitio.</p></div>`;
     }
     if(!t.monthly) return '';
-    if(provider==='Synchrony Bank'){
-      return `<div style="text-align:right;color:#0876c9">Pago mensual estimado (${t.months} meses, fee de financiamiento ${FINANCING_CONFIG.synchronyFeePct*100}% incluido): ${money(t.monthly)}</div>`;
-    }
-    if((provider==='PCI'||provider==='Cooperativa') && t.financing){
-      const rateTxt=t.financing.rateMissing?'tasa pendiente de confirmar':('tasa '+t.financing.rate.toFixed(2)+'% anual');
-      return `<div style="text-align:right;color:#0876c9">Pago mensual estimado (${t.months} meses, ${rateTxt}): ${money(t.monthly)}</div>`;
-    }
-    return `<div style="text-align:right;color:#0876c9">Pago mensual estimado (${t.months} meses): ${money(t.monthly)}</div>`;
+    return `<div style="text-align:right;color:#0876c9">${leonV2FinancingLabelText(q,t)}: ${money(t.monthly)}</div>`;
   }
   // Detalle del plan de Sellado de Techo asociado a una propuesta (si alguno de sus items viene de
   // la calculadora/asistente de Sellado de Techo) — usado tanto en el PDF como en el portal.
@@ -5598,6 +5663,32 @@
       const pend=(state.commissions||[]).filter(c=>c.status==='Pendiente');
       if(pend.length) items.push({icon:'fa-hand-holding-dollar',text:pend.length+' comisión(es) pendiente(s) de aprobar',at:new Date().toISOString(),section:'payroll'});
     }
+    // Resultado de solicitudes de crédito de LOS ÚLTIMOS 7 DÍAS del vendedor asignado — así el
+    // vendedor se entera de que ya se evaluó al cliente (aprobado, rechazado, o necesita codeudor)
+    // sin tener que estar entrando a Solicitudes de Crédito a revisar una por una. Un administrador
+    // ve las de todos; un vendedor solo ve las suyas (por correo, igual que el resto del sistema).
+    const me=state.currentUser;
+    (state.creditApps||[]).filter(a=>a.status!=='Pendiente' && a.statusUpdatedAt).forEach(a=>{
+      const mine = isAdmin || (me && a.vendorEmail && me.email && a.vendorEmail.toLowerCase()===me.email.toLowerCase());
+      if(!mine) return;
+      const d=daysBetween(a.statusUpdatedAt, new Date().toISOString());
+      if(d!==null && d>7) return;
+      const approved=a.status==='Aprobada';
+      items.push({
+        icon: approved?'fa-circle-check':'fa-circle-xmark',
+        text: (approved?'Crédito APROBADO — ':'Crédito NO aprobado — ')+a.clientName+(a.rejectReason?' ('+a.rejectReason+')':''),
+        at:a.statusUpdatedAt, section:'creditapps'
+      });
+    });
+    // El cliente firmó su solicitud de crédito virtualmente (enlace ?creditsign=) — avisa al vendedor
+    // asignado y a Administrador, igual patrón que el aviso de aprobación/rechazo de arriba.
+    (state.creditApps||[]).filter(a=>a.signature&&a.signature.signedAt).forEach(a=>{
+      const mine = isAdmin || (me && a.vendorEmail && me.email && a.vendorEmail.toLowerCase()===me.email.toLowerCase());
+      if(!mine) return;
+      const d=daysBetween(a.signature.signedAt, new Date().toISOString());
+      if(d!==null && d>7) return;
+      items.push({ icon:'fa-signature', text:'Cliente firmó la solicitud de crédito — '+a.clientName, at:a.signature.signedAt, section:'creditapps' });
+    });
     if(typeof state.tickets!=='undefined'){
       (state.tickets||[]).filter(t=>t.status==='Nuevo').forEach(t=>items.push({icon:'fa-ticket',text:'Ticket nuevo: '+t.id+' — '+t.category,at:t.createdAt,section:'tickets'}));
     }
@@ -5859,31 +5950,84 @@
       const dc = p.deliveryConfirmation;
       return `<div class="flex items-start justify-between mb-4"><div><div class="v2-pill mb-2"><i class="fa-solid fa-circle-check"></i> FIRMADA</div><h3 class="text-xl font-black">Hoja de Entrega, Garantía y Pago</h3><p class="text-xs text-slate-500 mt-1">${esc(p.id)}${p.clientName?' · '+esc(p.clientName):''}</p></div><button onclick="leonV2Close('leon-v2-delivery-sheet')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
       <div class="space-y-3 text-sm">
-        <div class="p-3 rounded-xl bg-slate-50"><b>Recibido por:</b> ${esc(dc.receivedByName)}<br><b>Fecha:</b> ${esc(new Date(dc.confirmedAt).toLocaleString())}</div>
+        <div class="p-3 rounded-xl bg-slate-50"><b>Recibido por:</b> ${esc(dc.receivedByName)}<br><b>Fecha de firma:</b> ${esc(new Date(dc.confirmedAt).toLocaleString())}${dc.deliveryDate?`<br><b>Fecha de entrega:</b> ${esc(dc.deliveryDate)}`:''}</div>
         <div class="p-3 rounded-xl bg-slate-50"><b>Método de pago confirmado:</b> ${esc(dc.paymentType)}${dc.paymentTotal!=null?' — Total: '+money(dc.paymentTotal):''}</div>
         ${dc.items&&dc.items.length?`<div class="p-3 rounded-xl bg-slate-50"><b>Equipos entregados y garantía:</b><table class="w-full mt-2 text-xs"><thead><tr class="text-left text-slate-400"><th>Equipo</th><th>Cant.</th><th>Garantía</th></tr></thead><tbody>${dc.items.map(i=>`<tr><td>${esc(i.name)}</td><td>${i.qty}</td><td>${i.warrantyYears?leonV2YearsLabel(i.warrantyYears):'—'}</td></tr>`).join('')}</tbody></table></div>`:''}
+        ${dc.equipmentManualUrl?`<div class="p-3 rounded-xl bg-slate-50"><b>Manual del equipo:</b> <a href="${esc(dc.equipmentManualUrl)}" target="_blank" rel="noopener" class="text-brand-600 hover:underline break-all">${esc(dc.equipmentManualUrl)}</a></div>`:''}
         <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100"><b>Firma del cliente:</b><br>${dc.signatureDataUrl?`<img src="${dc.signatureDataUrl}" class="h-16 mt-2 border border-emerald-200 rounded bg-white">`:'—'}</div>
+        ${dc.editHistory&&dc.editHistory.length?`<div class="p-3 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-800"><b><i class="fa-solid fa-clock-rotate-left mr-1"></i>Editado ${dc.editHistory.length} vez(es)</b> — último cambio: ${esc(dc.editHistory[dc.editHistory.length-1].at.slice(0,10))} por ${esc(dc.editHistory[dc.editHistory.length-1].by)} (${esc(dc.editHistory[dc.editHistory.length-1].summary)})</div>`:''}
       </div>
       <div class="flex flex-wrap gap-2 mt-5">
         <button onclick="leonV2PrintDeliverySheet('${p.id}')" class="v2-tab"><i class="fa-solid fa-print mr-1"></i>Imprimir / PDF</button>
-        ${isAdmin?`<button onclick="leonV2RedoDeliverySheet('${p.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-rotate-left mr-1"></i>Rehacer (borra la firma actual)</button>`:''}
+        ${isAdmin?`<button onclick="leonV2OpenEditDeliveryDetails('${p.id}')" class="v2-tab" style="color:#0876c9"><i class="fa-solid fa-pen mr-1"></i>Editar garantía / fecha / manual</button>`:''}
+        ${isAdmin?`<button onclick="leonV2RedoDeliverySheet('${p.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-rotate-left mr-1"></i>Rehacer completa (borra la firma)</button>`:''}
       </div>`;
     }
+    const todayIso=new Date().toISOString().slice(0,10);
     const itemRows = items.length ? items.map((it,i)=>`<tr><td class="py-1">${esc(it.name)}</td><td class="py-1 text-center">${it.qty}</td><td class="py-1"><input id="ds-warranty-${i}" type="number" min="0" step="1" value="5" class="w-20 border border-slate-200 rounded-lg px-2 py-1 text-xs"> años</td></tr>`).join('') : '<tr><td colspan="3" class="text-slate-400 text-xs py-2">Este proyecto no tiene una propuesta/venta ligada — agrega el equipo entregado manualmente en las notas si hace falta.</td></tr>';
     return `<div class="flex items-start justify-between mb-4"><div><div class="v2-pill mb-2"><i class="fa-solid fa-file-signature"></i> AL ENTREGAR EL EQUIPO</div><h3 class="text-xl font-black">Hoja de Entrega, Garantía y Pago</h3><p class="text-xs text-slate-500 mt-1">${esc(p.id)}${p.clientName?' · '+esc(p.clientName):''}</p></div><button onclick="leonV2Close('leon-v2-delivery-sheet')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
     <form onsubmit="leonV2SubmitDeliverySheet(event,'${p.id}')" class="space-y-4">
       <div class="p-3 rounded-xl bg-brand-50/40 border border-brand-100 text-xs text-slate-600"><i class="fa-solid fa-circle-info mr-1"></i>Al firmar, el cliente confirma que (1) recibió el equipo descrito abajo, (2) está de acuerdo con la garantía indicada de cada equipo, y (3) confirma que el método de pago abajo es correcto.</div>
-      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Nombre de quien recibe el equipo *</label><input id="ds-name" required value="${esc(p.clientName||'')}" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none"></div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Nombre de quien recibe el equipo *</label><input id="ds-name" required value="${esc(p.clientName||'')}" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Fecha de entrega *</label><input id="ds-delivery-date" type="date" required value="${esc(p.installDate||todayIso)}" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none"></div>
+      </div>
       <div>
         <label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Equipo(s) entregado(s) y garantía (la garantía varía según el equipo)</label>
         <table class="w-full text-sm"><thead><tr class="text-left text-[10px] uppercase text-slate-400"><th>Equipo</th><th>Cant.</th><th>Garantía</th></tr></thead><tbody>${itemRows}</tbody></table>
       </div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Manual del equipo (enlace, opcional)</label><input id="ds-manual-link" type="url" placeholder="https://..." class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none"></div>
       <div class="p-3 rounded-xl bg-slate-50"><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Método de pago (de la venta)</label><div class="text-sm font-bold">${esc(paymentType)}</div>${total!=null?`<div class="text-xs text-slate-500 mt-1">Total: ${money(total)}</div>`:''}</div>
       <label class="flex items-start gap-2 text-xs text-slate-600 cursor-pointer"><input type="checkbox" id="ds-confirm-check" required class="mt-0.5"> Confirmo que recibí el/los equipo(s) arriba en buen estado, que estoy de acuerdo con la garantía indicada, y que el método de pago mostrado es correcto.</label>
       <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block"><i class="fa-solid fa-signature mr-1"></i>Firma *</label>${leonV2SignaturePadHtml('ds-signature')}</div>
       <button type="submit" class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-check mr-2"></i>Confirmar y guardar</button>
     </form>`;
   }
+  // Edición NO destructiva de una hoja YA FIRMADA: a diferencia de "Rehacer completa" (que borra la
+  // firma del cliente y obliga a firmar de cero), esto deja la firma/fecha original intactas y solo
+  // permite ajustar garantía por equipo, fecha de entrega y el enlace del manual — el caso real que
+  // pidió el cliente ("si cambia la fecha de garantía, que sea fácil de trabajar") sin tener que hacer
+  // que el cliente firme otra vez por un simple ajuste administrativo. Solo Administrador. Queda
+  // registro de cada edición en dc.editHistory para trazabilidad.
+  function leonV2DeliveryDetailsEditHtml(projectId){
+    const p=(state.projects||[]).find(x=>x.id===projectId);
+    if(!p||!p.deliveryConfirmation) return '<div class="v2-empty">Esta hoja todavía no se ha firmado.</div>';
+    const dc=p.deliveryConfirmation;
+    const itemRows=(dc.items||[]).map((it,i)=>`<tr><td class="py-1">${esc(it.name)}</td><td class="py-1 text-center">${it.qty}</td><td class="py-1"><input id="dse-warranty-${i}" type="number" min="0" step="1" value="${it.warrantyYears||0}" class="w-20 border border-slate-200 rounded-lg px-2 py-1 text-xs"> años</td></tr>`).join('');
+    return `<div class="flex items-start justify-between mb-4"><div><div class="v2-pill mb-2"><i class="fa-solid fa-pen"></i> EDITAR DETALLES</div><h3 class="text-xl font-black">Garantía, fecha y manual</h3><p class="text-xs text-slate-500 mt-1">${esc(p.id)}${p.clientName?' · '+esc(p.clientName):''} — la firma del cliente y la fecha original de firma NO se modifican.</p></div><button onclick="leonV2Close('leon-v2-delivery-edit')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+    <form onsubmit="leonV2SaveDeliveryDetailsEdit(event,'${p.id}')" class="space-y-4">
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Fecha de entrega</label><input id="dse-delivery-date" type="date" value="${esc(dc.deliveryDate||'')}" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none"></div>
+      ${itemRows?`<div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Garantía por equipo</label><table class="w-full text-sm"><thead><tr class="text-left text-[10px] uppercase text-slate-400"><th>Equipo</th><th>Cant.</th><th>Garantía</th></tr></thead><tbody>${itemRows}</tbody></table></div>`:''}
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Manual del equipo (enlace)</label><input id="dse-manual-link" type="url" value="${esc(dc.equipmentManualUrl||'')}" placeholder="https://..." class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none"></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Motivo del cambio (queda en el historial)</label><input id="dse-reason" required placeholder="Ej. El fabricante extendió la garantía a 10 años" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none"></div>
+      <div class="flex gap-3"><button type="button" onclick="leonV2Close('leon-v2-delivery-edit')" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-500">Cancelar</button><button type="submit" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase">Guardar cambios</button></div>
+    </form>`;
+  }
+  window.leonV2OpenEditDeliveryDetails=function(projectId){
+    const me=state.currentUser;
+    if(!(me&&me.role==='Administrador')){ showToast('Solo un administrador puede editar una hoja ya firmada.','error'); return; }
+    document.getElementById('v2-delivery-edit-content').innerHTML=leonV2DeliveryDetailsEditHtml(projectId);
+    open('leon-v2-delivery-edit');
+  };
+  window.leonV2SaveDeliveryDetailsEdit=function(e,projectId){
+    e.preventDefault();
+    const p=(state.projects||[]).find(x=>x.id===projectId); if(!p||!p.deliveryConfirmation){showToast('Proyecto no encontrado.','error');return;}
+    const dc=p.deliveryConfirmation;
+    const reason=(document.getElementById('dse-reason').value||'').trim();
+    if(!reason){ showToast('Escribe el motivo del cambio.','error'); return; }
+    const before={ deliveryDate:dc.deliveryDate||null, equipmentManualUrl:dc.equipmentManualUrl||null, items:(dc.items||[]).map(i=>({name:i.name,warrantyYears:i.warrantyYears})) };
+    dc.deliveryDate=document.getElementById('dse-delivery-date').value||dc.deliveryDate||null;
+    dc.equipmentManualUrl=(document.getElementById('dse-manual-link').value||'').trim()||null;
+    if(dc.items&&dc.items.length){ dc.items=dc.items.map((it,i)=>{ const el=document.getElementById('dse-warranty-'+i); return el?{...it,warrantyYears:parseInt(el.value,10)||0}:it; }); }
+    if(!dc.editHistory)dc.editHistory=[];
+    dc.editHistory.push({ at:new Date().toISOString(), by:(state.currentUser&&state.currentUser.name)||'Administrador', summary:reason, before });
+    leonV2Audit('Hoja de entrega/garantía editada', p.id+' — '+reason);
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('projects');
+    leonV2Close('leon-v2-delivery-edit');
+    document.getElementById('v2-delivery-sheet-content').innerHTML=leonV2DeliverySheetHtml(projectId);
+    if(document.getElementById('v2-project-detail-content')&&document.getElementById('leon-v2-project-detail').classList.contains('show')) document.getElementById('v2-project-detail-content').innerHTML=leonV2ProjectDetailHtml(projectId);
+    showToast('Detalles de entrega actualizados — la firma original se conserva.','success');
+  };
   window.leonV2OpenDeliverySheet=function(projectId){
     document.getElementById('v2-delivery-sheet-content').innerHTML=leonV2DeliverySheetHtml(projectId);
     open('leon-v2-delivery-sheet');
@@ -5896,6 +6040,9 @@
     const items = (q && Array.isArray(q.items) && q.items.length) ? q.items : [];
     const name=(document.getElementById('ds-name').value||'').trim();
     if(!name){ showToast('Escribe el nombre de quien recibe el equipo.','error'); return; }
+    const deliveryDateEl=document.getElementById('ds-delivery-date');
+    const deliveryDate=deliveryDateEl?deliveryDateEl.value:'';
+    if(!deliveryDate){ showToast('Escoge la fecha de entrega.','error'); return; }
     if(!document.getElementById('ds-confirm-check').checked){ showToast('Debes marcar la confirmación antes de firmar.','error'); return; }
     const signature = typeof leonV2GetSignatureDataUrl==='function' ? leonV2GetSignatureDataUrl('ds-signature') : null;
     if(!signature){ showToast('Debes firmar antes de guardar.','error'); return; }
@@ -5904,9 +6051,12 @@
       const warrantyYears = el ? (parseInt(el.value,10)||0) : 0;
       return { name: it.name, qty: it.qty, warrantyYears };
     });
+    const manualLink=(document.getElementById('ds-manual-link')?.value||'').trim();
     const q2 = q ? leonV2ComputeTotal(q).total : null;
     p.deliveryConfirmation = {
       receivedByName: name,
+      deliveryDate: deliveryDate,
+      equipmentManualUrl: manualLink||null,
       paymentType: (q && q.paymentType) || 'Por definir',
       paymentTotal: q2,
       items: itemsWithWarranty,
@@ -5935,10 +6085,11 @@
     const dc=p.deliveryConfirmation;
     const w=window.open('','_blank');
     w.document.write(`<html><head><title>Hoja de Entrega ${esc(p.id)}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}h1{color:#0876c9}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}.head{display:flex;justify-content:space-between;border-bottom:3px solid #0876c9;padding-bottom:18px}.box{background:#f5f9fd;padding:16px;border-radius:10px;margin-top:16px}</style></head><body>
-    <div class="head"><div><h1>LEON HOME SOLUTIONS</h1><b>HOJA DE ENTREGA, GARANTÍA Y CONFIRMACIÓN DE PAGO</b><div>${esc(p.id)}</div></div><div><b>Fecha</b><br>${esc(new Date(dc.confirmedAt).toLocaleString())}</div></div>
+    <div class="head"><div><h1>LEON HOME SOLUTIONS</h1><b>HOJA DE ENTREGA, GARANTÍA Y CONFIRMACIÓN DE PAGO</b><div>${esc(p.id)}</div></div><div><b>Fecha de firma</b><br>${esc(new Date(dc.confirmedAt).toLocaleString())}${dc.deliveryDate?`<br><b>Fecha de entrega</b><br>${esc(dc.deliveryDate)}`:''}</div></div>
     <div class="box"><b>CLIENTE / RECIBIDO POR</b><br>${esc(dc.receivedByName)}${p.clientName&&p.clientName!==dc.receivedByName?' ('+esc(p.clientName)+')':''}</div>
     <div class="box"><b>MÉTODO DE PAGO CONFIRMADO</b><br>${esc(dc.paymentType)}${dc.paymentTotal!=null?' — Total: '+money(dc.paymentTotal):''}</div>
     ${dc.items&&dc.items.length?`<table><thead><tr><th>Equipo entregado</th><th>Cantidad</th><th>Garantía</th></tr></thead><tbody>${dc.items.map(i=>`<tr><td>${esc(i.name)}</td><td>${i.qty}</td><td>${i.warrantyYears?leonV2YearsLabel(i.warrantyYears):'—'}</td></tr>`).join('')}</tbody></table>`:''}
+    ${dc.equipmentManualUrl?`<div class="box"><b>MANUAL DEL EQUIPO</b><br>${esc(dc.equipmentManualUrl)}</div>`:''}
     <div class="box">El firmante confirma haber recibido el/los equipo(s) arriba en buen estado, estar de acuerdo con la garantía de cada uno, y que el método de pago indicado es correcto.</div>
     <div style="margin-top:50px">${dc.signatureDataUrl?`<img src="${dc.signatureDataUrl}" style="height:60px;display:block;border-bottom:1px solid #172033;padding-bottom:6px">`:''}<div style="margin-top:6px">Firma — ${esc(dc.receivedByName)}</div></div>
     <script>window.onload=()=>window.print()<\/script></body></html>`);
@@ -6033,7 +6184,7 @@
   function renderCreditApps(){
     const list=leonV2ScopedCreditApps(state.creditApps||[]).slice().sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
     document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-4 mb-5"><div><h3 class="text-xl font-black text-slate-900">Solicitudes de Crédito</h3><p class="text-xs text-slate-500 mt-1">Información de financiamiento por cliente — puede haber varias, una por cada entidad financiera intentada.</p></div><button onclick="leonV2OpenCreditAppModal()" class="px-4 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-brand-500/25"><i class="fa-solid fa-plus mr-2"></i>Nueva solicitud</button></div>
-    <div class="overflow-x-auto">${list.length?`<table class="w-full v2-table"><thead><tr><th>Cliente</th><th>Entidad</th><th>Monto deseado</th><th>Estado</th><th>Fecha</th><th class="text-right">Acción</th></tr></thead><tbody>${list.map(a=>`<tr class="hover:bg-brand-50/40 transition cursor-pointer" onclick="leonV2OpenCreditAppModal('${a.id}')"><td class="py-3 px-3"><b>${esc(a.clientName||'—')}</b></td><td class="py-3 px-3">${esc(a.entity||'—')}</td><td class="py-3 px-3 font-mono">${money(Number((a.financiamiento&&a.financiamiento.monto)||0))}</td><td class="py-3 px-3"><span class="v2-status ${a.status==='Aprobada'?'bg-emerald-50 text-emerald-700':a.status==='Rechazada'?'bg-red-50 text-red-700':'bg-blue-50 text-blue-700'}">${esc(a.status)}</span></td><td class="py-3 px-3 text-xs text-slate-500">${esc((a.createdAt||'').slice(0,10))}</td><td class="py-3 px-3 text-right" onclick="event.stopPropagation()"><button onclick="leonV2PrintCreditAppById('${a.id}')" class="text-slate-400 hover:text-brand-600 mr-2" title="Descargar PDF"><i class="fa-solid fa-file-pdf"></i></button>${leonV2Can('deleteCreditApp')?`<button onclick="leonV2DeleteCreditApp('${a.id}')" class="text-slate-400 hover:text-red-500" title="Eliminar"><i class="fa-solid fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay solicitudes de crédito todavía. Se crean desde aquí, desde una propuesta, o desde el expediente del cliente.</div>'}</div></div>`;
+    <div class="overflow-x-auto">${list.length?`<table class="w-full v2-table"><thead><tr><th>Cliente</th><th>Entidad</th><th>Monto deseado</th><th>Estado</th><th>Fecha</th><th class="text-right">Acción</th></tr></thead><tbody>${list.map(a=>`<tr class="hover:bg-brand-50/40 transition cursor-pointer" onclick="leonV2OpenCreditAppModal('${a.id}')"><td class="py-3 px-3"><b>${esc(a.clientName||'—')}</b></td><td class="py-3 px-3">${esc(a.entity||'—')}</td><td class="py-3 px-3 font-mono">${money(Number((a.financiamiento&&a.financiamiento.monto)||0))}</td><td class="py-3 px-3"><span class="v2-status ${a.status==='Aprobada'?'bg-emerald-50 text-emerald-700':a.status==='Rechazada'?'bg-red-50 text-red-700':'bg-blue-50 text-blue-700'}">${esc(a.status)}</span>${a.signature?' <i class="fa-solid fa-signature text-emerald-500 ml-1" title="Firmada por el cliente"></i>':' <i class="fa-solid fa-signature text-slate-300 ml-1" title="Falta firma del cliente"></i>'}</td><td class="py-3 px-3 text-xs text-slate-500">${esc((a.createdAt||'').slice(0,10))}</td><td class="py-3 px-3 text-right" onclick="event.stopPropagation()"><button onclick="leonV2PrintCreditAppById('${a.id}')" class="text-slate-400 hover:text-brand-600 mr-2" title="Descargar PDF"><i class="fa-solid fa-file-pdf"></i></button>${leonV2Can('deleteCreditApp')?`<button onclick="leonV2DeleteCreditApp('${a.id}')" class="text-slate-400 hover:text-red-500" title="Eliminar"><i class="fa-solid fa-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="v2-empty">No hay solicitudes de crédito todavía. Se crean desde aquí, desde una propuesta, o desde el expediente del cliente.</div>'}</div></div>`;
   }
   window.renderCreditApps=renderCreditApps;
   function leonV2CreditAppModalHtml(id, quoteId, clientId){
@@ -6045,6 +6196,17 @@
     const clientSearchOptions=leonV2ScopedClients(state.clients||[]).map(c=>({value:c.id,label:c.name+' — '+(c.email||'')}));
     const p=a?a.personal||{}:{}, v=a?a.vivienda||{}:{}, l=a?a.laboral||{}:{}, f=a?a.financiamiento||{}:{};
     const linkedQuoteId=a?a.quoteId:quoteId;
+    const linkedQuote=linkedQuoteId?findQuoteAnywhere(linkedQuoteId):null;
+    // Autocompletar con lo que YA se sabe del cliente/propuesta, en vez de pedirlo todo de cero otra
+    // vez — antes esta solicitud siempre arrancaba en blanco aunque el cliente ya hubiera dado su ID
+    // y aunque ya existiera una propuesta con el monto exacto a financiar (queja real del negocio).
+    // Solo aplica al CREAR una solicitud nueva (a===null) — una solicitud ya guardada respeta lo que
+    // ya tiene escrito, nunca lo pisa con datos más viejos de la propuesta.
+    const clientHasSsn=client && client.idType==='SSN' && client.idNumber;
+    const clientHasLicencia=client && (client.idType==='Licencia'||client.idType==='ID') && client.idNumber;
+    if(!a && client && !p.licencia && clientHasLicencia) p.licencia=client.idNumber; // ya enmascarado (últimos 4)
+    if(!a && linkedQuote && f.monto==null){ const t=leonV2ComputeTotal(linkedQuote); f.monto=Number(t.total.toFixed(2)); }
+    const ssnPrefillNote = (!a && clientHasSsn) ? `<p class="text-[10px] text-brand-600 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>El cliente ya tiene un Seguro Social registrado en su expediente (${esc(client.idNumber)}) — escribe el número completo aquí para vincularlo a esta solicitud (no se puede copiar automáticamente porque el expediente del cliente solo guarda la versión enmascarada).</p>` : '';
     return `<div class="flex justify-between items-start gap-4 mb-5"><div><div class="v2-pill mb-2">SOLICITUD DE CRÉDITO</div><h3 class="text-xl font-black">${a?'Editar solicitud':'Nueva solicitud de crédito'}</h3><p class="text-xs text-slate-500 mt-1">Requisitos de información para financiamiento — toda la información debe ser correcta, completa y verificable.</p></div><button onclick="leonV2Close('leon-v2-creditapp-modal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
     <form onsubmit="leonV2SaveCreditApp(event${a?`,'${a.id}'`:''})" class="space-y-5">
       <input type="hidden" id="ca-quote-id" value="${esc(linkedQuoteId||'')}">
@@ -6056,7 +6218,7 @@
         <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Licencia de conducir vigente</label><input id="ca-licencia" value="${esc(p.licencia||'')}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
         <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Número de teléfono</label><input id="ca-telefono" value="${esc(p.telefono||(client?client.phone:'')||'')}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
         <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Correo electrónico</label><input id="ca-correo" type="email" value="${esc(p.correo||(client?client.email:'')||'')}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
-        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Número de Seguro Social</label><input id="ca-ssn" placeholder="${a&&p.ssnMasked?p.ssnMasked+' (deja vacío para no cambiar)':'###-##-####'}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"><p class="text-[9px] text-slate-400 mt-1">Se enmascara al guardar — solo quedan visibles los últimos 4 dígitos.</p></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Número de Seguro Social</label><div class="relative"><input id="ca-ssn" type="password" autocomplete="off" maxlength="9" placeholder="${a&&p.ssnMasked?p.ssnMasked+' (deja vacío para no cambiar)':'###-##-####'}" class="w-full px-3 py-2.5 pr-10 rounded-xl bg-white border border-slate-200 text-sm outline-none"><button type="button" onclick="leonV2ToggleFieldReveal('ca-ssn',this)" id="ca-ssn-eye" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" title="Ver mientras escribo (solo administrador)"><i class="fa-solid fa-eye"></i></button></div><p class="text-[9px] text-slate-400 mt-1">Se enmascara al guardar — solo quedan visibles los últimos 4 dígitos. El Seguro Social son 9 dígitos.</p>${ssnPrefillNote}</div>
       </div>
       <div class="mt-3 pt-3 border-t border-brand-100">
         <div class="flex justify-between items-center"><label class="text-[10px] font-bold text-slate-500">Foto o archivo del ID (licencia, ID estatal...)</label>${a?`<label class="text-brand-600 text-[11px] font-bold cursor-pointer"><i class="fa-solid fa-upload mr-1"></i>Subir<input type="file" accept="image/*,.pdf" class="hidden" onchange="handleCreditAppIdFile(event,'${a.id}')"></label>`:''}</div>
@@ -6073,15 +6235,99 @@
         <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Tiempo en ese empleo</label><input id="ca-laboral-tiempo" value="${esc(l.tiempoEmpleo||'')}" placeholder="Ej. 2 años" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
       </div></div>
       <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">4. Información del financiamiento</h4><div class="grid sm:grid-cols-2 gap-3">
-        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">¿Cuánto desea financiar el cliente?</label><input id="ca-fin-monto" type="number" min="0" step="0.01" value="${f.monto!=null?f.monto:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">¿Cuánto desea financiar el cliente?</label><input id="ca-fin-monto" type="number" min="0" step="0.01" value="${f.monto!=null?f.monto:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none">${(!a && linkedQuote)?`<p class="text-[9px] text-brand-600 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>Tomado del total de la propuesta ${esc(linkedQuote.id)} — ajústalo si el financiamiento real es distinto.</p>`:''}</div>
         <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Ganancias extras (opcional)</label><input id="ca-fin-extra" type="number" min="0" step="0.01" value="${f.gananciasExtras!=null?f.gananciasExtras:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
       </div></div>
       <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Notas</label><textarea id="ca-notes" rows="2" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none">${esc(a?a.notes||'':'')}</textarea></div>
+      ${a?leonV2CreditAppSignatureBlockHtml(a):''}
       ${a?`<div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Estado de la solicitud</label><select id="ca-status" onchange="leonV2SetCreditAppStatusFromSelect('${a.id}', this.value)" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="Pendiente" ${a.status==='Pendiente'?'selected':''}>Pendiente</option><option value="Aprobada" ${a.status==='Aprobada'?'selected':''}>Aprobada</option><option value="Rechazada" ${a.status==='Rechazada'?'selected':''}>Rechazada</option></select></div>`:''}
       <div class="flex gap-3 pt-2">${a?`<button type="button" onclick="leonV2PrintCreditAppById('${a.id}')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600"><i class="fa-solid fa-file-pdf mr-1"></i>Descargar PDF</button>`:''}<button type="button" onclick="leonV2Close('leon-v2-creditapp-modal')" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-500">Cancelar</button><button type="submit" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase">Guardar</button></div>
     </form>`;
   }
-  window.leonV2OpenCreditAppModal=(id,quoteId,clientId)=>{ document.getElementById('v2-creditapp-modal-content').innerHTML=leonV2CreditAppModalHtml(id,quoteId,clientId); open('leon-v2-creditapp-modal'); };
+  // ================= FIRMA VIRTUAL DEL CLIENTE (solicitud de crédito) =================
+  // El cliente firma la solicitud desde un enlace público (mismo patrón que la invitación de
+  // empleado — ver leonV2GenInviteToken/leonV2CheckInviteLink más abajo): un token único por
+  // solicitud, una vista pública de solo-firma sin necesitar sesión, y el resultado (imagen de la
+  // firma + nombre + fecha) se guarda directo en la solicitud. No se reutiliza el token de invitación
+  // de empleado — cada solicitud de crédito tiene el suyo propio (a.signToken).
+  function leonV2CreditSignLink(token){ return location.origin+location.pathname+'?creditsign='+token; }
+  function leonV2CreditAppSignatureBlockHtml(a){
+    if(a.signature){
+      return `<div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100"><b class="text-xs text-emerald-800"><i class="fa-solid fa-signature mr-1"></i>Firmada por el cliente</b><div class="text-xs text-slate-500 mt-1">${esc(a.signature.signedByName||a.clientName||'')} — ${esc(new Date(a.signature.signedAt).toLocaleString())}</div>${a.signature.dataUrl?`<img src="${a.signature.dataUrl}" class="h-14 mt-2 border border-emerald-200 rounded bg-white">`:''}</div>`;
+    }
+    return `<div class="p-3 rounded-xl bg-amber-50 border border-amber-100"><b class="text-xs text-amber-800"><i class="fa-solid fa-signature mr-1"></i>El cliente todavía no ha firmado esta solicitud</b><p class="text-[11px] text-slate-500 mt-1">Genera un enlace para que el cliente la revise y firme virtualmente desde su teléfono o computadora.</p><button type="button" onclick="leonV2SendCreditSignLink('${a.id}')" class="mt-2 px-3 py-2 rounded-lg bg-ink-900 text-white text-[11px] font-black uppercase"><i class="fa-solid fa-link mr-1"></i>Generar / enviar enlace de firma</button></div>`;
+  }
+  window.leonV2SendCreditSignLink=function(id){
+    const a=(state.creditApps||[]).find(x=>x.id===id); if(!a){showToast('No se encontró la solicitud.','error');return;}
+    if(!a.signToken){ a.signToken=leonV2GenInviteToken(); if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('creditApps'); }
+    const link=leonV2CreditSignLink(a.signToken);
+    const email=a.clientEmail||(a.personal&&a.personal.correo)||'';
+    document.getElementById('v2-creditapp-modal-content').innerHTML = `<div class="text-center py-4"><div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl mx-auto mb-3 border border-emerald-100"><i class="fa-solid fa-link"></i></div><h3 class="text-lg font-black">Enlace de firma generado</h3><p class="text-sm text-slate-500 mt-1">Comparte este enlace con <b>${esc(a.clientName||'el cliente')}</b> para que firme la solicitud ${esc(a.id)}.</p>
+    <div class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-left"><input readonly value="${esc(link)}" onclick="this.select()" class="w-full bg-transparent text-xs font-mono outline-none"></div>
+    <div class="flex gap-2 mt-3"><button onclick="leonV2CopyText('${esc(link)}')" class="flex-grow py-3 rounded-xl bg-ink-900 text-white font-black text-xs uppercase tracking-widest"><i class="fa-solid fa-copy mr-1"></i>Copiar enlace</button>${email?`<a href="mailto:${esc(email)}?subject=${encodeURIComponent('Firma tu solicitud de crédito — LEON Home Solutions')}&body=${encodeURIComponent('Hola '+(a.clientName||'')+',\n\nPor favor firma tu solicitud de crédito en este enlace:\n'+link)}" class="flex-grow py-3 rounded-xl border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest text-center"><i class="fa-solid fa-envelope mr-1"></i>Enviar por correo</a>`:''}</div>
+    <button onclick="leonV2OpenCreditAppModal('${a.id}')" class="w-full mt-4 py-2.5 text-xs font-bold text-slate-400 hover:text-slate-600 uppercase">Volver a la solicitud</button></div>`;
+    leonV2Audit('Enlace de firma de crédito generado', a.id+' — '+(a.clientName||''));
+  };
+  // Detecta ?creditsign=TOKEN al cargar la página (mismo patrón que leonV2CheckInviteLink: reintenta
+  // porque la sincronización con Firestore es asíncrona, y hace una búsqueda directa por el token
+  // exacto en vez de depender solo de que la colección completa ya haya llegado).
+  window.leonV2CheckCreditSignLink = function(attempt){
+    attempt = attempt || 0;
+    let token;
+    try { token = new URLSearchParams(window.location.search).get('creditsign'); } catch(err) { return; }
+    if(!token) return;
+    const a = (state.creditApps||[]).find(x=>x.signToken===token);
+    if(a){
+      if(a.signature){ leonV2ShowOnboardingMessage('Esta solicitud ya fue firmada','Gracias — ya registramos tu firma en esta solicitud de crédito. Si crees que esto es un error, contacta a tu vendedor.','fa-circle-check'); return; }
+      leonV2OpenCreditSignPublic(a);
+      return;
+    }
+    if(window.__fbDb && attempt % 3 === 0){
+      window.__fbDb.collection('creditApps').where('signToken','==',token).limit(1).get().then(snap=>{
+        if(snap.empty) return;
+        const data = snap.docs[0].data();
+        if(!data) return;
+        if(!state.creditApps) state.creditApps=[];
+        if(!state.creditApps.some(x=>x.signToken===token)) state.creditApps.push(data);
+        window.leonV2CheckCreditSignLink(0);
+      }).catch(err=>console.error('Firebase: error buscando solicitud de crédito por token', err));
+    }
+    if(attempt < 24){ setTimeout(()=>window.leonV2CheckCreditSignLink(attempt+1), 1000); return; }
+    leonV2ShowOnboardingMessage('Enlace no encontrado','Este enlace para firmar no es válido, expiró, o todavía no ha terminado de sincronizar. Si acabas de recibirlo, espera un momento y actualiza la página.','fa-triangle-exclamation');
+  };
+  function leonV2CreditSignPublicHtml(a){
+    const f=a.financiamiento||{};
+    return `<div class="text-center mb-4"><div class="v2-pill mb-2"><i class="fa-solid fa-house-chimney mr-1"></i>LEON HOME SOLUTIONS</div><h3 class="text-2xl font-black">Firma tu solicitud de crédito</h3><p class="text-sm text-slate-500 mt-1">Revisa la información antes de firmar — solicitud ${esc(a.id)} con ${esc(a.entity||'la entidad financiera')}.</p></div>
+    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm mb-4"><div class="row flex justify-between py-1 border-b border-slate-200"><span class="text-slate-500">Cliente</span><b>${esc(a.clientName||'')}</b></div><div class="row flex justify-between py-1 border-b border-slate-200"><span class="text-slate-500">Entidad</span><b>${esc(a.entity||'—')}</b></div><div class="row flex justify-between py-1"><span class="text-slate-500">Monto a financiar</span><b>${f.monto!=null?money(f.monto):'—'}</b></div></div>
+    <form onsubmit="leonV2SubmitCreditAppSign(event,'${esc(a.signToken)}')" class="space-y-4">
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Tu nombre completo (como firma) *</label><input id="cs-name" required value="${esc(a.clientName||'')}" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none"></div>
+      <label class="flex items-start gap-2 text-xs text-slate-600 cursor-pointer"><input type="checkbox" id="cs-confirm-check" required class="mt-0.5"> Confirmo que la información de esta solicitud de crédito es correcta y autorizo a LEON Home Solutions a someterla a la entidad financiera indicada.</label>
+      <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block"><i class="fa-solid fa-signature mr-1"></i>Firma *</label>${leonV2SignaturePadHtml('cs-signature')}</div>
+      <button type="submit" class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-check mr-2"></i>Firmar solicitud</button>
+    </form>`;
+  }
+  window.leonV2OpenCreditSignPublic=function(a){
+    document.getElementById('v2-credit-sign-content').innerHTML=leonV2CreditSignPublicHtml(a);
+    open('leon-v2-credit-sign');
+    leonV2InitSignaturePad('cs-signature');
+  };
+  window.leonV2SubmitCreditAppSign=function(e,token){
+    e.preventDefault();
+    const a=(state.creditApps||[]).find(x=>x.signToken===token); if(!a){showToast('No se encontró la solicitud.','error');return;}
+    const name=(document.getElementById('cs-name').value||'').trim();
+    if(!name){ showToast('Escribe tu nombre completo.','error'); return; }
+    if(!document.getElementById('cs-confirm-check').checked){ showToast('Debes confirmar antes de firmar.','error'); return; }
+    const signature = typeof leonV2GetSignatureDataUrl==='function' ? leonV2GetSignatureDataUrl('cs-signature') : null;
+    if(!signature){ showToast('Debes firmar antes de enviar.','error'); return; }
+    a.signature = { signedByName:name, dataUrl:signature, signedAt:new Date().toISOString() };
+    if(!a.activityNote) a.activityNote=[];
+    const client=(state.clients||[]).find(c=>c.id===a.clientId);
+    if(client){ if(!client.activity)client.activity=[]; client.activity.push({type:'credito_firmado',text:'Cliente firmó la solicitud de crédito '+a.id,at:new Date().toISOString(),by:name}); }
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('creditApps');
+    if(client && typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('clients');
+    document.getElementById('v2-credit-sign-content').innerHTML = `<div class="text-center py-6"><div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl mx-auto mb-3 border border-emerald-100"><i class="fa-solid fa-circle-check"></i></div><h3 class="text-lg font-black">¡Firma recibida!</h3><p class="text-sm text-slate-500 mt-2">Gracias, ${esc(name)}. Tu vendedor y el equipo administrativo fueron notificados — te avisarán en cuanto haya una decisión sobre tu solicitud.</p></div>`;
+  };
+  window.leonV2OpenCreditAppModal=(id,quoteId,clientId)=>{ document.getElementById('v2-creditapp-modal-content').innerHTML=leonV2CreditAppModalHtml(id,quoteId,clientId); open('leon-v2-creditapp-modal'); leonV2ApplyAdminRevealVisibility('ca-ssn-eye'); };
   window.leonV2SaveCreditApp=function(e,id){
     e.preventDefault();
     const clientSel=document.getElementById('ca-client');
@@ -6132,8 +6378,19 @@
     const a=(state.creditApps||[]).find(x=>x.id===id); if(!a)return;
     if(status==='Rechazada'){ leonV2OpenCreditAppRejectModal(id); return; }
     a.status=status;
+    a.statusUpdatedAt=new Date().toISOString();
     leonV2Audit('Estado de solicitud de crédito cambiado', a.id+' → '+status);
-    showToast('Estado actualizado a "'+status+'".','success');
+    // Aprobado el crédito = venta confirmada de verdad → el cliente pasa de Lead a Cliente, igual que
+    // cuando se acepta una propuesta a Cash (mismo punto único, leonV2PromoteClientToCustomer, para
+    // que el pipeline y los reportes de "clientes reales" nunca se desincronicen entre los dos caminos).
+    if(status==='Aprobada'){
+      const client=(state.clients||[]).find(c=>c.id===a.clientId);
+      if(client){
+        leonV2PromoteClientToCustomer(client, 'Solicitud de crédito '+a.id+' aprobada ('+(a.entity||'')+')');
+        if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('clients');
+      }
+    }
+    showToast('Estado actualizado a "'+status+'". '+(a.vendorName?('Se notificó a '+a.vendorName+'.'):''),'success');
     if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('creditApps');
   };
   // Igual que el rechazo de propuestas: motivo estructurado, no texto libre suelto.
@@ -6141,7 +6398,7 @@
     const a=(state.creditApps||[]).find(x=>x.id===id); if(!a)return;
     document.getElementById('v2-reject-modal-content').innerHTML=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">RECHAZAR SOLICITUD</div><h3 class="text-xl font-black">${esc(a.clientName)} — ${esc(a.entity||'')}</h3></div><button onclick="leonV2Close('leon-v2-reject-quote');leonV2OpenCreditAppModal('${a.id}')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="mt-5 space-y-3">
-      <div><label class="text-[10px] font-black uppercase text-slate-500">Motivo del rechazo</label><select id="v2-ca-reject-select" onchange="document.getElementById('v2-ca-reject-detail-wrap').classList.toggle('hidden', this.value!=='Otro')" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="">Elige un motivo...</option>${REJECT_REASONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Resultado de la evaluación</label><select id="v2-ca-reject-select" onchange="document.getElementById('v2-ca-reject-detail-wrap').classList.toggle('hidden', this.value!=='Otro')" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="">Elige un resultado...</option>${CREDIT_REJECT_REASONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
       <div id="v2-ca-reject-detail-wrap" class="hidden"><label class="text-[10px] font-black uppercase text-slate-500">Detalle</label><input id="v2-ca-reject-detail" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Detalle del motivo..."></div>
       <button onclick="leonV2ConfirmRejectCreditApp('${a.id}')" class="w-full py-3 rounded-xl bg-red-600 text-white text-xs font-black uppercase">Confirmar rechazo</button>
     </div>`;
@@ -6156,9 +6413,19 @@
     const detail=(detailEl&&detailEl.value||'').trim();
     a.status='Rechazada';
     a.rejectReason=reason==='Otro'&&detail?detail:reason;
+    a.statusUpdatedAt=new Date().toISOString();
     leonV2Audit('Solicitud de crédito rechazada', a.id+' — '+a.rejectReason);
+    // No cualificar NO borra al Lead ni lo mueve solo — se queda en Lead con el motivo bien visible
+    // (expediente + pipeline), para que el vendedor sepa exactamente qué pasó y pueda, por ejemplo,
+    // volver a intentar con un codeudor en vez de asumir que la venta se perdió del todo.
+    const client=(state.clients||[]).find(c=>c.id===a.clientId);
+    if(client){
+      if(!client.activity)client.activity=[];
+      client.activity.push({type:'credito_rechazado',text:'Solicitud de crédito '+a.id+' — '+a.rejectReason,at:new Date().toISOString(),by:(state.currentUser&&state.currentUser.name)||'Sistema'});
+      if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('clients');
+    }
     leonV2Close('leon-v2-reject-quote');
-    showToast('Solicitud marcada como rechazada — '+a.rejectReason,'error');
+    showToast('Solicitud marcada — '+a.rejectReason+'. '+(a.vendorName?('Se notificó a '+a.vendorName+'.'):''),'error');
     if(document.getElementById('v2-main').innerHTML.includes('Solicitudes de Crédito'))renderCreditApps();
     if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('creditApps');
   };
@@ -6210,6 +6477,7 @@
       ${a.notes?`<div class="box"><b class="h">Notas</b>${esc(a.notes)}</div>`:''}
       ${a.status==='Rechazada'&&a.rejectReason?`<div class="box" style="background:#fef2f2"><b class="h" style="color:#dc2626">Motivo de rechazo</b>${esc(a.rejectReason)}</div>`:''}
       <div class="box">Toda la información debe ser correcta, completa y verificable — será utilizada para preparar y procesar la solicitud de financiamiento.</div>
+      <div class="box"><b class="h">Firma del cliente</b>${a.signature?`${esc(a.signature.signedByName||a.clientName||'')} — ${esc(new Date(a.signature.signedAt).toLocaleString())}<br>${a.signature.dataUrl?`<img src="${a.signature.dataUrl}" style="height:60px;display:block;margin-top:8px;border-bottom:1px solid #172033">`:''}`:'Pendiente de firma del cliente.'}</div>
       <script>window.onload=()=>window.print()<\/script></body></html>`);
     w.document.close();
   };
@@ -6644,14 +6912,40 @@
     document.getElementById('v2-price-tax').value=q.taxRate||0;
     document.getElementById('v2-price-months').value=String(q.financingMonths||0);
     document.getElementById('v2-price-rate').value=q.financingRate||0;
+    document.getElementById('v2-price-notes').value=q.notes||'';
     const isSunrun=q.financingProvider==='Sunrun';
     const isRateProvider=q.financingProvider==='PCI'||q.financingProvider==='Cooperativa';
     document.getElementById('v2-price-months-wrap').classList.toggle('hidden', isSunrun);
-    document.getElementById('v2-price-rate-wrap').classList.toggle('hidden', !isRateProvider);
+    document.getElementById('v2-price-notes-wrap').classList.toggle('hidden', !isRateProvider);
     document.getElementById('v2-price-sunrun-note').classList.toggle('hidden', !isSunrun);
     document.getElementById('v2-price-disclaimer').classList.toggle('hidden', isSunrun);
+    leonV2ApplyRateLockState();
     leonV2RecalcPricingPreview();
     open('leon-v2-pricing-modal');
+  };
+  // La tasa real de interés (PCI/Cooperativa) es información interna del negocio — nunca la ve el
+  // cliente, y tampoco cualquier persona del equipo por accidente: solo un Administrador que
+  // deliberadamente escriba la palabra "mostrar" en las notas internas de ESA propuesta desbloquea
+  // el campo para poder actualizar la tasa real aprobada por el prestamista. Esto es una barrera de
+  // uso normal, no cifrado real — cualquiera con acceso a las herramientas de desarrollo del
+  // navegador podría saltársela, igual que con cualquier otra validación que vive solo en el cliente
+  // en esta arquitectura (ver aviso de seguridad en Configuración).
+  window.leonV2ApplyRateLockState=function(){
+    const q=v2PricingQuoteId?state.quotes.find(x=>x.id===v2PricingQuoteId):null;
+    if(!q)return;
+    const isRateProvider=q.financingProvider==='PCI'||q.financingProvider==='Cooperativa';
+    if(!isRateProvider) return;
+    const isAdmin=!!(state.currentUser && state.currentUser.role==='Administrador');
+    const notesVal=document.getElementById('v2-price-notes')?.value||'';
+    const unlocked = isAdmin && /mostrar/i.test(notesVal);
+    document.getElementById('v2-price-rate-wrap').classList.toggle('hidden', !unlocked);
+    const lockedBox=document.getElementById('v2-price-rate-locked');
+    lockedBox.classList.toggle('hidden', unlocked);
+    if(!unlocked){
+      document.getElementById('v2-price-rate-locked-reason').textContent = isAdmin
+        ? 'Escribe "mostrar" en las notas internas de arriba para desbloquear el campo y actualizar la tasa aprobada.'
+        : 'Solo un Administrador puede ver y actualizar este campo.';
+    }
   };
   // Muestra cuánto del subtotal está exento de IVU (ej. baterías solares marcadas como
   // "Exento de IVU" en el catálogo) para que quede claro por qué el impuesto calculado es menor
@@ -6695,11 +6989,16 @@
     q.installationFee=Number(document.getElementById('v2-price-install').value)||0;
     q.transportFee=Number(document.getElementById('v2-price-transport').value)||0;
     q.taxRate=Number(document.getElementById('v2-price-tax').value)||0;
+    if(q.financingProvider==='PCI'||q.financingProvider==='Cooperativa'){
+      q.notes=(document.getElementById('v2-price-notes').value||'').trim();
+    }
     if(q.financingProvider!=='Sunrun'){
       q.financingMonths=Number(document.getElementById('v2-price-months').value)||0;
-      if(q.financingProvider==='PCI'||q.financingProvider==='Cooperativa'){
+      // La tasa solo se actualiza si el campo está de verdad desbloqueado ahora mismo (Administrador
+      // + "mostrar" en las notas) — si está oculto, se deja la tasa que ya tenía la propuesta en vez
+      // de leer el valor del input escondido (que puede no reflejar una decisión real de nadie).
+      if((q.financingProvider==='PCI'||q.financingProvider==='Cooperativa') && !document.getElementById('v2-price-rate-wrap').classList.contains('hidden')){
         q.financingRate=Number(document.getElementById('v2-price-rate').value)||0;
-        if(q.financingMonths && !q.financingRate){showToast('Escribe la tasa de interés anual antes de guardar.','warning');return}
       }
     }
     const t=leonV2ComputeTotal(q);
@@ -9146,6 +9445,9 @@
   // Detecta ?invite=TOKEN en la URL (enlace de invitación de empleado) y, si aplica, abre el
   // onboarding público — ver leonV2CheckInviteLink más arriba. Se dispara una sola vez al cargar.
   setTimeout(()=>{ if(typeof window.leonV2CheckInviteLink==='function') window.leonV2CheckInviteLink(); }, 900);
+  // Detecta ?creditsign=TOKEN en la URL (enlace de firma de solicitud de crédito) y, si aplica, abre
+  // la vista pública de firma — ver leonV2CheckCreditSignLink más arriba. Se dispara una sola vez.
+  setTimeout(()=>{ if(typeof window.leonV2CheckCreditSignLink==='function') window.leonV2CheckCreditSignLink(); }, 900);
 })();
 </script>
 
