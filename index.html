@@ -162,13 +162,6 @@
         #public-main-nav a { position: relative; display: inline-block; transition: transform .3s cubic-bezier(.16,1,.3,1), color .3s; }
         #public-main-nav a::after { content: ''; position: absolute; left: 0; bottom: -6px; width: 100%; height: 2px; background: linear-gradient(90deg,#0876c9,#45b0ff); transform: scaleX(0); transform-origin: left; transition: transform .3s cubic-bezier(.16,1,.3,1); }
 
-        /* ---- Tarjetas de la Galería: panel de texto siempre oscuro (no depende del gradiente
-           de la foto) + un brillo metálico en movimiento en vez de video real, para que se vea
-           premium sin depender de archivos pesados. ---- */
-        .gallery-caption { position: relative; overflow: hidden; background: linear-gradient(135deg,#0a0e13 0%,#1c2530 50%,#0a0e13 100%); }
-        .gallery-caption-sheen { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,.10) 35%, rgba(212,175,55,.22) 50%, rgba(255,255,255,.10) 65%, transparent 100%); background-size: 260% 100%; animation: metalSheen 6s linear infinite; pointer-events: none; }
-        @keyframes metalSheen { 0% { background-position: 220% 0; } 100% { background-position: -60% 0; } }
-        .gallery-caption > * { position: relative; z-index: 1; }
         #public-main-nav a:hover { transform: perspective(500px) rotateX(10deg) translateY(-2px); }
         #public-main-nav a:hover::after { transform: scaleX(1); }
 
@@ -657,7 +650,7 @@
                     <p class="text-slate-600 mt-4 text-sm leading-relaxed">Explore algunas de las implementaciones más destacadas.</p>
                 </div>
 
-                <div id="media-gallery-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8" style="perspective:1200px;"></div>
+                <div id="media-gallery-grid" class="grid grid-cols-1 gap-10"></div>
             </div>
         </section>
 
@@ -813,7 +806,7 @@
                                 <button type="button" onclick="closeProductModal(); openCategoryModal();" title="Gestionar categorías" class="shrink-0 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 rounded-lg px-3 text-sm transition"><i class="fa-solid fa-tags"></i></button>
                             </div>
                         </div>
-                        <div><label id="prod-price-label" class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Precio (USD) *</label><input type="number" id="prod-price" required min="0" step="0.01" placeholder="Ej. 850" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-sm"><p id="prod-price-hint" class="hidden text-[10px] text-brand-600 font-bold mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Este NO es el precio total — es lo que cobras por CADA pie². Ej.: 3.50 (no 350). Un techo de 1,500 ft² a $3.50 saldría en $5,250.</p></div>
+                        <div><label id="prod-price-label" class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Precio (USD) *</label><div class="flex gap-2"><input type="text" inputmode="decimal" id="prod-price" required placeholder="Ej. 850" oninput="leonV2SanitizeDecimalInput(this)" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-sm"><button type="button" tabindex="-1" onclick="leonV2StepDecimal('prod-price',-0.10,0)" class="w-9 h-9 flex-none rounded-lg border border-slate-200 text-slate-500"><i class="fa-solid fa-minus text-[10px]"></i></button><button type="button" tabindex="-1" onclick="leonV2StepDecimal('prod-price',0.10,0)" class="w-9 h-9 flex-none rounded-lg border border-slate-200 text-slate-500"><i class="fa-solid fa-plus text-[10px]"></i></button></div><p id="prod-price-hint" class="hidden text-[10px] text-brand-600 font-bold mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Este NO es el precio total — es lo que cobras por CADA pie². Ej.: 3.50 (no 350). Un techo de 1,500 ft² a $3.50 saldría en $5,250.</p></div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Código</label><input type="text" id="prod-code" placeholder="Ej. HVAC-07" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-sm"></div>
@@ -940,6 +933,8 @@
                 <button onclick="closeNewQuoteModal()" class="text-slate-400 hover:text-slate-800 text-xl"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <form onsubmit="handleVendorQuoteSubmit(event)" class="p-6 space-y-5 bg-white">
+                <input type="hidden" id="nq-client-phone">
+                <div id="nq-client-prefill-note" class="hidden mt-1 -mb-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-100 text-[11px] text-emerald-800"><i class="fa-solid fa-circle-check mr-1"></i>Datos del cliente completados automáticamente desde su expediente.</div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cliente *</label><input type="text" id="nq-client-name" required placeholder="Nombre del cliente" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-sm"></div>
                     <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Correo *</label><input type="email" id="nq-client-email" required placeholder="cliente@correo.com" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-slate-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none text-sm"></div>
@@ -2009,9 +2004,22 @@
         }
 
         // ===================== VENDOR: NEW QUOTE FLOW =====================
-        function openNewQuoteModal() {
+        function openNewQuoteModal(clientId) {
             state.vendorQuoteItems = [];
             document.querySelector('#new-quote-modal form').reset();
+            // Si se abre desde el expediente de un cliente ya existente, se rellena con SU info en vez
+            // de arrancar en blanco — antes había que volver a escribir nombre/correo/teléfono a mano
+            // aunque ya se tuvieran guardados, obligando a rehacer todo desde cero (queja real del negocio).
+            const prefillClient = clientId ? (state.clients || []).find(c => c.id === clientId) : null;
+            const prefillNote = document.getElementById('nq-client-prefill-note');
+            if (prefillClient) {
+                document.getElementById('nq-client-name').value = prefillClient.name || '';
+                document.getElementById('nq-client-email').value = prefillClient.email || '';
+                document.getElementById('nq-client-phone').value = prefillClient.phone || '';
+                if (prefillNote) prefillNote.classList.remove('hidden');
+            } else if (prefillNote) {
+                prefillNote.classList.add('hidden');
+            }
             const wrap = document.getElementById('nq-product-select__wrap');
             // Los equipos de Sellado de Techo NO se listan aquí: su precio es $/pie², no un precio
             // fijo, y este selector genérico multiplica precio × cantidad como si fuera un producto
@@ -2084,7 +2092,7 @@
                 id: 'L-' + Math.floor(1000 + Math.random() * 9000),
                 clientName: document.getElementById('nq-client-name').value,
                 clientEmail: document.getElementById('nq-client-email').value,
-                clientCompany: '', clientPhone: '',
+                clientCompany: '', clientPhone: (document.getElementById('nq-client-phone').value || '').trim(),
                 items: [...state.vendorQuoteItems],
                 total: state.vendorQuoteItems.reduce((sum, i) => sum + i.price * i.qty, 0),
                 status: 'En revisión de crédito',
@@ -2444,12 +2452,15 @@
             const grid = document.getElementById('media-gallery-grid');
             if (!grid) return;
             const items = (state.siteContent.gallery || []);
-            grid.innerHTML = items.map(item => `<div class="tilt-3d rounded-2xl overflow-hidden border border-brand-100 shadow-sm hover:shadow-glass-xl transition-all duration-300 hover:-translate-y-2 group bg-white animate-on-scroll visible">
-                <div class="relative h-64 overflow-hidden">
-                    <img src="${escPublic(item.imageUrl)}" alt="${escPublic(item.title)}" class="w-full h-full object-cover group-hover:scale-110 transition duration-700">
-                    <div class="absolute inset-0 bg-gradient-to-t from-ink-950/80 to-transparent"></div>
-                </div>
-                <div class="gallery-caption p-6"><div class="gallery-caption-sheen"></div><h4 class="font-bold text-white text-lg mb-1">${escPublic(item.title)}</h4><p class="text-sm text-white/85 leading-relaxed">${escPublic(item.text)}</p></div>
+            // Antes cada foto se recortaba a un cuadro fijo (h-64 + object-cover) con un texto en
+            // overlay oscuro encima — se veía bien en fotos "de stock" pero cortaba fotos reales de
+            // instalaciones (techos, equipos) de forma rara, y el efecto de brillo metálico se sentía
+            // recargado. Ahora la foto se muestra COMPLETA (ancho completo, alto natural, nada
+            // recortado) y la descripción va debajo en una tarjeta clara y sencilla — se ve más limpio
+            // y es más fácil de leer para cualquiera, sin depender de un efecto vistoso.
+            grid.innerHTML = items.map(item => `<div class="rounded-2xl overflow-hidden border border-brand-100 shadow-sm hover:shadow-glass-xl transition-all duration-300 bg-white animate-on-scroll visible">
+                <img src="${escPublic(item.imageUrl)}" alt="${escPublic(item.title)}" class="w-full h-auto block">
+                <div class="p-6 sm:p-8"><h4 class="font-bold text-slate-900 text-xl mb-2">${escPublic(item.title)}</h4><p class="text-sm sm:text-base text-slate-600 leading-relaxed">${escPublic(item.text)}</p></div>
             </div>`).join('') || '<div class="v2-empty col-span-full">Aún no hay fotos en la galería. Añádelas desde el panel Admin → Editor de Sitio Web.</div>';
         }
 
@@ -2756,7 +2767,7 @@
                 <div class="border border-brand-100 rounded-xl p-3 bg-brand-50/40">
                     <div class="flex items-start gap-2 mb-2">
                         <input type="text" value="${(v.label || '').replace(/"/g, '&quot;')}" oninput="updateProdVariantField(${i},'label',this.value)" placeholder="Nombre de la variante (ej. Batería + Panel Solar)" class="flex-grow bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-brand-500">
-                        <input type="number" min="0" step="0.01" value="${v.price != null && v.price !== '' ? v.price : ''}" oninput="updateProdVariantField(${i},'price',this.value)" placeholder="${document.getElementById('prod-roofseal-enabled') && document.getElementById('prod-roofseal-enabled').checked ? 'Precio/pie²' : 'Precio USD'}" class="w-28 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-brand-500">
+                        <input type="text" inputmode="decimal" value="${v.price != null && v.price !== '' ? v.price : ''}" oninput="leonV2SanitizeDecimalInput(this);updateProdVariantField(${i},'price',this.value)" placeholder="${document.getElementById('prod-roofseal-enabled') && document.getElementById('prod-roofseal-enabled').checked ? 'Precio/pie²' : 'Precio USD'}" class="w-28 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-brand-500">
                         <button type="button" onclick="removeProdVariant(${i})" title="Quitar variante" class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-red-200 text-red-500 hover:bg-red-50"><i class="fa-solid fa-trash text-xs"></i></button>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 mb-2">
@@ -3248,7 +3259,7 @@
       </div>
       <div id="v2-fin-rate-wrap" class="hidden">
         <label class="text-[10px] font-black uppercase text-slate-500">Tasa de interés anual (%) — según aprobación de crédito</label>
-        <input type="number" id="v2-fin-rate" min="0" step="0.01" oninput="leonV2RecalcFinRatePreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. 14.00">
+        <input type="text" inputmode="decimal" id="v2-fin-rate" oninput="leonV2SanitizeDecimalInput(this);leonV2RecalcFinRatePreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. 14.00">
         <p id="v2-fin-rate-hint" class="text-[10px] text-slate-400 mt-1"></p>
         <p id="v2-fin-rate-preview" class="text-[11px] font-bold text-brand-600 mt-1"></p>
       </div>
@@ -3263,8 +3274,8 @@
         </div>
         <div id="v2-solar-monthly-wrap" class="mb-4">
           <div class="grid sm:grid-cols-2 gap-4">
-            <div><label class="text-[10px] font-black uppercase text-slate-500">Factura mensual actual ($)</label><input type="number" id="v2-solar-bill" min="0" step="0.01" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 bg-white" placeholder="Ej. 250"></div>
-            <div><label class="text-[10px] font-black uppercase text-slate-500">Tarifa LUMA ($/kWh)</label><input type="number" id="v2-solar-luma-rate" min="0" step="0.001" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 bg-white"></div>
+            <div><label class="text-[10px] font-black uppercase text-slate-500">Factura mensual actual ($)</label><input type="text" inputmode="decimal" id="v2-solar-bill" oninput="leonV2SanitizeDecimalInput(this)" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 bg-white" placeholder="Ej. 250"></div>
+            <div><label class="text-[10px] font-black uppercase text-slate-500">Tarifa LUMA ($/kWh)</label><input type="text" inputmode="decimal" id="v2-solar-luma-rate" oninput="leonV2SanitizeDecimalInput(this)" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 bg-white"></div>
           </div>
           <label class="mt-2 inline-flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg bg-white border border-brand-200 text-brand-700 text-[11px] font-bold"><i class="fa-solid fa-camera"></i>Leer factura desde una foto (opcional)<input type="file" accept="image/*" class="hidden" onchange="handleLumaBillPhotoMonthly(event)"></label>
           <p class="text-[10px] text-slate-400 mt-1">Lee el texto impreso (total a pagar, kWh) — no puede leer la gráfica de barras del historial. Tú confirmas los números antes de usarlos.</p>
@@ -3416,7 +3427,7 @@
 <div id="leon-v2-adjust-commission" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-md">
   <div class="flex justify-between items-start"><h3 class="text-xl font-black">Ajustar comisión</h3><button onclick="leonV2Close('leon-v2-adjust-commission')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
   <div class="mt-5 space-y-4">
-    <div><label class="text-[10px] font-black uppercase text-slate-500">Nuevo monto (USD)</label><input id="v2-adjust-amount" type="number" step="0.01" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+    <div><label class="text-[10px] font-black uppercase text-slate-500">Nuevo monto (USD)</label><input id="v2-adjust-amount" type="text" inputmode="decimal" oninput="leonV2SanitizeDecimalInput(this)" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
     <div><label class="text-[10px] font-black uppercase text-slate-500">Motivo del ajuste *</label><input id="v2-adjust-reason" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. Devolución parcial del cliente"></div>
     <button onclick="leonV2SaveCommissionAdjustment()" class="w-full py-3 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Guardar ajuste</button>
   </div>
@@ -3428,17 +3439,19 @@
     <div class="flex justify-between items-start"><div><div class="v2-pill mb-2"><i class="fa-solid fa-calculator"></i> CPQ</div><h3 class="text-2xl font-black text-slate-900">Configurar precio</h3><p class="text-sm text-slate-500 mt-1">Descuentos, cargos e financiamiento — recalcula el total real de la propuesta.</p></div><button onclick="leonV2Close('leon-v2-pricing-modal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="mt-6 space-y-4">
       <div class="p-4 rounded-xl bg-slate-50 text-xs text-slate-500" id="v2-pricing-items-summary"></div>
+      <div id="v2-price-additem-wrap"><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Agregar otro producto</label><div class="flex gap-2"><div id="v2-price-add-product__wrap" class="flex-grow"></div><input id="v2-price-add-qty" type="number" min="1" value="1" class="w-20 border border-slate-200 rounded-xl px-3 py-3 text-sm"><button type="button" onclick="leonV2PricingAddItem()" class="px-4 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Agregar</button></div><p class="text-[9px] text-slate-400 mt-1">Puedes cambiar el equipo de esta propuesta sin tener que crearla de nuevo — quita el que ya no quiere y agrega el nuevo.</p></div>
+      <div id="v2-price-provider-wrap"><label class="text-[10px] font-black uppercase text-slate-500">Método de pago / Financiamiento</label><select id="v2-price-provider" onchange="leonV2PriceProviderChanged()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="Cash">Cash</option><option value="PCI">PCI</option><option value="Cooperativa">Cooperativa</option><option value="Synchrony Bank">Synchrony Bank</option></select></div>
       <div class="grid md:grid-cols-2 gap-4">
-        <div><label class="text-[10px] font-black uppercase text-slate-500">Descuento (USD)</label><input id="v2-price-discount" type="number" min="0" step="0.01" value="0" oninput="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
-        <div><label class="text-[10px] font-black uppercase text-slate-500">Instalación (USD)</label><input id="v2-price-install" type="number" min="0" step="0.01" value="0" oninput="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
-        <div><label class="text-[10px] font-black uppercase text-slate-500">Transporte (USD)</label><input id="v2-price-transport" type="number" min="0" step="0.01" value="0" oninput="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
-        <div><label class="text-[10px] font-black uppercase text-slate-500">Impuesto / IVU (%)</label><input id="v2-price-tax" type="number" min="0" step="0.01" value="11.5" oninput="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><p class="text-[9px] text-slate-400 mt-1">IVU Puerto Rico por defecto (10.5% estatal + 1% municipal). Editable si aplica exención u otra tasa.</p></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Descuento (USD)</label><div class="flex gap-2 mt-1"><input id="v2-price-discount" type="text" inputmode="decimal" value="0" oninput="leonV2SanitizeDecimalInput(this);leonV2RecalcPricingPreview()" class="w-full border border-slate-200 rounded-xl px-4 py-3"><button type="button" tabindex="-1" onclick="leonV2StepDecimal('v2-price-discount',-1,0)" class="w-11 flex-none rounded-xl border border-slate-200 text-slate-500"><i class="fa-solid fa-minus text-[10px]"></i></button><button type="button" tabindex="-1" onclick="leonV2StepDecimal('v2-price-discount',1,0)" class="w-11 flex-none rounded-xl border border-slate-200 text-slate-500"><i class="fa-solid fa-plus text-[10px]"></i></button></div></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Instalación (USD)</label><div class="flex gap-2 mt-1"><input id="v2-price-install" type="text" inputmode="decimal" value="0" oninput="leonV2SanitizeDecimalInput(this);leonV2RecalcPricingPreview()" class="w-full border border-slate-200 rounded-xl px-4 py-3"><button type="button" tabindex="-1" onclick="leonV2StepDecimal('v2-price-install',-1,0)" class="w-11 flex-none rounded-xl border border-slate-200 text-slate-500"><i class="fa-solid fa-minus text-[10px]"></i></button><button type="button" tabindex="-1" onclick="leonV2StepDecimal('v2-price-install',1,0)" class="w-11 flex-none rounded-xl border border-slate-200 text-slate-500"><i class="fa-solid fa-plus text-[10px]"></i></button></div></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Transporte (USD)</label><div class="flex gap-2 mt-1"><input id="v2-price-transport" type="text" inputmode="decimal" value="0" oninput="leonV2SanitizeDecimalInput(this);leonV2RecalcPricingPreview()" class="w-full border border-slate-200 rounded-xl px-4 py-3"><button type="button" tabindex="-1" onclick="leonV2StepDecimal('v2-price-transport',-1,0)" class="w-11 flex-none rounded-xl border border-slate-200 text-slate-500"><i class="fa-solid fa-minus text-[10px]"></i></button><button type="button" tabindex="-1" onclick="leonV2StepDecimal('v2-price-transport',1,0)" class="w-11 flex-none rounded-xl border border-slate-200 text-slate-500"><i class="fa-solid fa-plus text-[10px]"></i></button></div></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Impuesto / IVU (%)</label><div class="flex gap-2 mt-1"><input id="v2-price-tax" type="text" inputmode="decimal" value="11.5" oninput="leonV2SanitizeDecimalInput(this);leonV2RecalcPricingPreview()" class="w-full border border-slate-200 rounded-xl px-4 py-3"><button type="button" tabindex="-1" onclick="leonV2StepDecimal('v2-price-tax',-0.1,0)" class="w-11 flex-none rounded-xl border border-slate-200 text-slate-500"><i class="fa-solid fa-minus text-[10px]"></i></button><button type="button" tabindex="-1" onclick="leonV2StepDecimal('v2-price-tax',0.1,0)" class="w-11 flex-none rounded-xl border border-slate-200 text-slate-500"><i class="fa-solid fa-plus text-[10px]"></i></button></div><p class="text-[9px] text-slate-400 mt-1">IVU Puerto Rico por defecto (10.5% estatal + 1% municipal). Editable si aplica exención u otra tasa.</p></div>
       </div>
       <div id="v2-price-exempt-note" class="hidden p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-xs text-emerald-800"><i class="fa-solid fa-circle-check mr-1"></i> <span id="v2-price-exempt-text"></span></div>
       <div id="v2-price-months-wrap"><label class="text-[10px] font-black uppercase text-slate-500">Financiamiento</label><select id="v2-price-months" onchange="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="0">Contado — sin financiamiento</option><option value="6">6 meses</option><option value="12">12 meses</option><option value="18">18 meses</option><option value="24">24 meses</option><option value="30">30 meses</option><option value="36">36 meses</option><option value="42">42 meses</option><option value="48">48 meses</option><option value="54">54 meses</option><option value="60">60 meses</option><option value="66">66 meses</option><option value="72">72 meses</option><option value="78">78 meses</option><option value="84">84 meses</option><option value="90">90 meses</option><option value="96">96 meses</option></select></div>
       <div id="v2-price-notes-wrap" class="hidden"><label class="text-[10px] font-black uppercase text-slate-500">Notas internas de la propuesta</label><textarea id="v2-price-notes" rows="2" oninput="leonV2ApplyRateLockState()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 text-sm" placeholder="Notas para el equipo (nunca las ve el cliente)..."></textarea></div>
       <div id="v2-price-rate-locked" class="hidden p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500"><i class="fa-solid fa-lock mr-1"></i> La tasa de interés real es información interna — el cliente nunca la ve. <span id="v2-price-rate-locked-reason"></span></div>
-      <div id="v2-price-rate-wrap" class="hidden"><label class="text-[10px] font-black uppercase text-slate-500">Tasa de interés anual (%) — según aprobación de crédito</label><input id="v2-price-rate" type="number" min="0" step="0.01" value="0" oninput="leonV2RecalcPricingPreview()" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. 14.00"><p class="text-[10px] text-slate-400 mt-1">Actualiza esto cuando el prestamista confirme la tasa real aprobada — el cliente verá la mensualidad recalculada, nunca el %.</p></div>
+      <div id="v2-price-rate-wrap" class="hidden"><label class="text-[10px] font-black uppercase text-slate-500">Tasa de interés anual (%) — según aprobación de crédito</label><div class="flex gap-2 mt-1"><input id="v2-price-rate" type="text" inputmode="decimal" value="0" oninput="leonV2SanitizeDecimalInput(this);leonV2RecalcPricingPreview()" class="w-full border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. 14.00"><button type="button" tabindex="-1" onclick="leonV2StepDecimal('v2-price-rate',-0.1,0)" class="w-11 flex-none rounded-xl border border-slate-200 text-slate-500"><i class="fa-solid fa-minus text-[10px]"></i></button><button type="button" tabindex="-1" onclick="leonV2StepDecimal('v2-price-rate',0.1,0)" class="w-11 flex-none rounded-xl border border-slate-200 text-slate-500"><i class="fa-solid fa-plus text-[10px]"></i></button></div><p class="text-[10px] text-slate-400 mt-1">Actualiza esto cuando el prestamista confirme la tasa real aprobada — el cliente verá la mensualidad recalculada, nunca el %.</p></div>
       <div id="v2-price-sunrun-note" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-100 text-xs text-amber-800"><i class="fa-solid fa-solar-panel mr-1"></i> Esta propuesta usa financiamiento Sunrun (PPA) — el pago mensual se fijó con la calculadora solar al crearla y no se recalcula aquí. Para cambiarlo, genera una nueva propuesta.</div>
       <div id="v2-price-disclaimer" class="p-4 rounded-2xl bg-blue-50 border border-blue-100 text-xs text-blue-800"><i class="fa-solid fa-circle-info mr-1"></i> El pago mensual estimado usa la fórmula real del proveedor seleccionado (interés compuesto para PCI/Cooperativa, fee fijo para Synchrony, sin interés para Cash).</div>
       <div class="grid sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-900 text-white">
@@ -3538,6 +3551,11 @@
   let v2ProductMediaState=null; // {id, media:[{type,url}], idx} — galería de fotos/video del equipo abierto en el detalle
   const DEFAULT_EDITOR_BLOCKS=v2Blocks.slice();
   let v2EditorQuoteId=null, v2PricingQuoteId=null;
+  // Copia de trabajo de los productos de la propuesta que se está ajustando en el CPQ — igual que
+  // descuento/instalación/transporte/meses, NUNCA se escribe en la propuesta real (q.items) hasta que
+  // se presiona "Guardar y recalcular propuesta" en leonV2SavePricing. Así, si alguien abre el CPQ,
+  // toca el producto y cierra el modal sin guardar, la propuesta real queda intacta.
+  let v2PricingDraftItems=[];
   function daysBetween(a,b){const da=new Date(a),db=new Date(b);if(isNaN(da)||isNaN(db))return null;return Math.round((db-da)/(1000*60*60*24))}
   function findQuoteAnywhere(id){return state.quotes.find(x=>x.id===id)||state.quotesHistory.find(x=>x.id===id)}
   function findClient(email){return email?state.clients.find(c=>c.email&&c.email.toLowerCase()===email.toLowerCase()):null}
@@ -3549,7 +3567,7 @@
     synchronyFeePct: 0.27,      // Synchrony: fee único sobre el principal, luego se divide entre los meses (sin interés compuesto) — así lo describió el negocio.
     cooperativaDefaultRate: null, // Cooperativa: sin default — el vendedor escribe la tasa real aprobada (típico 10.99%–14% según crédito del cliente).
     pciDefaultRate: 19.99,      // PCI: "tasa fija" típica citada por el negocio — varía según la letra de score que devuelva Impirica, el vendedor puede ajustarla.
-    pciMaxPrincipal: 11000      // Límite real de solicitud de PCI — a pedido del negocio, se bloquea ANTES de crear la propuesta si el total lo supera.
+    pciMaxPrincipal: 15000      // Límite real de solicitud de PCI — a pedido del negocio, se bloquea ANTES de crear la propuesta si el total lo supera. (Actualizado de $11,000 a $15,000 — PCI subió su límite.)
   };
   const SOLAR_CONFIG = {
     tarifaLuma: 0.27,           // $/kWh de LUMA usado para traducir factura ⇄ consumo
@@ -4004,7 +4022,7 @@
         return;
       }
       let html='<div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800"><b class="text-[11px] uppercase tracking-wide">Detectado en la foto — verifica antes de usar</b><div class="grid sm:grid-cols-2 gap-2 mt-2">';
-      html+=`<div><label class="text-[9px] uppercase font-black text-emerald-700">Factura ($)</label><input type="number" id="v2-solar-bill-detected" value="${r.amount!=null?r.amount:''}" step="0.01" placeholder="No detectado" class="w-full mt-0.5 border border-emerald-200 rounded-lg px-2 py-1.5 text-xs bg-white"></div>`;
+      html+=`<div><label class="text-[9px] uppercase font-black text-emerald-700">Factura ($)</label><input type="text" inputmode="decimal" id="v2-solar-bill-detected" value="${r.amount!=null?r.amount:''}" oninput="leonV2SanitizeDecimalInput(this)" placeholder="No detectado" class="w-full mt-0.5 border border-emerald-200 rounded-lg px-2 py-1.5 text-xs bg-white"></div>`;
       html+=`<div><label class="text-[9px] uppercase font-black text-emerald-700">Consumo (kWh)</label><input type="number" id="v2-solar-kwh-detected" value="${r.kwh!=null?r.kwh:''}" step="1" placeholder="No detectado" class="w-full mt-0.5 border border-emerald-200 rounded-lg px-2 py-1.5 text-xs bg-white"></div>`;
       html+='</div><button type="button" onclick="leonV2ApplyOcrMonthly()" class="mt-3 w-full py-2 rounded-lg bg-emerald-600 text-white text-[11px] font-black uppercase">Usar estos valores</button></div>';
       statusEl.innerHTML=html;
@@ -4280,6 +4298,37 @@
     const v=String(value||'').replace(/\s+/g,'');
     if(v.length<=4) return v?('•'.repeat(Math.max(0,v.length-1))+v.slice(-1)):'';
     return '•'.repeat(v.length-4)+v.slice(-4);
+  }
+  // ================= CAMPOS DE DINERO/PORCENTAJE EN MÓVIL =================
+  // Reporte real: en el celular, los campos de precio/tasa (<input type="number" step="0.01">) no
+  // dejaban escribir el punto decimal (ej. "4.50") — pasa porque en muchos teclados numéricos de
+  // Android/iOS en español, type="number" muestra un teclado SIN punto o lo bloquea según el idioma
+  // del dispositivo. Además, en casi ningún celular aparecen las flechitas nativas de subir/bajar
+  // (otro reporte real) — los navegadores móviles las esconden en type="number" de todas formas.
+  // Arreglo de una vez para todo el sistema: type="text" + inputmode="decimal" SÍ muestra un teclado
+  // numérico con punto decimal en iOS y Android, y leonV2SanitizeDecimalInput evita que se cuele
+  // cualquier otro carácter (letras, comas, varios puntos). Los campos donde de verdad tiene sentido
+  // ajustar de poquito en poquito (precio por pie², descuento, tasa...) además llevan botones +/-
+  // propios (leonV2StepDecimal / leonV2DecimalStepperButtons) que no dependen de lo que el navegador
+  // decida mostrar.
+  window.leonV2SanitizeDecimalInput=function(el){
+    if(!el) return;
+    let v = String(el.value).replace(',', '.').replace(/[^0-9.]/g,'');
+    const firstDot = v.indexOf('.');
+    if(firstDot !== -1) v = v.slice(0,firstDot+1) + v.slice(firstDot+1).replace(/\./g,'');
+    if(v !== el.value) el.value = v;
+  };
+  window.leonV2StepDecimal=function(id, step, min){
+    const el=document.getElementById(id); if(!el) return;
+    const cur=Number(el.value)||0;
+    let next=Math.round((cur+step)*100)/100;
+    if(min!=null && next<min) next=min;
+    el.value = next;
+    el.dispatchEvent(new Event('input', {bubbles:true}));
+  };
+  function leonV2DecimalStepperButtons(id, step, min){
+    const minArg = (min!=null) ? (','+min) : '';
+    return `<button type="button" tabindex="-1" onclick="leonV2StepDecimal('${id}',${-step}${minArg})" class="w-9 h-9 flex-none rounded-lg border border-slate-200 text-slate-500 hover:border-brand-400 hover:text-brand-600 flex items-center justify-center"><i class="fa-solid fa-minus text-[10px]"></i></button><button type="button" tabindex="-1" onclick="leonV2StepDecimal('${id}',${step}${minArg})" class="w-9 h-9 flex-none rounded-lg border border-slate-200 text-slate-500 hover:border-brand-400 hover:text-brand-600 flex items-center justify-center"><i class="fa-solid fa-plus text-[10px]"></i></button>`;
   }
   // Alterna entre ver y ocultar un campo sensible MIENTRAS SE ESCRIBE (nunca cambia qué se guarda —
   // eso siempre pasa por maskId al enviar el formulario, sin importar el estado del ojito). El botón
@@ -5416,27 +5465,54 @@
     </div></div>`;
     let decisionHtml;
     if(q.acceptance){
-      decisionHtml=`<div class="v2-card p-6 mt-6 bg-emerald-50 border border-emerald-100"><div class="flex items-center gap-2 text-emerald-700 font-black text-sm"><i class="fa-solid fa-circle-check"></i> Propuesta aceptada digitalmente</div><div class="text-xs text-emerald-800 mt-2">Por <b>${esc(q.acceptance.name)}</b> el ${esc(new Date(q.acceptance.acceptedAt).toLocaleString())}</div>${q.acceptance.signatureDataUrl?`<div class="mt-2"><img src="${q.acceptance.signatureDataUrl}" class="h-12 bg-white border border-emerald-200 rounded px-2"></div>`:''}<div class="text-[10px] text-emerald-700/70 mt-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Esto registra un trazo de firma real dibujado por la persona + nombre + huella del dispositivo — no es un proveedor certificado con validez legal notarial (para eso hace falta DocuSign, HelloSign u otro integrado con backend).</div></div>`;
+      const phoneNote=q.acceptance.acceptedByPhone?`<div class="text-xs text-emerald-800 mt-2"><i class="fa-solid fa-phone mr-1"></i>Aceptada por llamada telefónica — certificado por <b>${esc(q.acceptance.phoneVerifiedBy||'')}</b></div>`:'';
+      decisionHtml=`<div class="v2-card p-6 mt-6 bg-emerald-50 border border-emerald-100"><div class="flex items-center gap-2 text-emerald-700 font-black text-sm"><i class="fa-solid fa-circle-check"></i> Propuesta aceptada digitalmente</div><div class="text-xs text-emerald-800 mt-2">Por <b>${esc(q.acceptance.name)}</b> el ${esc(new Date(q.acceptance.acceptedAt).toLocaleString())}</div>${phoneNote}${q.acceptance.signatureDataUrl?`<div class="mt-2"><img src="${q.acceptance.signatureDataUrl}" class="h-12 bg-white border border-emerald-200 rounded px-2"></div>`:''}<div class="text-[10px] text-emerald-700/70 mt-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${q.acceptance.acceptedByPhone?'Esto registra una aceptación verbal por teléfono, certificada por un empleado — no hay firma trazada porque el cliente no pudo firmar digitalmente.':'Esto registra un trazo de firma real dibujado por la persona + nombre + huella del dispositivo — no es un proveedor certificado con validez legal notarial (para eso hace falta DocuSign, HelloSign u otro integrado con backend).'}</div></div>`;
     } else if(q.status==='Rechazada'){
       decisionHtml=`<div class="v2-card p-6 mt-6 bg-red-50 border border-red-100"><div class="text-red-700 font-black text-sm"><i class="fa-solid fa-circle-xmark mr-2"></i>Propuesta rechazada</div>${q.rejectReason?`<div class="text-xs text-red-700/80 mt-2">Motivo: ${esc(q.rejectReason)}</div>`:''}</div>`;
     } else {
-      decisionHtml=`<div class="v2-card p-6 mt-6"><div class="flex flex-wrap gap-3"><button onclick="leonV2TogglePortalAccept()" class="py-3 px-4 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase"><i class="fa-solid fa-signature mr-2"></i>Aceptar propuesta</button><button onclick="leonV2TogglePortalReject()" class="py-3 px-4 rounded-xl border border-red-200 text-red-600 text-xs font-black uppercase"><i class="fa-solid fa-xmark mr-2"></i>Rechazar</button><button onclick="showToast('Solicitud de cambio enviada al consultor.','success')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-comments mr-2"></i>Solicitar cambio</button></div><div id="v2-portal-accept-box" class="hidden mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-100 space-y-3"><div class="text-xs text-emerald-800"><i class="fa-solid fa-circle-info mr-1"></i>Esto guarda una firma real trazada a mano + nombre + huella del dispositivo — no es un proveedor certificado con validez legal notarial como DocuSign.</div><input id="v2-accept-name" placeholder="Escribe tu nombre completo" class="w-full px-4 py-3 rounded-xl border border-emerald-200 text-sm outline-none">${leonV2SignaturePadHtml('v2-accept-signature')}<label class="flex items-center gap-2 text-xs text-emerald-800"><input type="checkbox" id="v2-accept-check"> Confirmo que acepto los términos de esta propuesta.</label><button onclick="leonV2ConfirmAccept('${q.id}')" class="w-full py-3 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase">Confirmar aceptación</button></div><div id="v2-portal-reject-box" class="hidden mt-4 p-4 rounded-xl bg-red-50 border border-red-100 space-y-3"><select id="v2-reject-reason-select" onchange="document.getElementById('v2-reject-reason-detail-wrap').classList.toggle('hidden', this.value!=='Otro')" class="w-full px-4 py-3 rounded-xl border border-red-200 text-sm outline-none"><option value="">Elige un motivo...</option>${REJECT_REASONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select><div id="v2-reject-reason-detail-wrap" class="hidden"><input id="v2-reject-reason-detail" placeholder="Detalle del motivo..." class="w-full px-4 py-3 rounded-xl border border-red-200 text-sm outline-none"></div><button onclick="leonV2ConfirmReject('${q.id}')" class="w-full py-3 rounded-xl bg-red-600 text-white text-xs font-black uppercase">Confirmar rechazo</button></div></div>`;
+      // "Aceptó por llamada" es para cuando la propuesta se cerró por teléfono y la persona (a veces
+      // de edad avanzada) no sabe firmar digitalmente: en vez de exigir el trazo de firma, un empleado
+      // certifica con su nombre que el cliente aceptó verbalmente los términos. Ver
+      // leonV2TogglePhoneAccept y window.leonV2ConfirmAccept más abajo.
+      decisionHtml=`<div class="v2-card p-6 mt-6"><div class="flex flex-wrap gap-3"><button onclick="leonV2TogglePortalAccept()" class="py-3 px-4 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase"><i class="fa-solid fa-signature mr-2"></i>Aceptar propuesta</button><button onclick="leonV2TogglePortalReject()" class="py-3 px-4 rounded-xl border border-red-200 text-red-600 text-xs font-black uppercase"><i class="fa-solid fa-xmark mr-2"></i>Rechazar</button><button onclick="showToast('Solicitud de cambio enviada al consultor.','success')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-comments mr-2"></i>Solicitar cambio</button></div><div id="v2-portal-accept-box" class="hidden mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-100 space-y-3"><div class="text-xs text-emerald-800"><i class="fa-solid fa-circle-info mr-1"></i>Esto guarda una firma real trazada a mano + nombre + huella del dispositivo — no es un proveedor certificado con validez legal notarial como DocuSign.</div><label class="flex items-start gap-2 text-xs text-emerald-800 font-bold cursor-pointer bg-white/60 p-2.5 rounded-lg"><input type="checkbox" id="v2-accept-byphone" onchange="leonV2TogglePhoneAccept()" class="mt-0.5"> Esta venta se cerró por teléfono y el cliente no puede firmar digitalmente (ej. persona de edad avanzada)</label><input id="v2-accept-name" placeholder="Escribe el nombre completo del cliente" class="w-full px-4 py-3 rounded-xl border border-emerald-200 text-sm outline-none"><div id="v2-accept-signature-wrap">${leonV2SignaturePadHtml('v2-accept-signature')}</div><div id="v2-accept-phone-wrap" class="hidden"><label class="text-[10px] font-black uppercase text-emerald-700 mb-1 block">Empleado que certifica la llamada</label><input id="v2-accept-phone-employee" value="${esc((state.currentUser&&state.currentUser.name)||'')}" class="w-full px-4 py-3 rounded-xl border border-emerald-200 text-sm outline-none"></div><label class="flex items-center gap-2 text-xs text-emerald-800" id="v2-accept-check-label"><input type="checkbox" id="v2-accept-check"> Confirmo que acepto los términos de esta propuesta.</label><button onclick="leonV2ConfirmAccept('${q.id}')" class="w-full py-3 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase">Confirmar aceptación</button></div><div id="v2-portal-reject-box" class="hidden mt-4 p-4 rounded-xl bg-red-50 border border-red-100 space-y-3"><select id="v2-reject-reason-select" onchange="document.getElementById('v2-reject-reason-detail-wrap').classList.toggle('hidden', this.value!=='Otro')" class="w-full px-4 py-3 rounded-xl border border-red-200 text-sm outline-none"><option value="">Elige un motivo...</option>${REJECT_REASONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select><div id="v2-reject-reason-detail-wrap" class="hidden"><input id="v2-reject-reason-detail" placeholder="Detalle del motivo..." class="w-full px-4 py-3 rounded-xl border border-red-200 text-sm outline-none"></div><button onclick="leonV2ConfirmReject('${q.id}')" class="w-full py-3 rounded-xl bg-red-600 text-white text-xs font-black uppercase">Confirmar rechazo</button></div></div>`;
     }
     const html=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">PORTAL DEL CLIENTE · ${esc(q.id)}</div><h3 class="text-2xl md:text-3xl font-black">${esc(q.clientName)}</h3><p class="text-sm text-slate-500">${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</p></div><button onclick="leonV2Close('leon-v2-client-portal')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div><div class="grid lg:grid-cols-3 gap-4 mt-7"><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Estado</div><div class="text-xl font-black mt-2">${esc(q.status)}</div><div class="text-xs text-slate-500 mt-2">Origen: <b>${esc(q.origin)}</b></div></div><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Consultor</div><div class="text-xl font-black mt-2">${esc(q.vendorName||'Asignación pendiente')}</div><div class="text-xs text-slate-500 mt-2">Responsable comercial</div></div><div class="v2-card p-5"><div class="text-[10px] uppercase font-black text-slate-500">Valor</div><div class="text-2xl font-black text-brand-600 mt-2">${money(t.total)}</div><div class="text-xs text-slate-500 mt-2">${esc(q.paymentType)}</div></div></div><div class="grid lg:grid-cols-[1.2fr_.8fr] gap-6 mt-6"><div class="v2-card p-6"><h4 class="font-black">Productos</h4><div class="mt-4 space-y-3">${q.items.map(i=>`<div class="flex justify-between gap-4 p-3 bg-slate-50 rounded-xl"><div><b>${esc(i.name)}</b><div class="text-xs text-slate-500">Cantidad: ${i.qty}</div></div><b>${money(i.price*i.qty)}</b></div>`).join('')}</div></div><div class="v2-card p-6"><h4 class="font-black">Progreso</h4><div class="v2-timeline mt-5 space-y-5"><div class="relative"><span class="v2-dot"></span><b class="text-sm">Solicitud creada</b><div class="text-xs text-slate-500">${esc(q.createdAt)}</div></div><div class="relative"><span class="v2-dot"></span><b class="text-sm">Revisión comercial</b><div class="text-xs text-slate-500">En proceso</div></div><div class="relative"><span class="v2-dot" style="background:#cbd5e1"></span><b class="text-sm">Aprobación</b><div class="text-xs text-slate-500">Pendiente</div></div></div></div></div>${roofSealBox}${breakdown}${decisionHtml}<div class="flex flex-wrap gap-3 mt-6"><button onclick="leonV2OpenEditor('${q.id}')" class="py-3 px-4 rounded-xl bg-ink-900 text-white text-xs font-black uppercase"><i class="fa-solid fa-pen-ruler mr-2"></i>Editar propuesta</button><button onclick="leonV2PrintProposalById('${q.id}')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-file-pdf mr-2"></i>PDF / Imprimir</button><button onclick="leonV2EmailProposal('${q.id}')" class="py-3 px-4 rounded-xl border border-slate-200 text-xs font-black uppercase"><i class="fa-solid fa-envelope mr-2"></i>Enviar por correo</button></div>`;
     document.getElementById('v2-client-portal-content').innerHTML=html;
     open('leon-v2-client-portal');
   };
-  window.leonV2TogglePortalAccept=()=>{const box=document.getElementById('v2-portal-accept-box');const other=document.getElementById('v2-portal-reject-box');if(other)other.classList.add('hidden');if(box){box.classList.toggle('hidden');if(!box.classList.contains('hidden'))leonV2InitSignaturePad('v2-accept-signature');}};
+  window.leonV2TogglePortalAccept=()=>{const box=document.getElementById('v2-portal-accept-box');const other=document.getElementById('v2-portal-reject-box');if(other)other.classList.add('hidden');if(box){box.classList.toggle('hidden');if(!box.classList.contains('hidden')&&!document.getElementById('v2-accept-byphone')?.checked)leonV2InitSignaturePad('v2-accept-signature');}};
   window.leonV2TogglePortalReject=()=>{const box=document.getElementById('v2-portal-reject-box');const other=document.getElementById('v2-portal-accept-box');if(other)other.classList.add('hidden');if(box)box.classList.toggle('hidden')};
+  // Alterna entre "firma dibujada" (el caso normal) y "aceptó por teléfono" (cliente que no sabe o
+  // no puede firmar digitalmente — típicamente una persona de edad avanzada cerrando la venta por
+  // llamada). En vez de exigir un trazo de firma, un empleado certifica con su nombre.
+  window.leonV2TogglePhoneAccept=function(){
+    const byPhone=document.getElementById('v2-accept-byphone')?.checked;
+    const sigWrap=document.getElementById('v2-accept-signature-wrap');
+    const phoneWrap=document.getElementById('v2-accept-phone-wrap');
+    const checkLabel=document.getElementById('v2-accept-check-label');
+    if(sigWrap) sigWrap.classList.toggle('hidden', !!byPhone);
+    if(phoneWrap) phoneWrap.classList.toggle('hidden', !byPhone);
+    if(checkLabel) checkLabel.innerHTML = byPhone
+      ? '<input type="checkbox" id="v2-accept-check"> Confirmo que el cliente aceptó verbalmente los términos de esta propuesta por teléfono.'
+      : '<input type="checkbox" id="v2-accept-check"> Confirmo que acepto los términos de esta propuesta.';
+    if(!byPhone) leonV2InitSignaturePad('v2-accept-signature');
+  };
   window.leonV2ConfirmAccept=id=>{
     const q=findQuoteAnywhere(id); if(!q)return;
     const name=(document.getElementById('v2-accept-name').value||'').trim();
     const checked=document.getElementById('v2-accept-check').checked;
-    if(!name){showToast('Escribe tu nombre completo para aceptar.','warning');return}
-    const signatureDataUrl=typeof leonV2GetSignatureDataUrl==='function'?leonV2GetSignatureDataUrl('v2-accept-signature'):null;
-    if(!signatureDataUrl){showToast('Dibuja tu firma en el recuadro antes de aceptar.','warning');return}
+    const byPhone=!!document.getElementById('v2-accept-byphone')?.checked;
+    if(!name){showToast('Escribe el nombre completo del cliente.','warning');return}
+    let signatureDataUrl=null, phoneEmployee=null;
+    if(byPhone){
+      phoneEmployee=(document.getElementById('v2-accept-phone-employee').value||'').trim();
+      if(!phoneEmployee){showToast('Escribe el nombre del empleado que certifica la llamada.','warning');return}
+    } else {
+      signatureDataUrl=typeof leonV2GetSignatureDataUrl==='function'?leonV2GetSignatureDataUrl('v2-accept-signature'):null;
+      if(!signatureDataUrl){showToast('Dibuja la firma en el recuadro antes de aceptar.','warning');return}
+    }
     if(!checked){showToast('Confirma la casilla de aceptación.','warning');return}
-    q.acceptance={name, acceptedAt:new Date().toISOString(), device:navigator.userAgent, signatureDataUrl};
+    q.acceptance={name, acceptedAt:new Date().toISOString(), device:navigator.userAgent, signatureDataUrl, acceptedByPhone:byPhone, phoneVerifiedBy:phoneEmployee};
     // OJO: firmar en el Portal NO convierte al cliente todavía — a propósito. Hace falta que el
     // vendedor asignado (o un admin) confirme la venta desde su panel (leonV2VendorConfirmSale)
     // antes de que el expediente pase de Lead a Cliente. Ver bloque EMBUDO más arriba.
@@ -5573,7 +5649,7 @@
   // Detalle del plan de Sellado de Techo asociado a una propuesta (si alguno de sus items viene de
   // la calculadora/asistente de Sellado de Techo) — usado tanto en el PDF como en el portal.
   function leonV2RoofSealPlanInfo(q){ const it=(q.items||[]).find(i=>i.roofSealingPlan); return it?it.roofSealingPlan:null; }
-  window.leonV2PrintProposalById=id=>{const q=findQuoteAnywhere(id);if(!q)return;const t=leonV2ComputeTotal(q);const rs=leonV2RoofSealPlanInfo(q);const w=window.open('','_blank');w.document.write(`<html><head><title>Propuesta ${esc(q.id)}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}h1{color:#0876c9}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}img{width:80px;height:60px;object-fit:contain} .total{font-size:22px;font-weight:800;text-align:right;margin-top:20px}.head{display:flex;justify-content:space-between;border-bottom:3px solid #0876c9;padding-bottom:18px}.box{background:#f5f9fd;padding:16px;border-radius:10px;margin-top:20px}.breakdown td{padding:6px 0;border:none}</style></head><body><div class="head"><div><h1>LEON HOME SOLUTIONS</h1><b>PROPUESTA COMERCIAL</b><div>${esc(q.id)}</div></div><div><b>Fecha</b><br>${esc(q.createdAt||'')}</div></div><div class="box"><b>CLIENTE</b><br>${esc(q.clientName)}<br>${esc(q.clientCompany||'')}<br>${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</div><div class="box"><b>CONSULTOR</b><br>${esc(q.vendorName||'Asignación pendiente')}<br>Origen: ${esc(q.origin||'')}</div>${rs?`<div class="box"><b>DETALLE DEL PLAN DE SELLADO DE TECHO</b><br>Área a sellar: <b>${rs.sqft.toLocaleString('en-US')} ft²</b> · Precio: <b>${money(rs.pricePerFt2)}/ft²</b>${rs.warrantyYears?' · Garantía: <b>'+leonV2YearsLabel(rs.warrantyYears)+'</b>':''}${rs.materials?'<br>Materiales/incluye: '+esc(rs.materials):''}</div>`:''}<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${q.items.map(i=>`<tr><td><img src="${esc(i.image||'')}" onerror="this.style.display='none'"> ${esc(i.name)}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${money(i.price*i.qty)}</td></tr>`).join('')}</tbody></table><table class="breakdown"><tbody><tr><td>Subtotal</td><td style="text-align:right">${money(t.subtotal)}</td></tr>${t.discount?`<tr><td>Descuento</td><td style="text-align:right">-${money(t.discount)}</td></tr>`:''}${t.install?`<tr><td>Instalación</td><td style="text-align:right">${money(t.install)}</td></tr>`:''}${t.transport?`<tr><td>Transporte</td><td style="text-align:right">${money(t.transport)}</td></tr>`:''}${t.exemptSubtotal?`<tr><td>Exento de IVU (equipos marcados como exentos)</td><td style="text-align:right">${money(t.exemptSubtotal)}</td></tr>`:''}${t.tax?`<tr><td>Impuesto (IVU)</td><td style="text-align:right">${money(t.tax)}</td></tr>`:''}</tbody></table><div class="total">TOTAL: ${money(t.total)}</div>${leonV2PrintFinancingBlock(q,t)}<div class="box">Condiciones: propuesta sujeta a disponibilidad, validación comercial y condiciones de financiación. Vigencia configurable por administración.</div>${q.acceptance?`<div class="box" style="background:#ecfdf5"><b>ACEPTACIÓN DIGITAL</b><br>${esc(q.acceptance.name)} — ${esc(new Date(q.acceptance.acceptedAt).toLocaleString())}<br>${q.acceptance.signatureDataUrl?`<img src="${q.acceptance.signatureDataUrl}" style="height:50px;margin-top:6px;display:block">`:''}<span style="font-size:11px;color:#555">Firma trazada a mano por la persona (no es un proveedor certificado con validez legal notarial).</span></div>`:''}<div style="margin-top:70px;display:flex;justify-content:space-between"><div>________________________<br>Cliente</div><div>________________________<br>Consultor</div></div><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()};
+  window.leonV2PrintProposalById=id=>{const q=findQuoteAnywhere(id);if(!q)return;const t=leonV2ComputeTotal(q);const rs=leonV2RoofSealPlanInfo(q);const w=window.open('','_blank');w.document.write(`<html><head><title>Propuesta ${esc(q.id)}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}h1{color:#0876c9}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}img{width:80px;height:60px;object-fit:contain} .total{font-size:22px;font-weight:800;text-align:right;margin-top:20px}.head{display:flex;justify-content:space-between;border-bottom:3px solid #0876c9;padding-bottom:18px}.box{background:#f5f9fd;padding:16px;border-radius:10px;margin-top:20px}.breakdown td{padding:6px 0;border:none}</style></head><body><div class="head"><div><h1>LEON HOME SOLUTIONS</h1><b>PROPUESTA COMERCIAL</b><div>${esc(q.id)}</div></div><div><b>Fecha</b><br>${esc(q.createdAt||'')}</div></div><div class="box"><b>CLIENTE</b><br>${esc(q.clientName)}<br>${esc(q.clientCompany||'')}<br>${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</div><div class="box"><b>CONSULTOR</b><br>${esc(q.vendorName||'Asignación pendiente')}<br>Origen: ${esc(q.origin||'')}</div>${rs?`<div class="box"><b>DETALLE DEL PLAN DE SELLADO DE TECHO</b><br>Área a sellar: <b>${rs.sqft.toLocaleString('en-US')} ft²</b> · Precio: <b>${money(rs.pricePerFt2)}/ft²</b>${rs.warrantyYears?' · Garantía: <b>'+leonV2YearsLabel(rs.warrantyYears)+'</b>':''}${rs.materials?'<br>Materiales/incluye: '+esc(rs.materials):''}</div>`:''}<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${q.items.map(i=>`<tr><td><img src="${esc(i.image||'')}" onerror="this.style.display='none'"> ${esc(i.name)}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${money(i.price*i.qty)}</td></tr>`).join('')}</tbody></table><table class="breakdown"><tbody><tr><td>Subtotal</td><td style="text-align:right">${money(t.subtotal)}</td></tr>${t.discount?`<tr><td>Descuento</td><td style="text-align:right">-${money(t.discount)}</td></tr>`:''}${t.install?`<tr><td>Instalación</td><td style="text-align:right">${money(t.install)}</td></tr>`:''}${t.transport?`<tr><td>Transporte</td><td style="text-align:right">${money(t.transport)}</td></tr>`:''}${t.exemptSubtotal?`<tr><td>Exento de IVU (equipos marcados como exentos)</td><td style="text-align:right">${money(t.exemptSubtotal)}</td></tr>`:''}${t.tax?`<tr><td>Impuesto (IVU)</td><td style="text-align:right">${money(t.tax)}</td></tr>`:''}</tbody></table><div class="total">TOTAL: ${money(t.total)}</div>${leonV2PrintFinancingBlock(q,t)}<div class="box">Condiciones: propuesta sujeta a disponibilidad, validación comercial y condiciones de financiación. Vigencia configurable por administración.</div>${q.acceptance?`<div class="box" style="background:#ecfdf5"><b>ACEPTACIÓN DIGITAL</b><br>${esc(q.acceptance.name)} — ${esc(new Date(q.acceptance.acceptedAt).toLocaleString())}<br>${q.acceptance.acceptedByPhone?`<span style="font-size:12px">Aceptada por llamada telefónica — certificado por <b>${esc(q.acceptance.phoneVerifiedBy||'')}</b></span><br>`:(q.acceptance.signatureDataUrl?`<img src="${q.acceptance.signatureDataUrl}" style="height:50px;margin-top:6px;display:block">`:'')}<span style="font-size:11px;color:#555">${q.acceptance.acceptedByPhone?'Aceptación verbal por teléfono, certificada por un empleado — no hay firma trazada.':'Firma trazada a mano por la persona (no es un proveedor certificado con validez legal notarial).'}</span></div>`:''}<div style="margin-top:70px;display:flex;justify-content:space-between"><div>________________________<br>Cliente</div><div>________________________<br>Consultor</div></div><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()};
 
   function buildCRM(){
     const old=document.querySelector('#internal-view > .max-w-7xl'); if(!old)return; old.innerHTML=`<div class="leon-v2-shell"><div class="flex flex-col lg:flex-row justify-between gap-4 mb-6"><div><div class="v2-pill bg-white"><i class="fa-solid fa-shield-halved text-brand-600"></i><span id="v2-role-pill">Administrador</span></div><h2 class="text-3xl md:text-4xl font-black text-slate-900 mt-3" id="v2-greeting">Buenos días 👋</h2><p class="text-sm text-slate-500 mt-1">Tu espacio comercial se adapta automáticamente a tus permisos.</p><div id="v2-db-status" class="mt-2"></div></div><div class="flex items-center gap-3"><div class="relative"><button onclick="leonV2ToggleNotifications()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Notificaciones"><i class="fa-solid fa-bell"></i><span id="v2-notif-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-glass-lg z-50 max-h-96 overflow-y-auto"></div></div><button onclick="leonV2OpenSection('clients')" class="px-4 py-3 rounded-xl border bg-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-2"></i>Buscar cliente</button><button onclick="logoutUser()" class="px-4 py-3 rounded-xl bg-red-50 text-red-600 text-xs font-black"><i class="fa-solid fa-right-from-bracket mr-2"></i>Salir</button></div></div><div class="grid lg:grid-cols-[230px_1fr] gap-6 v2-layout"><aside class="v2-nav h-fit"><div class="px-3 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Workspace</div><div id="v2-nav"></div></aside><section id="v2-main" class="min-w-0"></section></div></div>`;renderNav();renderDashboard();leonV2RefreshNotifications();if(typeof window.leonV2UpdateDbStatusBadge==='function')window.leonV2UpdateDbStatusBadge();
@@ -5687,7 +5763,7 @@
       if(!mine) return;
       const d=daysBetween(a.signature.signedAt, new Date().toISOString());
       if(d!==null && d>7) return;
-      items.push({ icon:'fa-signature', text:'Cliente firmó la solicitud de crédito — '+a.clientName, at:a.signature.signedAt, section:'creditapps' });
+      items.push({ icon:'fa-signature', text:(a.signature.acceptedByPhone?'Cliente aceptó por teléfono la solicitud de crédito — ':'Cliente firmó la solicitud de crédito — ')+a.clientName, at:a.signature.signedAt, section:'creditapps' });
     });
     if(typeof state.tickets!=='undefined'){
       (state.tickets||[]).filter(t=>t.status==='Nuevo').forEach(t=>items.push({icon:'fa-ticket',text:'Ticket nuevo: '+t.id+' — '+t.category,at:t.createdAt,section:'tickets'}));
@@ -6226,17 +6302,17 @@
       </div></div>
       <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">2. Información de vivienda</h4><div class="grid sm:grid-cols-3 gap-3">
         <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">¿Propietario o renta?</label><select id="ca-vivienda-tipo" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="Propietario" ${v.tipo==='Propietario'?'selected':''}>Propietario</option><option value="Renta" ${v.tipo==='Renta'?'selected':''}>Renta</option></select></div>
-        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Pago mensual (casa/hipoteca)</label><input id="ca-vivienda-pago" type="number" min="0" step="0.01" value="${v.pagoMensual!=null?v.pagoMensual:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Pago mensual (casa/hipoteca)</label><input id="ca-vivienda-pago" type="text" inputmode="decimal" value="${v.pagoMensual!=null?v.pagoMensual:''}" oninput="leonV2SanitizeDecimalInput(this)" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
         <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Años viviendo en la propiedad</label><input id="ca-vivienda-anos" type="number" min="0" step="1" value="${v.anos!=null?v.anos:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
       </div></div>
       <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">3. Información laboral</h4><div class="grid sm:grid-cols-3 gap-3">
         <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Nombre del empleador</label><input id="ca-laboral-empleador" value="${esc(l.empleador||'')}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
-        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Ingreso aproximado</label><input id="ca-laboral-ingreso" type="number" min="0" step="0.01" value="${l.ingreso!=null?l.ingreso:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Ingreso aproximado</label><input id="ca-laboral-ingreso" type="text" inputmode="decimal" value="${l.ingreso!=null?l.ingreso:''}" oninput="leonV2SanitizeDecimalInput(this)" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
         <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Tiempo en ese empleo</label><input id="ca-laboral-tiempo" value="${esc(l.tiempoEmpleo||'')}" placeholder="Ej. 2 años" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
       </div></div>
       <div class="p-4 rounded-2xl bg-brand-50/40 border border-brand-100"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">4. Información del financiamiento</h4><div class="grid sm:grid-cols-2 gap-3">
-        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">¿Cuánto desea financiar el cliente?</label><input id="ca-fin-monto" type="number" min="0" step="0.01" value="${f.monto!=null?f.monto:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none">${(!a && linkedQuote)?`<p class="text-[9px] text-brand-600 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>Tomado del total de la propuesta ${esc(linkedQuote.id)} — ajústalo si el financiamiento real es distinto.</p>`:''}</div>
-        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Ganancias extras (opcional)</label><input id="ca-fin-extra" type="number" min="0" step="0.01" value="${f.gananciasExtras!=null?f.gananciasExtras:''}" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">¿Cuánto desea financiar el cliente?</label><input id="ca-fin-monto" type="text" inputmode="decimal" value="${f.monto!=null?f.monto:''}" oninput="leonV2SanitizeDecimalInput(this)" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none">${(!a && linkedQuote)?`<p class="text-[9px] text-brand-600 mt-1"><i class="fa-solid fa-circle-info mr-1"></i>Tomado del total de la propuesta ${esc(linkedQuote.id)} — ajústalo si el financiamiento real es distinto.</p>`:''}</div>
+        <div><label class="text-[10px] font-bold text-slate-500 mb-1 block">Ganancias extras (opcional)</label><input id="ca-fin-extra" type="text" inputmode="decimal" value="${f.gananciasExtras!=null?f.gananciasExtras:''}" oninput="leonV2SanitizeDecimalInput(this)" class="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm outline-none"></div>
       </div></div>
       <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Notas</label><textarea id="ca-notes" rows="2" class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none">${esc(a?a.notes||'':'')}</textarea></div>
       ${a?leonV2CreditAppSignatureBlockHtml(a):''}
@@ -6253,10 +6329,42 @@
   function leonV2CreditSignLink(token){ return location.origin+location.pathname+'?creditsign='+token; }
   function leonV2CreditAppSignatureBlockHtml(a){
     if(a.signature){
-      return `<div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100"><b class="text-xs text-emerald-800"><i class="fa-solid fa-signature mr-1"></i>Firmada por el cliente</b><div class="text-xs text-slate-500 mt-1">${esc(a.signature.signedByName||a.clientName||'')} — ${esc(new Date(a.signature.signedAt).toLocaleString())}</div>${a.signature.dataUrl?`<img src="${a.signature.dataUrl}" class="h-14 mt-2 border border-emerald-200 rounded bg-white">`:''}</div>`;
+      const phoneNote=a.signature.acceptedByPhone?`<div class="text-[11px] text-emerald-700 mt-1"><i class="fa-solid fa-phone mr-1"></i>Aceptada por llamada telefónica — certificado por <b>${esc(a.signature.phoneVerifiedBy||'')}</b></div>`:'';
+      return `<div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100"><b class="text-xs text-emerald-800"><i class="fa-solid fa-signature mr-1"></i>${a.signature.acceptedByPhone?'Aceptada por el cliente':'Firmada por el cliente'}</b><div class="text-xs text-slate-500 mt-1">${esc(a.signature.signedByName||a.clientName||'')} — ${esc(new Date(a.signature.signedAt).toLocaleString())}</div>${a.signature.dataUrl?`<img src="${a.signature.dataUrl}" class="h-14 mt-2 border border-emerald-200 rounded bg-white">`:''}${phoneNote}</div>`;
     }
-    return `<div class="p-3 rounded-xl bg-amber-50 border border-amber-100"><b class="text-xs text-amber-800"><i class="fa-solid fa-signature mr-1"></i>El cliente todavía no ha firmado esta solicitud</b><p class="text-[11px] text-slate-500 mt-1">Genera un enlace para que el cliente la revise y firme virtualmente desde su teléfono o computadora.</p><button type="button" onclick="leonV2SendCreditSignLink('${a.id}')" class="mt-2 px-3 py-2 rounded-lg bg-ink-900 text-white text-[11px] font-black uppercase"><i class="fa-solid fa-link mr-1"></i>Generar / enviar enlace de firma</button></div>`;
+    // Segunda opción para cuando la solicitud se cerró por teléfono y la persona (a veces de edad
+    // avanzada) no puede firmar digitalmente ni desde un enlace — un empleado certifica con su
+    // nombre que el cliente aceptó verbalmente, en vez de exigirle firmar en un dispositivo.
+    return `<div class="p-3 rounded-xl bg-amber-50 border border-amber-100"><b class="text-xs text-amber-800"><i class="fa-solid fa-signature mr-1"></i>El cliente todavía no ha firmado esta solicitud</b><p class="text-[11px] text-slate-500 mt-1">Genera un enlace para que la firme desde su teléfono o computadora, o si se hizo por llamada y la persona no puede firmar digitalmente, márcala como aceptada por teléfono.</p>
+      <div class="flex flex-wrap gap-2 mt-2">
+        <button type="button" onclick="leonV2SendCreditSignLink('${a.id}')" class="px-3 py-2 rounded-lg bg-ink-900 text-white text-[11px] font-black uppercase"><i class="fa-solid fa-link mr-1"></i>Generar / enviar enlace</button>
+        <button type="button" onclick="leonV2ToggleCreditPhoneAccept('${a.id}')" class="px-3 py-2 rounded-lg border border-amber-300 text-amber-800 text-[11px] font-black uppercase"><i class="fa-solid fa-phone mr-1"></i>Aceptó por teléfono</button>
+      </div>
+      <div id="ca-phone-accept-wrap-${a.id}" class="hidden mt-3 p-3 rounded-lg bg-white border border-amber-200 space-y-2">
+        <label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Empleado que certifica la llamada</label>
+        <input id="ca-phone-employee-${a.id}" value="${esc((state.currentUser&&state.currentUser.name)||'')}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none">
+        <label class="flex items-start gap-2 text-xs text-slate-600 cursor-pointer"><input type="checkbox" id="ca-phone-confirm-${a.id}" class="mt-0.5"> Confirmo que el cliente aceptó verbalmente los términos de esta solicitud de crédito por teléfono.</label>
+        <button type="button" onclick="leonV2ConfirmCreditAppPhoneAccept('${a.id}')" class="w-full py-2 rounded-lg bg-amber-600 text-white text-[11px] font-black uppercase">Confirmar aceptación por teléfono</button>
+      </div>
+    </div>`;
   }
+  window.leonV2ToggleCreditPhoneAccept=function(id){
+    const el=document.getElementById('ca-phone-accept-wrap-'+id); if(el) el.classList.toggle('hidden');
+  };
+  window.leonV2ConfirmCreditAppPhoneAccept=function(id){
+    const a=(state.creditApps||[]).find(x=>x.id===id); if(!a){showToast('No se encontró la solicitud.','error');return;}
+    const employee=(document.getElementById('ca-phone-employee-'+id).value||'').trim();
+    if(!employee){ showToast('Escribe el nombre del empleado que certifica la llamada.','error'); return; }
+    if(!document.getElementById('ca-phone-confirm-'+id).checked){ showToast('Marca la casilla de confirmación.','error'); return; }
+    a.signature = { signedByName:a.clientName, dataUrl:null, signedAt:new Date().toISOString(), acceptedByPhone:true, phoneVerifiedBy:employee };
+    const client=(state.clients||[]).find(c=>c.id===a.clientId);
+    if(client){ if(!client.activity)client.activity=[]; client.activity.push({type:'credito_firmado',text:'Solicitud de crédito '+a.id+' aceptada por llamada telefónica (certificado por '+employee+')',at:new Date().toISOString(),by:employee}); }
+    leonV2Audit('Solicitud de crédito aceptada por llamada telefónica', a.id+' — certificado por '+employee);
+    if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('creditApps');
+    if(client && typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('clients');
+    document.getElementById('v2-creditapp-modal-content').innerHTML=leonV2CreditAppModalHtml(id);
+    showToast('Aceptación por teléfono registrada.','success');
+  };
   window.leonV2SendCreditSignLink=function(id){
     const a=(state.creditApps||[]).find(x=>x.id===id); if(!a){showToast('No se encontró la solicitud.','error');return;}
     if(!a.signToken){ a.signToken=leonV2GenInviteToken(); if(typeof window.leonV2SyncCollection==='function')window.leonV2SyncCollection('creditApps'); }
@@ -6477,7 +6585,7 @@
       ${a.notes?`<div class="box"><b class="h">Notas</b>${esc(a.notes)}</div>`:''}
       ${a.status==='Rechazada'&&a.rejectReason?`<div class="box" style="background:#fef2f2"><b class="h" style="color:#dc2626">Motivo de rechazo</b>${esc(a.rejectReason)}</div>`:''}
       <div class="box">Toda la información debe ser correcta, completa y verificable — será utilizada para preparar y procesar la solicitud de financiamiento.</div>
-      <div class="box"><b class="h">Firma del cliente</b>${a.signature?`${esc(a.signature.signedByName||a.clientName||'')} — ${esc(new Date(a.signature.signedAt).toLocaleString())}<br>${a.signature.dataUrl?`<img src="${a.signature.dataUrl}" style="height:60px;display:block;margin-top:8px;border-bottom:1px solid #172033">`:''}`:'Pendiente de firma del cliente.'}</div>
+      <div class="box"><b class="h">Firma del cliente</b>${a.signature?`${esc(a.signature.signedByName||a.clientName||'')} — ${esc(new Date(a.signature.signedAt).toLocaleString())}<br>${a.signature.acceptedByPhone?`<span style="font-size:12px">Aceptada por llamada telefónica — certificado por <b>${esc(a.signature.phoneVerifiedBy||'')}</b></span>`:(a.signature.dataUrl?`<img src="${a.signature.dataUrl}" style="height:60px;display:block;margin-top:8px;border-bottom:1px solid #172033">`:'')}`:'Pendiente de firma del cliente.'}</div>
       <script>window.onload=()=>window.print()<\/script></body></html>`);
     w.document.close();
   };
@@ -6655,7 +6763,7 @@
     </div>
     <div class="v2-card p-5 mt-4"><h4 class="font-black text-sm mb-3"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Tareas de seguimiento</h4><div id="v2-client-tasks-box"></div></div>
     <div class="grid lg:grid-cols-[1fr_1fr] gap-6 mt-6">
-      <div class="v2-card p-6"><div class="flex justify-between items-center"><h4 class="font-black">Propuestas vinculadas (${quotes.length})</h4><button onclick="leonV2Close('leon-v2-client-dossier');leonV2OpenSection('pipeline');openNewQuoteModal()" class="text-[11px] font-bold text-brand-600 hover:text-brand-800 uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Nueva propuesta</button></div><div class="mt-4 space-y-2 max-h-96 overflow-y-auto">${quotes.length?quotes.map(q=>`<div class="p-3 bg-slate-50 rounded-xl"><div class="flex justify-between items-center"><div><b class="text-sm">${esc(q.id)}</b><div class="text-[11px] text-slate-500">${esc(q.createdAt||'')}</div></div><div class="text-right"><div class="text-sm font-bold">${money(leonV2ComputeTotal(q).total)}</div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div></div><div class="flex gap-1 flex-wrap mt-2">${q.acceptance&&q.status!=='Aceptada'?`<button onclick="leonV2VendorConfirmSale('${q.id}')" class="v2-tab active" style="background:#059669;border-color:#059669">Confirmar venta</button>`:''}<button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab" title="Descargar/imprimir PDF"><i class="fa-solid fa-file-pdf"></i></button><button onclick="leonV2EmailProposal('${q.id}')" class="v2-tab" title="Enviar por correo"><i class="fa-solid fa-envelope"></i></button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button><button onclick="leonV2OpenCreditAppModal(null,'${q.id}')" class="v2-tab" title="Nueva solicitud de crédito"><i class="fa-solid fa-file-invoice-dollar"></i></button></div></div>`).join(''):'<div class="text-sm text-slate-400">Sin propuestas todavía.</div>'}</div></div>
+      <div class="v2-card p-6"><div class="flex justify-between items-center"><h4 class="font-black">Propuestas vinculadas (${quotes.length})</h4><button onclick="leonV2Close('leon-v2-client-dossier');leonV2OpenSection('pipeline');openNewQuoteModal('${c.id}')" class="text-[11px] font-bold text-brand-600 hover:text-brand-800 uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Nueva propuesta</button></div><div class="mt-4 space-y-2 max-h-96 overflow-y-auto">${quotes.length?quotes.map(q=>`<div class="p-3 bg-slate-50 rounded-xl"><div class="flex justify-between items-center"><div><b class="text-sm">${esc(q.id)}</b><div class="text-[11px] text-slate-500">${esc(q.createdAt||'')}</div></div><div class="text-right"><div class="text-sm font-bold">${money(leonV2ComputeTotal(q).total)}</div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div></div><div class="flex gap-1 flex-wrap mt-2">${q.acceptance&&q.status!=='Aceptada'?`<button onclick="leonV2VendorConfirmSale('${q.id}')" class="v2-tab active" style="background:#059669;border-color:#059669">Confirmar venta</button>`:''}<button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab" title="Descargar/imprimir PDF"><i class="fa-solid fa-file-pdf"></i></button><button onclick="leonV2EmailProposal('${q.id}')" class="v2-tab" title="Enviar por correo"><i class="fa-solid fa-envelope"></i></button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button><button onclick="leonV2OpenCreditAppModal(null,'${q.id}')" class="v2-tab" title="Nueva solicitud de crédito"><i class="fa-solid fa-file-invoice-dollar"></i></button>${leonV2Can('deleteQuote')?`<button onclick="leonV2DeleteQuoteFromDossier('${q.id}','${c.id}')" class="v2-tab" style="color:#dc2626" title="Eliminar propuesta"><i class="fa-solid fa-trash"></i></button>`:''}</div></div>`).join(''):'<div class="text-sm text-slate-400">Sin propuestas todavía.</div>'}</div></div>
       <div class="v2-card p-6"><div class="flex justify-between items-center"><h4 class="font-black">Solicitudes de crédito (${creditApps.length})</h4><button onclick="leonV2OpenCreditAppModal(null,null,'${c.id}')" class="text-[11px] font-bold text-brand-600 hover:text-brand-800 uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Nueva</button></div><div class="mt-4 space-y-2 max-h-96 overflow-y-auto">${creditApps.length?creditApps.map(a=>`<div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100" onclick="leonV2OpenCreditAppModal('${a.id}')"><div><b class="text-sm">${esc(a.entity||'—')}</b><div class="text-[11px] text-slate-500">${esc(a.createdAt||'')} · ${money(Number((a.financiamiento&&a.financiamiento.monto)||0))}</div></div><div class="flex items-center gap-2"><span class="v2-status ${a.status==='Aprobada'?'bg-emerald-50 text-emerald-700':a.status==='Rechazada'?'bg-red-50 text-red-700':'bg-blue-50 text-blue-700'}">${esc(a.status)}</span><button onclick="event.stopPropagation();leonV2PrintCreditAppById('${a.id}')" class="text-slate-400 hover:text-brand-600" title="Descargar PDF"><i class="fa-solid fa-file-pdf"></i></button></div></div>`).join(''):'<div class="text-sm text-slate-400">Sin solicitudes de crédito todavía. Puede haber varias — una por cada entidad financiera intentada.</div>'}</div></div>
     </div>
     <div class="v2-card p-6 mt-6"><h4 class="font-black"><i class="fa-solid fa-helmet-safety text-brand-500 mr-2"></i>Proyecto(s) e instalación</h4><div class="mt-4 space-y-2">${projects.length?projects.map(p=>{const tks=(p.tasks||[]).filter(t=>!t.done&&t.dueDate).sort((x,y)=>new Date(x.dueDate)-new Date(y.dueDate));const nextVisit=tks[0];return `<div class="p-3 bg-slate-50 rounded-xl flex justify-between items-center flex-wrap gap-2"><div><b class="text-sm">${esc(p.id)}</b><span class="v2-status bg-blue-50 text-blue-700 ml-2">${esc(p.stage||'Proyecto')}</span><div class="text-[11px] text-slate-500 mt-1">Fecha de proyecto: ${esc((p.createdAt||'').slice(0,10))}${p.installDate?' · Fecha de instalación: '+esc(p.installDate):' · Fecha de instalación: sin definir'}${nextVisit?' · Próxima visita: '+esc(nextVisit.dueDate)+' ('+esc(nextVisit.title)+')':''}</div></div><button onclick="leonV2Close('leon-v2-client-dossier');leonV2OpenSection('projects');leonV2OpenProjectDetail('${p.id}')" class="v2-tab active">Ver proyecto</button></div>`}).join(''):'<div class="text-sm text-slate-400">Sin proyecto de instalación todavía — se crea automáticamente al aceptar una venta.</div>'}</div></div>
@@ -6840,6 +6948,14 @@
     if(typeof renderProposals==='function' && document.getElementById('v2-main').innerHTML.includes('Editor de documento, PDF, precio'))renderProposals();
     if(typeof renderQuotesList==='function')renderQuotesList();
   };
+  // Igual que leonV2DeleteQuote (mismo permiso, misma papelera recuperable 30 días) pero llamado
+  // desde la tarjeta "Propuestas vinculadas" del expediente del cliente — a diferencia de la lista
+  // general de Propuestas, aquí hace falta refrescar el propio expediente después de borrar, o la
+  // propuesta eliminada se quedaría viéndose en pantalla hasta que la persona cierre y reabra.
+  window.leonV2DeleteQuoteFromDossier=function(quoteId, clientId){
+    leonV2DeleteQuote(quoteId);
+    if(document.getElementById('leon-v2-client-dossier')?.classList.contains('show')) leonV2OpenClientDossier(clientId);
+  };
   function renderTrash(){
     document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex justify-between items-center mb-5"><div><h3 class="text-xl font-black">Papelera</h3><p class="text-xs text-slate-500 mt-1">Nada se borra al instante — todo pasa por aquí 30 días antes de eliminarse en definitiva.</p></div></div><div id="v2-trash-list"></div></div>`;
     renderTrashList();
@@ -6905,7 +7021,14 @@
     const q=state.quotes.find(x=>x.id===id);
     if(!q){showToast('El precio solo se puede ajustar en propuestas activas (no en historial).','warning');return}
     v2PricingQuoteId=id;
-    document.getElementById('v2-pricing-items-summary').innerHTML=(q.items||[]).map(i=>`${i.qty}× ${esc(i.name)} — ${money(i.price*i.qty)}`).join('<br>')||'Sin productos.';
+    // Copia de trabajo de los productos — ver nota junto a la declaración de v2PricingDraftItems.
+    v2PricingDraftItems=(q.items||[]).map(it=>({...it}));
+    leonV2RenderPricingItemsSummary();
+    const addWrap=document.getElementById('v2-price-add-product__wrap');
+    if(addWrap && typeof window.leonV2SearchableSelectHtml==='function'){
+      const productOptions=(state.products||[]).filter(p=>!p.agotado && !(p.roofSealing&&p.roofSealing.enabled)).map(p=>({value:p.id, label:p.name+' — '+money(p.price)}));
+      addWrap.innerHTML=window.leonV2SearchableSelectHtml('v2-price-add-product', productOptions, {placeholder:'Buscar equipo por nombre...'});
+    }
     document.getElementById('v2-price-discount').value=q.discount||0;
     document.getElementById('v2-price-install').value=q.installationFee||0;
     document.getElementById('v2-price-transport').value=q.transportFee||0;
@@ -6914,14 +7037,69 @@
     document.getElementById('v2-price-rate').value=q.financingRate||0;
     document.getElementById('v2-price-notes').value=q.notes||'';
     const isSunrun=q.financingProvider==='Sunrun';
-    const isRateProvider=q.financingProvider==='PCI'||q.financingProvider==='Cooperativa';
-    document.getElementById('v2-price-months-wrap').classList.toggle('hidden', isSunrun);
-    document.getElementById('v2-price-notes-wrap').classList.toggle('hidden', !isRateProvider);
+    // El selector de proveedor solo permite CAMBIAR entre métodos "normales" (Cash/PCI/Cooperativa/
+    // Synchrony) — Sunrun nunca se ofrece aquí porque su pago no es total÷meses sino un PPA fijado
+    // por la calculadora solar al crear la propuesta (ver v2-price-sunrun-note). Si la propuesta YA
+    // es Sunrun, todo el bloque de financiamiento "normal" (incluyendo el propio selector) se oculta
+    // en vez de dejar elegir un proveedor que no aplicaría de verdad a esa propuesta.
+    document.getElementById('v2-price-provider').value=isSunrun?'Cash':(q.financingProvider||'Cash');
+    document.getElementById('v2-price-provider-wrap').classList.toggle('hidden', isSunrun);
+    document.getElementById('v2-price-additem-wrap').classList.toggle('hidden', isSunrun);
+    document.getElementById('v2-price-months-wrap').classList.toggle('hidden', isSunrun || (document.getElementById('v2-price-provider').value==='Cash'));
     document.getElementById('v2-price-sunrun-note').classList.toggle('hidden', !isSunrun);
     document.getElementById('v2-price-disclaimer').classList.toggle('hidden', isSunrun);
     leonV2ApplyRateLockState();
     leonV2RecalcPricingPreview();
     open('leon-v2-pricing-modal');
+  };
+  // Redibuja la lista editable de productos de la propuesta (copia de trabajo, ver v2PricingDraftItems)
+  // dentro del CPQ: cantidad ajustable y botón de quitar por línea, con un mínimo de un producto —
+  // nunca se deja guardar una propuesta sin ningún equipo.
+  window.leonV2RenderPricingItemsSummary=function(){
+    const box=document.getElementById('v2-pricing-items-summary'); if(!box)return;
+    if(!v2PricingDraftItems.length){ box.innerHTML='<div class="text-slate-400">Sin productos — agrega al menos uno abajo.</div>'; return; }
+    box.innerHTML=v2PricingDraftItems.map((i,idx)=>`<div class="flex items-center justify-between gap-2 py-1${idx>0?' border-t border-slate-200 mt-1 pt-2':''}"><div class="flex-grow"><b>${esc(i.name)}</b> — ${money(i.price)} c/u</div><input type="number" min="1" value="${i.qty}" onchange="leonV2PricingSetItemQty(${idx}, this.value)" class="w-16 border border-slate-200 rounded-lg px-2 py-1 text-center"><div class="w-20 text-right font-bold">${money(i.price*i.qty)}</div>${v2PricingDraftItems.length>1?`<button type="button" onclick="leonV2PricingRemoveItem(${idx})" class="text-red-500 hover:text-red-700" title="Quitar"><i class="fa-solid fa-trash"></i></button>`:''}</div>`).join('');
+  };
+  window.leonV2PricingSetItemQty=function(idx, val){
+    const n=Math.max(1, parseInt(val)||1);
+    if(!v2PricingDraftItems[idx])return;
+    v2PricingDraftItems[idx].qty=n;
+    leonV2RenderPricingItemsSummary();
+    leonV2RecalcPricingPreview();
+  };
+  window.leonV2PricingRemoveItem=function(idx){
+    if(v2PricingDraftItems.length<=1){ showToast('La propuesta necesita al menos un producto — agrega el nuevo antes de quitar este.','warning'); return; }
+    v2PricingDraftItems.splice(idx,1);
+    leonV2RenderPricingItemsSummary();
+    leonV2RecalcPricingPreview();
+  };
+  // Permite cambiar de equipo sin tener que rehacer la propuesta desde cero (queja real del
+  // negocio) — agrega el producto elegido del buscador a la copia de trabajo; si ya estaba en la
+  // lista, suma la cantidad en vez de duplicar la línea.
+  window.leonV2PricingAddItem=function(){
+    const sel=document.getElementById('v2-price-add-product'); if(!sel)return;
+    const productId=sel.value; if(!productId){ showToast('Busca y elige un equipo primero.','warning'); return; }
+    const product=(state.products||[]).find(p=>p.id===productId); if(!product){ showToast('No se encontró ese equipo.','error'); return; }
+    const qty=Math.max(1, parseInt(document.getElementById('v2-price-add-qty').value)||1);
+    const { images, video, ...productForQuote } = product;
+    const existing=v2PricingDraftItems.find(i=>i.id===productId);
+    if(existing) existing.qty+=qty; else v2PricingDraftItems.push({...productForQuote, qty});
+    leonV2RenderPricingItemsSummary();
+    leonV2RecalcPricingPreview();
+    showToast(product.name+' agregado a la propuesta.','success');
+  };
+  // Al cambiar el método de pago/financiamiento desde el propio CPQ (antes no se podía tocar aquí,
+  // por eso el "Pago mensual estimado" se quedaba en "—" para propuestas que nacieron sin proveedor
+  // asignado, ej. las del asistente de Sellado de Techo): reajusta qué campos aplican (Cash oculta
+  // los meses, PCI/Cooperativa piden notas/tasa) y recalcula la vista previa al instante.
+  window.leonV2PriceProviderChanged=function(){
+    const provider=document.getElementById('v2-price-provider').value;
+    const isRateProvider=provider==='PCI'||provider==='Cooperativa';
+    document.getElementById('v2-price-months-wrap').classList.toggle('hidden', provider==='Cash');
+    document.getElementById('v2-price-notes-wrap').classList.toggle('hidden', !isRateProvider);
+    if(!isRateProvider){ document.getElementById('v2-price-rate-wrap').classList.add('hidden'); document.getElementById('v2-price-rate-locked').classList.add('hidden'); }
+    leonV2ApplyRateLockState();
+    leonV2RecalcPricingPreview();
   };
   // La tasa real de interés (PCI/Cooperativa) es información interna del negocio — nunca la ve el
   // cliente, y tampoco cualquier persona del equipo por accidente: solo un Administrador que
@@ -6933,7 +7111,12 @@
   window.leonV2ApplyRateLockState=function(){
     const q=v2PricingQuoteId?state.quotes.find(x=>x.id===v2PricingQuoteId):null;
     if(!q)return;
-    const isRateProvider=q.financingProvider==='PCI'||q.financingProvider==='Cooperativa';
+    // Lee el proveedor del SELECTOR (lo que se está por guardar), no de la propuesta ya guardada —
+    // si no, cambiar de Cash a PCI en el mismo CPQ no desbloqueaba nunca este bloque porque
+    // q.financingProvider todavía decía "Cash" hasta que se presionara Guardar.
+    const providerSel=document.getElementById('v2-price-provider');
+    const currentProvider=providerSel?providerSel.value:q.financingProvider;
+    const isRateProvider=currentProvider==='PCI'||currentProvider==='Cooperativa';
     if(!isRateProvider) return;
     const isAdmin=!!(state.currentUser && state.currentUser.role==='Administrador');
     const notesVal=document.getElementById('v2-price-notes')?.value||'';
@@ -6969,7 +7152,10 @@
       leonV2UpdatePricingExemptNote(t);
       return;
     }
+    const providerSel=document.getElementById('v2-price-provider');
     const draft={...q,
+      items:v2PricingDraftItems,
+      financingProvider:providerSel?providerSel.value:q.financingProvider,
       discount:Number(document.getElementById('v2-price-discount').value)||0,
       installationFee:Number(document.getElementById('v2-price-install').value)||0,
       transportFee:Number(document.getElementById('v2-price-transport').value)||0,
@@ -6985,15 +7171,37 @@
   window.leonV2SavePricing=()=>{
     const q=v2PricingQuoteId?state.quotes.find(x=>x.id===v2PricingQuoteId):null;
     if(!q){showToast('No se encontró la propuesta activa.','error');return}
+    if(!v2PricingDraftItems.length){showToast('La propuesta necesita al menos un producto.','error');return}
+    const newProvider=q.financingProvider==='Sunrun'?'Sunrun':(document.getElementById('v2-price-provider')?document.getElementById('v2-price-provider').value:q.financingProvider);
+    // Mismo chequeo que ya existe en la propuesta pública (leonV2SubmitClient): algunos equipos solo
+    // se pueden financiar con ciertos proveedores (ver compatibleFinancing en el catálogo) — nunca
+    // dejar guardar aquí una combinación producto+proveedor que en la vida real no se podría cobrar.
+    const incompatibles=leonV2IncompatibleItemsForFinancing(v2PricingDraftItems, newProvider);
+    if(incompatibles.length){
+      showToast('Estos equipos no se pueden financiar con '+newProvider+': '+incompatibles.map(i=>i.name).join(', ')+'. Quítalos o elige otro método de pago.','error');
+      return;
+    }
+    q.items=v2PricingDraftItems.slice();
     q.discount=Number(document.getElementById('v2-price-discount').value)||0;
     q.installationFee=Number(document.getElementById('v2-price-install').value)||0;
     q.transportFee=Number(document.getElementById('v2-price-transport').value)||0;
     q.taxRate=Number(document.getElementById('v2-price-tax').value)||0;
+    // Mismo límite real de PCI que ya se aplica en la propuesta pública (leonV2SubmitClient) — antes
+    // esta ruta interna (CPQ) no lo revisaba, así que cambiar el proveedor a PCI aquí podía dejar
+    // pasar en silencio una solicitud que de todos modos PCI nunca aprobaría.
+    if(newProvider==='PCI'){
+      const preTotal=leonV2ComputeTotal(q).total;
+      if(preTotal>FINANCING_CONFIG.pciMaxPrincipal){
+        showToast('PCI tiene un límite de solicitud de '+money(FINANCING_CONFIG.pciMaxPrincipal)+' — este total ('+money(preTotal)+') lo supera. Elige otro método de pago (Cooperativa, Synchrony Bank) o reduce los productos.','error');
+        return;
+      }
+    }
+    q.financingProvider=newProvider;
     if(q.financingProvider==='PCI'||q.financingProvider==='Cooperativa'){
       q.notes=(document.getElementById('v2-price-notes').value||'').trim();
     }
     if(q.financingProvider!=='Sunrun'){
-      q.financingMonths=Number(document.getElementById('v2-price-months').value)||0;
+      q.financingMonths=q.financingProvider==='Cash'?0:(Number(document.getElementById('v2-price-months').value)||0);
       // La tasa solo se actualiza si el campo está de verdad desbloqueado ahora mismo (Administrador
       // + "mostrar" en las notas) — si está oculto, se deja la tasa que ya tenía la propuesta en vez
       // de leer el valor del input escondido (que puede no reflejar una decisión real de nadie).
@@ -7073,7 +7281,7 @@
         ${(state.products||[]).some(p=>p.roofSealing&&p.roofSealing.enabled)?`<div class="mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-100 text-[11px] text-amber-800"><i class="fa-solid fa-circle-info mr-1"></i>Los equipos de <b>Sellado de Techo</b> no aparecen aquí (su precio es por pie²) — para esos, escribe el monto total a mano o usa el asistente en Pipeline → Sellado de Techo.</div>`:''}
         <div id="ms-items-list" class="mt-3 space-y-2 text-xs text-slate-400">Sin equipos añadidos — no es obligatorio, puedes usar solo el monto total.</div>
       </div>
-      <div><label class="text-[10px] font-black uppercase text-slate-500">Monto total de la venta</label><input id="ms-total" type="number" min="0" step="0.01" required class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 text-lg font-black" placeholder="0.00"><p class="text-[10px] text-slate-400 mt-1">Se llena solo si añades equipos del catálogo — igual puedes escribirlo o ajustarlo a mano (descuentos, paquete, etc.).</p></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Monto total de la venta</label><input id="ms-total" type="text" inputmode="decimal" required oninput="leonV2SanitizeDecimalInput(this)" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3 text-lg font-black" placeholder="0.00"><p class="text-[10px] text-slate-400 mt-1">Se llena solo si añades equipos del catálogo — igual puedes escribirlo o ajustarlo a mano (descuentos, paquete, etc.).</p></div>
       <div><label class="text-[10px] font-black uppercase text-slate-500">Notas (opcional)</label><textarea id="ms-notes" rows="2" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Detalles de la venta física..."></textarea></div>
       <div class="p-3 rounded-xl bg-amber-50 border border-amber-100 text-[11px] text-amber-800"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Al guardar, esta venta se marca como Aceptada de inmediato y genera la comisión del vendedor — igual que cualquier venta cerrada por el sistema. La comisión queda "Pendiente" hasta que un administrador la apruebe y la marque como pagada, en Comisiones.</div>
       <button type="submit" class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase tracking-widest">Registrar venta</button>
@@ -8011,7 +8219,7 @@
       </div>`;
     }).join('');
     const selInfo=sel?plans.find(p=>p.productId===sel.productId&&p.variantId===sel.variantId):null;
-    return `<div id="v2-roofseal-plans-list" class="grid sm:grid-cols-2 gap-3">${plansHtml}</div>${selInfo?`<div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Ajustar precio por pie² para esta propuesta</label><input type="number" min="0" step="0.01" id="v2-roofseal-price-override" value="${sel.priceOverride!=null?sel.priceOverride:''}" placeholder="${selInfo.pricePerFt2}" oninput="leonV2RoofSealOverridePrice(this.value)" class="w-40 px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none"></div>`:''}`;
+    return `<div id="v2-roofseal-plans-list" class="grid sm:grid-cols-2 gap-3">${plansHtml}</div>${selInfo?`<div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block">Ajustar precio por pie² para esta propuesta</label><div class="flex gap-2"><input type="text" inputmode="decimal" id="v2-roofseal-price-override" value="${sel.priceOverride!=null?sel.priceOverride:''}" placeholder="${selInfo.pricePerFt2}" oninput="leonV2SanitizeDecimalInput(this);leonV2RoofSealOverridePrice(this.value)" class="w-32 px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none">${leonV2DecimalStepperButtons('v2-roofseal-price-override',0.10,0)}</div></div>`:''}`;
   }
   function leonV2RoofSealSummaryHtml(){
     const w=v2RoofSealWizard; if(!w)return'';
@@ -8029,7 +8237,16 @@
     </div>`;
   }
   window.leonV2RoofSealSelectPlanCard=(productId,variantId)=>{ if(!v2RoofSealWizard)return; v2RoofSealWizard.selectedPlan={productId,variantId:variantId||null,priceOverride:null}; leonV2RoofSealRefreshPricing(); };
-  window.leonV2RoofSealOverridePrice=(val)=>{ if(!v2RoofSealWizard||!v2RoofSealWizard.selectedPlan)return; v2RoofSealWizard.selectedPlan.priceOverride=(val===''||val==null)?null:Number(val); leonV2RoofSealRefreshPricing(); };
+  // OJO: esto solo refresca el RESUMEN, nunca el input mismo — antes llamaba a
+  // leonV2RoofSealRefreshPricing(), que reconstruye TODO el panel de planes (incluyendo este mismo
+  // input) en cada tecla presionada. Eso reiniciaba el campo y el cursor con cada carácter escrito,
+  // lo cual se sentía como "no me deja escribir el punto decimal" (reporte real) aunque el campo no
+  // estuviera técnicamente bloqueado — solo se rearmaba debajo de los dedos de la persona.
+  window.leonV2RoofSealOverridePrice=(val)=>{
+    if(!v2RoofSealWizard||!v2RoofSealWizard.selectedPlan)return;
+    v2RoofSealWizard.selectedPlan.priceOverride=(val===''||val==null)?null:Number(val);
+    const summaryBox=document.getElementById('v2-roofseal-summary'); if(summaryBox) summaryBox.innerHTML=leonV2RoofSealSummaryHtml();
+  };
   // Refresca SOLO el panel de planes y el resumen (columna derecha) — nunca toca la herramienta de
   // medición (columna izquierda), así no se pierde la imagen/canvas ya cargado mientras se ajusta
   // el precio o se dibuja una sección nueva.
