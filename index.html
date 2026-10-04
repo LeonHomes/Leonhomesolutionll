@@ -9,6 +9,20 @@
          Web", renderSiteBranding() reemplaza este href por el logo real, así el mismo archivo que
          suben para el header también queda como ícono de la pestaña, sin subir nada por separado. -->
     <link id="site-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230a1a2e%22/%3E%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23025fae%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%231893f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22url(%23g)%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2245%22%20font-family%3D%22Arial%2C%20Helvetica%2C%20sans-serif%22%20font-size%3D%2234%22%20font-weight%3D%22900%22%20fill%3D%22%23ffffff%22%20text-anchor%3D%22middle%22%3EL%3C/text%3E%3C/svg%3E">
+    <!-- APP INSTALABLE (PWA) — iOS/Safari ignora el manifest.json para dos cosas: el ícono que
+         queda en la pantalla de inicio (usa apple-touch-icon, no los "icons" del manifest) y si abre
+         SIN la barra de Safari (necesita apple-mobile-web-app-capable=yes). Sin esto, "Agregar a
+         inicio" en iPhone/iPad funcionaba pero quedaba con una captura fea de la página como ícono Y
+         seguía abriendo dentro de Safari con su barra — exactamente la queja real ("que no tenga la
+         barra del navegador"). apple-touch-icon arranca con el mismo monograma de arriba y
+         leonV2BuildAndApplyManifest() lo actualiza con el logo real en cuanto lo suban, igual que ya
+         hacía con el favicon y los íconos del manifest de Android/Chrome. -->
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230a1a2e%22/%3E%3Cstop%20offset%3D%2255%25%22%20stop-color%3D%22%23025fae%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%231893f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22url(%23g)%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2245%22%20font-family%3D%22Arial%2C%20Helvetica%2C%20sans-serif%22%20font-size%3D%2234%22%20font-weight%3D%22900%22%20fill%3D%22%23ffffff%22%20text-anchor%3D%22middle%22%3EL%3C/text%3E%3C/svg%3E">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LEON">
+    <meta name="theme-color" content="#025fae">
     <!-- preconnect: abre la conexión (DNS + TLS) a estos dominios externos en paralelo, apenas
          empieza a leerse la página, en lugar de esperar a que cada script externo se descubra uno
          por uno. No cambia el orden ni el momento en que se ejecuta nada — solo adelanta el
@@ -422,7 +436,7 @@
                 </nav>
 
                 <div class="flex items-center gap-3">
-                    <button id="v2-pwa-install-btn" onclick="leonV2InstallApp()" title="Instalar esta app en tu dispositivo (abre sin barra de navegador)" class="hidden p-2.5 rounded-xl glass-pill hover:bg-brand-50 text-brand-700 transition items-center gap-2 shadow-sm hover:shadow-md hover:-translate-y-0.5 duration-300">
+                    <button id="v2-pwa-install-btn" onclick="leonV2InstallApp()" title="Instalar esta app en tu dispositivo (abre sin barra de navegador)" class="flex p-2.5 rounded-xl glass-pill hover:bg-brand-50 text-brand-700 transition items-center gap-2 shadow-sm hover:shadow-md hover:-translate-y-0.5 duration-300">
                         <i class="fa-solid fa-arrow-down-to-line text-lg"></i>
                         <span class="hidden sm:inline font-bold text-xs uppercase tracking-wider">Instalar app</span>
                     </button>
@@ -2338,10 +2352,16 @@
         // propósito: un manifest servido desde un Blob no tiene una "carpeta" real contra la cual
         // resolver una ruta relativa, así que una ruta absoluta evita que el navegador la interprete mal.
         window.leonV2BuildAndApplyManifest = function () {
-            Promise.all([leonV2BuildAppIconDataUrl(192), leonV2BuildAppIconDataUrl(512)]).then(([icon192, icon512]) => {
+            // 180x180 además de 192/512: es el tamaño que Apple recomienda para apple-touch-icon (ver
+            // <link id="apple-touch-icon"> en el <head>) — iOS no lee el manifest.json para esto.
+            Promise.all([leonV2BuildAppIconDataUrl(192), leonV2BuildAppIconDataUrl(512), leonV2BuildAppIconDataUrl(180)]).then(([icon192, icon512, icon180]) => {
                 const icons = [];
                 if (icon192) icons.push({ src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' });
                 if (icon512) icons.push({ src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' });
+                if (icon180) {
+                    const appleIcon = document.getElementById('apple-touch-icon');
+                    if (appleIcon) appleIcon.href = icon180;
+                }
                 if (!icons.length) return; // sin logo ni favicon disponible todavía — no hay nada honesto que ofrecer como ícono
                 const baseUrl = location.href.split('#')[0].split('?')[0];
                 const manifest = {
@@ -2372,14 +2392,27 @@
                 navigator.serviceWorker.register(url, { scope: './' }).catch(err => console.warn('PWA: no se pudo registrar el service worker — la app sigue funcionando normal, pero el navegador quizás no ofrezca instalarla.', err));
             } catch (err) { console.warn('PWA: error preparando el service worker', err); }
         }
+        // El botón "Instalar app" antes empezaba OCULTO y solo se mostraba si el navegador disparaba
+        // el evento beforeinstallprompt — en la práctica, ese evento no siempre llega (Safari/iOS
+        // nunca lo dispara; Chrome/Android a veces tarda varias visitas en ofrecerlo, o ya se disparó
+        // y se descartó antes). Resultado real: el botón se quedaba invisible para siempre y parecía
+        // que "la función de instalar no funciona", cuando en realidad nunca había manera de
+        // encontrarla. Ahora el botón SIEMPRE está visible — si el navegador ya tiene el aviso nativo
+        // listo (v2PwaDeferredPrompt) lo dispara directo; si no, leonV2InstallApp() explica cómo
+        // instalar a mano según el navegador, en vez de no hacer nada.
         window.leonV2InitPwaInstall = function () {
             leonV2BuildAndApplyManifest();
             leonV2RegisterServiceWorker();
+            // Si ya se está viendo la app YA instalada (abierta desde su propio ícono, sin barra de
+            // navegador), no tiene sentido ofrecer instalarla de nuevo.
+            const alreadyStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+            if (alreadyStandalone) {
+                const btn = document.getElementById('v2-pwa-install-btn');
+                if (btn) { btn.classList.add('hidden'); btn.classList.remove('flex'); }
+            }
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 v2PwaDeferredPrompt = e;
-                const btn = document.getElementById('v2-pwa-install-btn');
-                if (btn) { btn.classList.remove('hidden'); btn.classList.add('flex'); }
             });
             window.addEventListener('appinstalled', () => {
                 v2PwaDeferredPrompt = null;
@@ -2389,14 +2422,25 @@
             });
         };
         window.leonV2InstallApp = function () {
-            if (!v2PwaDeferredPrompt) {
-                // iOS Safari (y algún navegador viejo) nunca disparan el aviso automático — ahí "instalar"
-                // se hace a mano desde el botón de compartir, así que se explica en vez de no hacer nada.
-                if (typeof showToast === 'function') showToast('En iPhone/iPad: toca el botón Compartir de Safari y elige "Agregar a inicio". En otros navegadores este botón aparece solo cuando la página ya cumple los requisitos para instalarse (conexión segura HTTPS, entre otros).', 'info');
+            if (v2PwaDeferredPrompt) {
+                v2PwaDeferredPrompt.prompt();
+                v2PwaDeferredPrompt.userChoice.finally(() => { v2PwaDeferredPrompt = null; });
                 return;
             }
-            v2PwaDeferredPrompt.prompt();
-            v2PwaDeferredPrompt.userChoice.finally(() => { v2PwaDeferredPrompt = null; });
+            // El navegador todavía no ofreció el aviso automático (o nunca lo ofrece, como Safari) —
+            // se explica el camino manual de cada plataforma en vez de no hacer nada.
+            const ua = navigator.userAgent || '';
+            const isIOS = /iphone|ipad|ipod/i.test(ua);
+            const isAndroid = /android/i.test(ua);
+            let msg;
+            if (isIOS) {
+                msg = 'En iPhone/iPad: toca el botón Compartir de Safari (el cuadrito con la flecha hacia arriba) y elige "Agregar a inicio".';
+            } else if (isAndroid) {
+                msg = 'Toca el menú ⋮ (arriba a la derecha de Chrome) y elige "Instalar app" o "Agregar a pantalla de inicio". Si no aparece esa opción, visita la página un par de veces más — Chrome la ofrece sola cuando confirma que ya carga bien.';
+            } else {
+                msg = 'Busca el ícono de instalar (⊕ o una pantalla con flecha) en la barra de direcciones de Chrome/Edge, o en su menú ⋮ busca "Instalar LEON Home Solutions...". Si no aparece, verifica que estés viendo la página por una conexión segura (https).';
+            }
+            if (typeof showToast === 'function') showToast(msg, 'info');
         };
 
         function handleCmsHeroUpload(event) {
@@ -2435,6 +2479,27 @@
             }
         }
 
+        // Alternativa a subir el archivo: pegar un enlace directo ya alojado en otro sitio — mucho
+        // más liviano que incrustarlo como texto base64 (un enlace pesa unos bytes; una foto/video
+        // incrustado puede pesar cientos de KB o varios MB). Esto es justo lo que antes hacía que el
+        // banner no cargara bien en celulares con conexión lenta y, si pesaba demasiado, ni siquiera
+        // se sincronizara a otros dispositivos (ver V2_HEAVY_PHOTO_FIELDS en el script interno).
+        function handleCmsHeroUrlSubmit() {
+            const input = document.getElementById('cms-hero-url');
+            if (!input) return;
+            const url = (input.value || '').trim();
+            if (!url) { showToast('Pega un enlace primero.', 'warning'); return; }
+            const isVideo = /\.(mp4|webm|ogg|ogv|mov)(\?.*)?$/i.test(url);
+            if (isVideo) { state.siteContent.heroMediaType = 'video'; state.siteContent.heroVideoUrl = url; }
+            else { state.siteContent.heroMediaType = 'image'; state.siteContent.heroImageUrl = url; }
+            renderSiteBranding();
+            if (typeof window.leonV2SyncMeta === 'function') window.leonV2SyncMeta('siteContent');
+            input.value = '';
+            const statusEl = document.getElementById('cms-hero-status');
+            if (statusEl) statusEl.innerText = (isVideo ? 'Video' : 'Imagen') + ' actualizado(a) desde enlace.';
+            showToast('Banner actualizado desde el enlace.', 'success');
+        }
+
         function resetSiteBranding() {
             const keepGallery = state.siteContent.gallery;
             state.siteContent = { logoUrl: '', heroMediaType: 'image', heroImageUrl: DEFAULT_HERO_IMG, heroVideoUrl: '', heroOverlay: true, gallery: keepGallery };
@@ -2458,19 +2523,49 @@
             // recargado. Ahora la foto se muestra COMPLETA (ancho completo, alto natural, nada
             // recortado) y la descripción va debajo en una tarjeta clara y sencilla — se ve más limpio
             // y es más fácil de leer para cualquiera, sin depender de un efecto vistoso.
+            // Cada tarjeta puede ser foto o video (ver mediaType en el editor del CMS) — un video sin
+            // controles no deja al visitante pausarlo/escucharlo, así que SÍ lleva controls (a
+            // diferencia del banner principal, que es puro ambiente de fondo).
             grid.innerHTML = items.map(item => `<div class="rounded-2xl overflow-hidden border border-brand-100 shadow-sm hover:shadow-glass-xl transition-all duration-300 bg-white animate-on-scroll visible">
-                <img src="${escPublic(item.imageUrl)}" alt="${escPublic(item.title)}" class="w-full h-auto block">
+                ${item.mediaType === 'video' && item.videoUrl
+                    ? `<video src="${escPublic(item.videoUrl)}" class="w-full h-auto block bg-ink-950" controls playsinline preload="metadata"></video>`
+                    : `<img src="${escPublic(item.imageUrl)}" alt="${escPublic(item.title)}" class="w-full h-auto block" loading="lazy">`}
                 <div class="p-6 sm:p-8"><h4 class="font-bold text-slate-900 text-xl mb-2">${escPublic(item.title)}</h4><p class="text-sm sm:text-base text-slate-600 leading-relaxed">${escPublic(item.text)}</p></div>
             </div>`).join('') || '<div class="v2-empty col-span-full">Aún no hay fotos en la galería. Añádelas desde el panel Admin → Editor de Sitio Web.</div>';
         }
 
+        // Acepta foto O video (igual que el banner principal, ver handleCmsHeroUpload) — antes la
+        // galería solo aceptaba fotos, así que no había forma de mostrar un video de un proyecto real
+        // sin pasar por el banner principal (que solo tiene espacio para uno).
         function handleCmsGalleryUpload(event, index) {
             const file = event.target.files[0];
             if (!file) return;
-            if (!file.type.startsWith('image/')) { showToast('La foto de galería debe ser una imagen.', 'error'); return; }
             const statusEl = document.getElementById('cms-gallery-status-' + index);
+            if (file.type.startsWith('video/')) {
+                if (file.size > 25 * 1024 * 1024) {
+                    showToast('Video muy pesado para incrustarlo en la página (máx. 25MB en esta demo). Usa "O pega un enlace (URL)" en su lugar — mucho más liviano.', 'error');
+                    return;
+                }
+                if (statusEl) statusEl.innerText = 'Cargando video...';
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    state.siteContent.gallery[index].mediaType = 'video';
+                    state.siteContent.gallery[index].videoUrl = e.target.result;
+                    renderGallery();
+                    renderSiteBranding();
+                    if (typeof renderGalleryCmsEditor === 'function') renderGalleryCmsEditor();
+                    if (typeof window.leonV2SyncMeta === 'function') window.leonV2SyncMeta('siteContent');
+                    if (statusEl) statusEl.innerText = `Video activo (${formatBytes(file.size)}).`;
+                    showToast('Video de galería actualizado.', 'success');
+                };
+                reader.onerror = () => { if (statusEl) statusEl.innerText = 'No se pudo leer el video.'; showToast('No se pudo leer el video.', 'error'); };
+                reader.readAsDataURL(file);
+                return;
+            }
+            if (!file.type.startsWith('image/')) { showToast('Sube una imagen o un video.', 'error'); return; }
             if (statusEl) statusEl.innerText = 'Optimizando...';
             compressImageFile(file, 1000, 0.85).then(result => {
+                state.siteContent.gallery[index].mediaType = 'image';
                 state.siteContent.gallery[index].imageUrl = result.dataUrl;
                 renderGallery();
                 renderSiteBranding();
@@ -2479,6 +2574,28 @@
                 if (statusEl) statusEl.innerText = `Actualizada (${formatBytes(result.compressedSize)}).`;
                 showToast('Foto de galería actualizada.', 'success');
             }).catch(err => { console.error(err); if (statusEl) statusEl.innerText = 'No se pudo procesar la imagen.'; showToast('No se pudo procesar la imagen.', 'error'); });
+        }
+
+        // Alternativa a subir el archivo: pegar un enlace directo (ya alojado en otro sitio). Mucho
+        // más liviano que incrustar la foto/video como texto base64 — un enlace pesa unos bytes, una
+        // foto incrustada puede pesar cientos de KB o varios MB, y eso es justo lo que antes hacía que
+        // el logo/banner/galería no cargaran bien en celulares con conexión lenta (ver V2_HEAVY_PHOTO_FIELDS
+        // y el comentario de leonV2SyncMeta más abajo en el script interno). Detecta imagen vs video
+        // por la extensión del enlace — si no reconoce ninguna, asume que es una imagen.
+        function handleCmsGalleryUrlSubmit(index) {
+            const input = document.getElementById('cms-gallery-url-' + index);
+            if (!input) return;
+            const url = (input.value || '').trim();
+            if (!url) { showToast('Pega un enlace primero.', 'warning'); return; }
+            const isVideo = /\.(mp4|webm|ogg|ogv|mov)(\?.*)?$/i.test(url);
+            const item = state.siteContent.gallery[index]; if (!item) return;
+            if (isVideo) { item.mediaType = 'video'; item.videoUrl = url; }
+            else { item.mediaType = 'image'; item.imageUrl = url; }
+            renderGallery();
+            renderSiteBranding();
+            if (typeof renderGalleryCmsEditor === 'function') renderGalleryCmsEditor();
+            if (typeof window.leonV2SyncMeta === 'function') window.leonV2SyncMeta('siteContent');
+            showToast((isVideo ? 'Video' : 'Foto') + ' de galería actualizado(a) desde el enlace.', 'success');
         }
 
         let cmsGalleryTextSyncTimer = null;
@@ -2495,7 +2612,7 @@
         }
 
         function addCmsGalleryItem() {
-            state.siteContent.gallery.push({ id: 'gal-' + Date.now(), imageUrl: DEFAULT_HERO_IMG, title: 'Nuevo proyecto', text: 'Describe aquí este proyecto real.' });
+            state.siteContent.gallery.push({ id: 'gal-' + Date.now(), mediaType: 'image', imageUrl: DEFAULT_HERO_IMG, videoUrl: '', title: 'Nuevo proyecto', text: 'Describe aquí este proyecto real.' });
             renderGallery();
             renderSiteBranding();
             if (typeof renderGalleryCmsEditor === 'function') renderGalleryCmsEditor();
@@ -7480,7 +7597,7 @@
   };
 
   function renderBranding(){
-    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex items-center justify-between mb-2 flex-wrap gap-2"><div><h3 class="text-xl font-black text-slate-900">Editor de Sitio Web</h3><p class="text-xs text-slate-500 mt-1">Cambia el logo y el banner principal que ven todos los visitantes — sin tocar código.</p></div><span class="v2-pill">CMS</span></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"><div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">Logo de la Marca</h4><div class="flex items-center gap-4"><div id="cms-logo-preview" class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0"></div><div class="flex-grow min-w-0"><input type="file" id="cms-logo-file" accept="image/*" class="hidden" onchange="handleCmsLogoUpload(event)"><button type="button" onclick="document.getElementById('cms-logo-file').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Subir Logo</button><p id="cms-logo-status" class="text-[10px] text-slate-400 font-mono mt-2">Sin cambios recientes.</p></div></div></div><div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">Banner Principal (Inicio)</h4><div class="flex items-center gap-4"><div id="cms-hero-preview" class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0"><i class="fa-solid fa-image text-slate-300"></i></div><div class="flex-grow min-w-0"><input type="file" id="cms-hero-file" accept="image/*,video/*" class="hidden" onchange="handleCmsHeroUpload(event)"><button type="button" onclick="document.getElementById('cms-hero-file').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Subir Imagen o Video</button><p id="cms-hero-status" class="text-[10px] text-slate-400 font-mono mt-2">Acepta imagen o video (MP4, máx. 25MB).</p><label class="flex items-center gap-2 mt-3 text-[11px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="cms-hero-overlay" ${state.siteContent.heroOverlay===false?'':'checked'} onchange="state.siteContent.heroOverlay=this.checked;renderSiteBranding();if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('siteContent')"> Aplicar degradado oscuro sobre la foto/video (mejora la legibilidad del texto)</label></div></div></div></div><button onclick="resetSiteBranding()" class="mt-5 text-[10px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-wider transition"><i class="fa-solid fa-rotate-left mr-1"></i>Restaurar valores por defecto</button><div class="mt-6 p-4 rounded-2xl ${window.__fbDb?'bg-emerald-50 border border-emerald-100 text-emerald-800':'bg-amber-50 border border-amber-100 text-amber-800'} text-xs"><i class="fa-solid ${window.__fbDb?'fa-circle-check':'fa-triangle-exclamation'} mr-1"></i> ${window.__fbDb?'Conectado a la base de datos — estos cambios se guardan y se ven iguales para todos los visitantes, en todos los dispositivos del equipo.':'Sin conexión a la base de datos ahora mismo — estos cambios solo viven en esta pestaña.'} Nota: fotos o videos muy pesados (más de ~1MB) no caben en un documento de Firestore y no se sincronizarán aunque se vean bien en esta pantalla — para medios grandes en producción, lo correcto es Firebase Storage, no guardarlos como texto en la base de datos.</div></div>
+    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex items-center justify-between mb-2 flex-wrap gap-2"><div><h3 class="text-xl font-black text-slate-900">Editor de Sitio Web</h3><p class="text-xs text-slate-500 mt-1">Cambia el logo y el banner principal que ven todos los visitantes — sin tocar código.</p></div><span class="v2-pill">CMS</span></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"><div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">Logo de la Marca</h4><div class="flex items-center gap-4"><div id="cms-logo-preview" class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0"></div><div class="flex-grow min-w-0"><input type="file" id="cms-logo-file" accept="image/*" class="hidden" onchange="handleCmsLogoUpload(event)"><button type="button" onclick="document.getElementById('cms-logo-file').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Subir Logo</button><p id="cms-logo-status" class="text-[10px] text-slate-400 font-mono mt-2">Sin cambios recientes.</p></div></div></div><div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">Banner Principal (Inicio)</h4><div class="flex items-center gap-4"><div id="cms-hero-preview" class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0"><i class="fa-solid fa-image text-slate-300"></i></div><div class="flex-grow min-w-0"><input type="file" id="cms-hero-file" accept="image/*,video/*" class="hidden" onchange="handleCmsHeroUpload(event)"><button type="button" onclick="document.getElementById('cms-hero-file').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Subir Imagen o Video</button><p id="cms-hero-status" class="text-[10px] text-slate-400 font-mono mt-2">Acepta imagen o video (MP4, máx. 25MB).</p><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">O pega un enlace (URL) de imagen o video</label><div class="flex gap-2 mt-1"><input type="url" id="cms-hero-url" placeholder="https://..." class="flex-grow border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white min-w-0"><button type="button" onclick="handleCmsHeroUrlSubmit()" class="px-3 rounded-xl bg-ink-900 text-white text-[10px] font-black uppercase shrink-0">Usar</button></div><p class="text-[9px] text-slate-400 mt-1">Más liviano que subir el archivo — ideal si la foto/video ya está alojado en otro sitio.</p></div><label class="flex items-center gap-2 mt-3 text-[11px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="cms-hero-overlay" ${state.siteContent.heroOverlay===false?'':'checked'} onchange="state.siteContent.heroOverlay=this.checked;renderSiteBranding();if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('siteContent')"> Aplicar degradado oscuro sobre la foto/video (mejora la legibilidad del texto)</label></div></div></div></div><button onclick="resetSiteBranding()" class="mt-5 text-[10px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-wider transition"><i class="fa-solid fa-rotate-left mr-1"></i>Restaurar valores por defecto</button><div class="mt-6 p-4 rounded-2xl ${window.__fbDb?'bg-emerald-50 border border-emerald-100 text-emerald-800':'bg-amber-50 border border-amber-100 text-amber-800'} text-xs"><i class="fa-solid ${window.__fbDb?'fa-circle-check':'fa-triangle-exclamation'} mr-1"></i> ${window.__fbDb?'Conectado a la base de datos — estos cambios se guardan y se ven iguales para todos los visitantes, en todos los dispositivos del equipo.':'Sin conexión a la base de datos ahora mismo — estos cambios solo viven en esta pestaña.'} Nota: fotos o videos muy pesados (más de ~1MB) no caben en un documento de Firestore y no se sincronizarán aunque se vean bien en esta pantalla — para medios grandes en producción, lo correcto es Firebase Storage, no guardarlos como texto en la base de datos.</div></div>
     <div class="v2-card p-6 mt-6"><div class="flex items-center justify-between mb-2 flex-wrap gap-2"><div><h3 class="text-xl font-black text-slate-900">Galería de Proyectos</h3><p class="text-xs text-slate-500 mt-1">Cambia las fotos y el texto que se muestran en "Nuestro Trabajo" del sitio público.</p></div><button onclick="addCmsGalleryItem()" class="bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Añadir foto</button></div><div id="cms-gallery-list" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4"></div></div>`;
     renderSiteBranding();
     renderGalleryCmsEditor();
@@ -7490,7 +7607,7 @@
     const wrap = document.getElementById('cms-gallery-list');
     if (!wrap) return;
     const items = state.siteContent.gallery || [];
-    wrap.innerHTML = items.map((item, i) => `<div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><div class="flex items-center gap-4"><div class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0"><img src="${esc(item.imageUrl)}" class="w-full h-full object-cover"></div><div class="flex-grow min-w-0"><input type="file" id="cms-gallery-file-${i}" accept="image/*" class="hidden" onchange="handleCmsGalleryUpload(event, ${i})"><button type="button" onclick="document.getElementById('cms-gallery-file-${i}').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Cambiar Foto</button><p id="cms-gallery-status-${i}" class="text-[10px] text-slate-400 font-mono mt-2">Sin cambios recientes.</p></div></div><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">Título</label><input value="${esc(item.title)}" oninput="handleCmsGalleryText(${i},'title',this.value)" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white"></div><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">Descripción</label><textarea rows="2" oninput="handleCmsGalleryText(${i},'text',this.value)" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white">${esc(item.text)}</textarea></div><button onclick="removeCmsGalleryItem(${i})" class="mt-3 text-[10px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-wider transition"><i class="fa-solid fa-trash mr-1"></i>Eliminar foto</button></div>`).join('') || '<div class="v2-empty col-span-full">Sin fotos todavía.</div>';
+    wrap.innerHTML = items.map((item, i) => `<div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><div class="flex items-center gap-4"><div class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0">${item.mediaType==='video'&&item.videoUrl?'<i class="fa-solid fa-clapperboard text-brand-400 text-xl"></i>':`<img src="${esc(item.imageUrl)}" class="w-full h-full object-cover">`}</div><div class="flex-grow min-w-0"><input type="file" id="cms-gallery-file-${i}" accept="image/*,video/*" class="hidden" onchange="handleCmsGalleryUpload(event, ${i})"><button type="button" onclick="document.getElementById('cms-gallery-file-${i}').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Cambiar Foto o Video</button><p id="cms-gallery-status-${i}" class="text-[10px] text-slate-400 font-mono mt-2">Sin cambios recientes.</p><div class="mt-2 flex gap-2"><input type="url" id="cms-gallery-url-${i}" placeholder="O pega un enlace (URL)..." class="flex-grow border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white min-w-0"><button type="button" onclick="handleCmsGalleryUrlSubmit(${i})" class="px-3 rounded-xl bg-ink-900 text-white text-[10px] font-black uppercase shrink-0">Usar</button></div></div></div><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">Título</label><input value="${esc(item.title)}" oninput="handleCmsGalleryText(${i},'title',this.value)" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white"></div><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">Descripción</label><textarea rows="2" oninput="handleCmsGalleryText(${i},'text',this.value)" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white">${esc(item.text)}</textarea></div><button onclick="removeCmsGalleryItem(${i})" class="mt-3 text-[10px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-wider transition"><i class="fa-solid fa-trash mr-1"></i>Eliminar foto</button></div>`).join('') || '<div class="v2-empty col-span-full">Sin fotos todavía.</div>';
   }
 
   function renderReports(){
