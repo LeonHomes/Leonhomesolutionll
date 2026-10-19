@@ -578,7 +578,7 @@
                         <button onclick="filterCategory('Domotica', event)" class="cat-btn bg-transparent text-slate-600 hover:text-brand-700 hover:bg-white/70 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300">Domótica</button>
                     </div>
                 </div>
-                <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"></div>
+                <div id="products-grid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-8"></div>
                 <div class="text-center mt-10 hidden" id="products-load-more-wrap">
                     <button onclick="loadMoreProducts()" id="products-load-more-btn" class="bg-white border-2 border-brand-200 hover:border-brand-500 text-brand-700 hover:bg-brand-50 px-8 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-glass-lg hover:-translate-y-0.5">Cargar más equipos <i class="fa-solid fa-chevron-down ml-1"></i></button>
                 </div>
@@ -1328,19 +1328,19 @@
                 card.className = "bg-white rounded-2xl overflow-hidden border border-brand-100 shadow-sm hover:shadow-glass-xl transition-all duration-300 hover:-translate-y-2 flex flex-col justify-between group";
                 card.innerHTML = `
                     <div>
-                        <div class="relative h-48 bg-brand-50 overflow-hidden">
+                        <div class="relative h-28 sm:h-48 bg-brand-50 overflow-hidden">
                             <img src="${prod.image}" alt="${prod.name}" class="w-full h-full object-cover group-hover:scale-110 transition duration-700 ${prod.agotado ? 'prod-agotado' : ''}">
                             <div class="absolute inset-0 bg-gradient-to-t from-ink-950/70 to-transparent"></div>
-                            <span class="absolute top-3 left-3 bg-white/90 backdrop-blur text-brand-700 border border-brand-100 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">${prod.category}</span>
-                            ${prod.agotado ? `<span class="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-full tracking-wider">Agotado</span>` : `<span class="absolute top-3 right-3 bg-ink-900 text-brand-300 text-[10px] font-black px-2 py-1 rounded-full tracking-wider">${prod.code || ''}</span>`}
+                            <span class="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 bg-white/90 backdrop-blur text-brand-700 border border-brand-100 text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full uppercase tracking-wider">${prod.category}</span>
+                            ${prod.agotado ? `<span class="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 bg-red-600 text-white text-[8px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full tracking-wider">Agotado</span>` : `<span class="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 bg-ink-900 text-brand-300 text-[8px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full tracking-wider">${prod.code || ''}</span>`}
                         </div>
-                        <div class="p-6"><h3 class="font-bold text-slate-900 text-base leading-snug mb-2">${prod.name}</h3><p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">${prod.desc}</p></div>
+                        <div class="p-3 sm:p-6"><h3 class="font-bold text-slate-900 text-xs sm:text-base leading-snug mb-1 sm:mb-2 line-clamp-2">${prod.name}</h3><p class="hidden sm:block text-xs text-slate-500 line-clamp-2 leading-relaxed">${prod.desc}</p></div>
                     </div>
-                    <div class="p-6 pt-0 flex items-center justify-between border-t border-brand-50 mt-2">
-                        <div><span class="text-[9px] text-brand-600 font-black uppercase tracking-widest block mb-0.5">${prod.roofSealing && prod.roofSealing.enabled ? 'Desde (por pie²)' : 'Precio Base'}</span><span class="text-xl font-black text-slate-900">$${prod.price.toLocaleString()}${prod.roofSealing && prod.roofSealing.enabled ? '<span class="text-xs font-bold text-slate-400">/pie²</span>' : ''}</span></div>
+                    <div class="p-3 sm:p-6 pt-0 flex items-center justify-between border-t border-brand-50 mt-2">
+                        <div><span class="text-[7px] sm:text-[9px] text-brand-600 font-black uppercase tracking-widest block mb-0.5">${prod.roofSealing && prod.roofSealing.enabled ? 'Desde (por pie²)' : 'Precio Base'}</span><span class="text-sm sm:text-xl font-black text-slate-900">$${prod.price.toLocaleString()}${prod.roofSealing && prod.roofSealing.enabled ? '<span class="text-xs font-bold text-slate-400">/pie²</span>' : ''}</span></div>
                         ${prod.roofSealing && prod.roofSealing.enabled
-                            ? `<button onclick="leonV2OpenRoofSealCalc('${prod.id}')" ${prod.agotado ? 'disabled' : ''} class="bg-ink-900 hover:bg-gradient-to-r hover:from-brand-600 hover:to-brand-400 text-white p-3 rounded-xl font-bold text-xs transition-all duration-300 flex items-center gap-2 shadow hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-calculator"></i> <span class="hidden sm:inline">Cotizar</span></button>`
-                            : `<button onclick="addToCart('${prod.id}')" ${prod.agotado ? 'disabled' : ''} class="bg-ink-900 hover:bg-gradient-to-r hover:from-brand-600 hover:to-brand-400 text-white p-3 rounded-xl font-bold text-xs transition-all duration-300 flex items-center gap-2 shadow hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-ink-900 disabled:hover:translate-y-0">
+                            ? `<button onclick="leonV2OpenRoofSealCalc('${prod.id}')" ${prod.agotado ? 'disabled' : ''} class="bg-ink-900 hover:bg-gradient-to-r hover:from-brand-600 hover:to-brand-400 text-white p-2 sm:p-3 rounded-xl font-bold text-xs transition-all duration-300 flex items-center gap-2 shadow hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-calculator"></i> <span class="hidden sm:inline">Cotizar</span></button>`
+                            : `<button onclick="addToCart('${prod.id}')" ${prod.agotado ? 'disabled' : ''} class="bg-ink-900 hover:bg-gradient-to-r hover:from-brand-600 hover:to-brand-400 text-white p-2 sm:p-3 rounded-xl font-bold text-xs transition-all duration-300 flex items-center gap-2 shadow hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-ink-900 disabled:hover:translate-y-0">
                             <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">${prod.agotado ? 'Agotado' : 'Agregar'}</span>
                         </button>`}
                     </div>
@@ -1616,8 +1616,41 @@
             if (!box) return;
             const showPassword = opts && opts.showPassword;
             box.classList.remove('hidden');
-            box.innerHTML = `<i class="fa-solid fa-key mr-1"></i> PIN de acceso asignado a <b>${u.name}</b>: <span class="font-mono text-base tracking-widest">${u.pin}</span>${showPassword && u.password ? `<br>Contraseña: <span class="font-mono text-base tracking-widest">${u.password}</span>` : ''}<br><span class="text-[10px] font-normal">Compártelo de forma segura con el empleado — los necesitará para entrar (correo + contraseña, luego PIN). En producción llegarían automáticamente por correo desde el servidor.</span>`;
+            // Antes el PIN solo se podía VER, nunca cambiar — si el empleado lo olvidaba o había que
+            // revocarlo (ej. salió de la empresa y hay que invalidar el que tenía), no había forma de
+            // editarlo desde aquí. Ahora el administrador puede escribir uno nuevo a mano o pedir que
+            // se genere uno aleatorio, y se guarda de inmediato en el perfil del empleado.
+            box.innerHTML = `<i class="fa-solid fa-key mr-1"></i> PIN de acceso asignado a <b>${u.name}</b>: <span class="font-mono text-base tracking-widest">${u.pin}</span>${showPassword && u.password ? `<br>Contraseña: <span class="font-mono text-base tracking-widest">${u.password}</span>` : ''}<br><span class="text-[10px] font-normal">Compártelo de forma segura con el empleado — lo necesitará para entrar (correo + contraseña, luego PIN). En producción llegaría automáticamente por correo desde el servidor.</span>
+            <div class="mt-3 pt-3 border-t border-emerald-200 flex flex-wrap items-center gap-2">
+                <input type="text" id="pin-edit-input-${u.id}" maxlength="5" inputmode="numeric" placeholder="Nuevo PIN (5 dígitos)" class="w-40 px-3 py-2 rounded-lg border border-emerald-200 text-xs font-mono outline-none" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,5)">
+                <button type="button" onclick="leonV2SaveCustomPin('${u.id}')" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-floppy-disk mr-1"></i>Guardar PIN</button>
+                <button type="button" onclick="leonV2RegeneratePin('${u.id}')" class="px-3 py-2 rounded-lg bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-dice mr-1"></i>Generar uno nuevo</button>
+            </div>`;
         }
+        // Permite al administrador cambiar a mano el PIN de acceso de un empleado ya existente — por
+        // ejemplo si lo olvidó, lo compartió por error, o hay que revocarlo al salir de la empresa.
+        window.leonV2SaveCustomPin = function(userId) {
+            const u = state.users.find(x => x.id === userId); if (!u) return;
+            const input = document.getElementById('pin-edit-input-' + userId);
+            const val = input ? input.value.trim() : '';
+            if (!/^\d{5}$/.test(val)) { showToast('El PIN debe tener exactamente 5 dígitos.', 'error'); return; }
+            const oldPin = u.pin;
+            u.pin = val;
+            if (typeof window.leonV2SyncCollection === 'function') window.leonV2SyncCollection('users');
+            if (typeof leonV2Audit === 'function') leonV2Audit('PIN de acceso cambiado', u.name + ' — PIN actualizado por el administrador');
+            showToast('PIN de ' + u.name + ' actualizado a ' + val + '.', 'success');
+            leonV2ShowPinAssigned(u, {});
+        };
+        // Genera un PIN aleatorio nuevo de 5 dígitos para un empleado ya existente (sin tocar su
+        // contraseña) — útil cuando prefieres no inventar uno a mano.
+        window.leonV2RegeneratePin = function(userId) {
+            const u = state.users.find(x => x.id === userId); if (!u) return;
+            u.pin = String(Math.floor(10000 + Math.random() * 90000));
+            if (typeof window.leonV2SyncCollection === 'function') window.leonV2SyncCollection('users');
+            if (typeof leonV2Audit === 'function') leonV2Audit('PIN de acceso regenerado', u.name + ' — nuevo PIN aleatorio asignado por el administrador');
+            showToast('Se generó un nuevo PIN para ' + u.name + '.', 'success');
+            leonV2ShowPinAssigned(u, {});
+        };
 
         function renderUsersList() {
             const container = document.getElementById('users-list-container');
@@ -1638,7 +1671,8 @@
                             ${state.users.filter(s => s.id !== u.id).map(s => `<option value="${s.id}" ${u.supervisorId === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
                         </select>
                         <button onclick="leonV2OpenVendorContract('${u.id}')" class="text-slate-400 hover:text-brand-600 transition text-xs p-1" title="Crear / editar contrato de vendedor"><i class="fa-solid fa-file-signature"></i></button>
-                        <button onclick="leonV2ShowPinAssigned(state.users.find(x=>x.id==='${u.id}'))" class="text-slate-400 hover:text-brand-600 transition text-xs p-1" title="Ver PIN de acceso"><i class="fa-solid fa-key"></i></button>
+                        <button onclick="leonV2ShowPinAssigned(state.users.find(x=>x.id==='${u.id}'))" class="text-slate-400 hover:text-brand-600 transition text-xs p-1" title="Ver o editar PIN de acceso"><i class="fa-solid fa-key"></i></button>
+                        ${(u.contract&&u.photoUrl)?`<button onclick="leonV2DownloadEmployeeBadge('${u.id}')" class="text-slate-400 hover:text-brand-600 transition text-xs p-1" title="Descargar carnet de empleado"><i class="fa-solid fa-id-badge"></i></button>`:''}
                         <button onclick="deleteUser('${u.id}')" class="text-slate-400 hover:text-red-500 transition text-xs p-1" title="Eliminar empleado (permanente)"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>
@@ -2233,6 +2267,33 @@
         // desde el formulario de producto (subida de imagen por archivo) — ver más abajo.
 
         // ===================== CMS: LOGO Y BANNER PRINCIPAL DEL SITIO =====================
+        // Un enlace de YouTube/Vimeo NUNCA es un archivo de video reproducible directo (no sirve
+        // metido en un <video src="...">, que es lo que antes pasaba — el enlace se guardaba bien
+        // pero la página se quedaba en blanco porque el navegador no sabe reproducir una página web
+        // de YouTube como si fuera un .mp4). Esto detecta ese tipo de enlace y arma la URL de
+        // incrustación (/embed/ID) real que SÍ carga y reproduce dentro de un <iframe>. Si el enlace
+        // no es de YouTube/Vimeo, devuelve null y el llamador sigue tratándolo como video directo.
+        function leonV2VideoEmbedUrl(url, opts) {
+            opts = opts || {};
+            if (!url) return null;
+            let m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{6,})/i);
+            if (m) {
+                const id = m[1];
+                const params = ['modestbranding=1', 'playsinline=1', 'rel=0'];
+                if (opts.autoplay) params.push('autoplay=1', 'mute=1', 'loop=1', 'playlist=' + id, 'controls=0');
+                return 'https://www.youtube.com/embed/' + id + '?' + params.join('&');
+            }
+            m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+            if (m) {
+                const id = m[1];
+                const params = [];
+                if (opts.autoplay) params.push('autoplay=1', 'muted=1', 'loop=1', 'controls=0');
+                return 'https://player.vimeo.com/video/' + id + (params.length ? '?' + params.join('&') : '');
+            }
+            return null;
+        }
+        window.leonV2VideoEmbedUrl = leonV2VideoEmbedUrl;
+
         function renderSiteBranding() {
             const logoBox = document.getElementById('header-logo-box');
             if (logoBox) {
@@ -2260,7 +2321,10 @@
             const heroSlot = document.getElementById('hero-media-slot');
             if (heroSlot) {
                 if (state.siteContent.heroMediaType === 'video' && state.siteContent.heroVideoUrl) {
-                    heroSlot.innerHTML = `<video src="${state.siteContent.heroVideoUrl}" class="w-full h-full object-cover" autoplay muted loop playsinline></video>`;
+                    const ytEmbed = leonV2VideoEmbedUrl(state.siteContent.heroVideoUrl, { autoplay: true });
+                    heroSlot.innerHTML = ytEmbed
+                        ? `<iframe src="${ytEmbed}" class="w-full h-full pointer-events-none" style="border:0" allow="autoplay; encrypted-media" title="Banner de video"></iframe>`
+                        : `<video src="${state.siteContent.heroVideoUrl}" class="w-full h-full object-cover" autoplay muted loop playsinline></video>`;
                 } else {
                     heroSlot.innerHTML = `<img src="${state.siteContent.heroImageUrl || DEFAULT_HERO_IMG}" alt="LEON Home Solutions" class="w-full h-full object-cover">`;
                 }
@@ -2489,14 +2553,17 @@
             if (!input) return;
             const url = (input.value || '').trim();
             if (!url) { showToast('Pega un enlace primero.', 'warning'); return; }
-            const isVideo = /\.(mp4|webm|ogg|ogv|mov)(\?.*)?$/i.test(url);
+            // Un enlace de YouTube/Vimeo (sin terminar en .mp4 ni nada parecido) también cuenta como
+            // video — leonV2VideoEmbedUrl lo reconoce y renderSiteBranding lo incrusta con <iframe>.
+            const isYouTubeOrVimeo = !!leonV2VideoEmbedUrl(url);
+            const isVideo = isYouTubeOrVimeo || /\.(mp4|webm|ogg|ogv|mov)(\?.*)?$/i.test(url);
             if (isVideo) { state.siteContent.heroMediaType = 'video'; state.siteContent.heroVideoUrl = url; }
             else { state.siteContent.heroMediaType = 'image'; state.siteContent.heroImageUrl = url; }
             renderSiteBranding();
             if (typeof window.leonV2SyncMeta === 'function') window.leonV2SyncMeta('siteContent');
             input.value = '';
             const statusEl = document.getElementById('cms-hero-status');
-            if (statusEl) statusEl.innerText = (isVideo ? 'Video' : 'Imagen') + ' actualizado(a) desde enlace.';
+            if (statusEl) statusEl.innerText = (isVideo ? 'Video' : 'Imagen') + ' actualizado(a) desde enlace.' + (isYouTubeOrVimeo ? ' (YouTube/Vimeo)' : '');
             showToast('Banner actualizado desde el enlace.', 'success');
         }
 
@@ -2526,12 +2593,20 @@
             // Cada tarjeta puede ser foto o video (ver mediaType en el editor del CMS) — un video sin
             // controles no deja al visitante pausarlo/escucharlo, así que SÍ lleva controls (a
             // diferencia del banner principal, que es puro ambiente de fondo).
-            grid.innerHTML = items.map(item => `<div class="rounded-2xl overflow-hidden border border-brand-100 shadow-sm hover:shadow-glass-xl transition-all duration-300 bg-white animate-on-scroll visible">
-                ${item.mediaType === 'video' && item.videoUrl
-                    ? `<video src="${escPublic(item.videoUrl)}" class="w-full h-auto block bg-ink-950" controls playsinline preload="metadata"></video>`
-                    : `<img src="${escPublic(item.imageUrl)}" alt="${escPublic(item.title)}" class="w-full h-auto block" loading="lazy">`}
+            grid.innerHTML = items.map(item => {
+                // YouTube/Vimeo se incrustan con <iframe> (ver leonV2VideoEmbedUrl) — un <video src>
+                // normal no puede reproducir esas páginas, solo archivos de video directos (.mp4 etc).
+                const ytEmbed = item.mediaType === 'video' && item.videoUrl ? leonV2VideoEmbedUrl(item.videoUrl) : null;
+                const media = item.mediaType === 'video' && item.videoUrl
+                    ? (ytEmbed
+                        ? `<div class="aspect-video w-full bg-ink-950"><iframe src="${escPublic(ytEmbed)}" class="w-full h-full" style="border:0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen title="${escPublic(item.title)}"></iframe></div>`
+                        : `<video src="${escPublic(item.videoUrl)}" class="w-full h-auto block bg-ink-950" controls playsinline preload="metadata"></video>`)
+                    : `<img src="${escPublic(item.imageUrl)}" alt="${escPublic(item.title)}" class="w-full h-auto block" loading="lazy">`;
+                return `<div class="rounded-2xl overflow-hidden border border-brand-100 shadow-sm hover:shadow-glass-xl transition-all duration-300 bg-white animate-on-scroll visible">
+                ${media}
                 <div class="p-6 sm:p-8"><h4 class="font-bold text-slate-900 text-xl mb-2">${escPublic(item.title)}</h4><p class="text-sm sm:text-base text-slate-600 leading-relaxed">${escPublic(item.text)}</p></div>
-            </div>`).join('') || '<div class="v2-empty col-span-full">Aún no hay fotos en la galería. Añádelas desde el panel Admin → Editor de Sitio Web.</div>';
+            </div>`;
+            }).join('') || '<div class="v2-empty col-span-full">Aún no hay fotos en la galería. Añádelas desde el panel Admin → Editor de Sitio Web.</div>';
         }
 
         // Acepta foto O video (igual que el banner principal, ver handleCmsHeroUpload) — antes la
@@ -2581,13 +2656,15 @@
         // foto incrustada puede pesar cientos de KB o varios MB, y eso es justo lo que antes hacía que
         // el logo/banner/galería no cargaran bien en celulares con conexión lenta (ver V2_HEAVY_PHOTO_FIELDS
         // y el comentario de leonV2SyncMeta más abajo en el script interno). Detecta imagen vs video
-        // por la extensión del enlace — si no reconoce ninguna, asume que es una imagen.
+        // por la extensión del enlace, o si es un enlace de YouTube/Vimeo (ver leonV2VideoEmbedUrl) —
+        // si no reconoce ninguna de las dos, asume que es una imagen.
         function handleCmsGalleryUrlSubmit(index) {
             const input = document.getElementById('cms-gallery-url-' + index);
             if (!input) return;
             const url = (input.value || '').trim();
             if (!url) { showToast('Pega un enlace primero.', 'warning'); return; }
-            const isVideo = /\.(mp4|webm|ogg|ogv|mov)(\?.*)?$/i.test(url);
+            const isYouTubeOrVimeo = !!leonV2VideoEmbedUrl(url);
+            const isVideo = isYouTubeOrVimeo || /\.(mp4|webm|ogg|ogv|mov)(\?.*)?$/i.test(url);
             const item = state.siteContent.gallery[index]; if (!item) return;
             if (isVideo) { item.mediaType = 'video'; item.videoUrl = url; }
             else { item.mediaType = 'image'; item.imageUrl = url; }
@@ -2595,7 +2672,7 @@
             renderSiteBranding();
             if (typeof renderGalleryCmsEditor === 'function') renderGalleryCmsEditor();
             if (typeof window.leonV2SyncMeta === 'function') window.leonV2SyncMeta('siteContent');
-            showToast((isVideo ? 'Video' : 'Foto') + ' de galería actualizado(a) desde el enlace.', 'success');
+            showToast((isVideo ? 'Video' : 'Foto') + ' de galería actualizado(a) desde el enlace.' + (isYouTubeOrVimeo ? ' (YouTube/Vimeo)' : ''), 'success');
         }
 
         let cmsGalleryTextSyncTimer = null;
@@ -4692,6 +4769,147 @@
     leonV2DownloadCsv(rows,'leon_clientes_'+new Date().toISOString().slice(0,10)+'.csv');
     leonV2Audit('Exportó CSV', 'Clientes ('+rows.length+' filas)');
   };
+
+  // ================= IMPORTAR CLIENTES DESDE CSV =================
+  // Pensado para cuando hay que registrar de un solo golpe una lista de clientes que YA compraron
+  // equipo antes (migrando desde otro sistema u hoja de Excel) — sin esto, había que crear cada
+  // expediente a mano, uno por uno. La documentación (contratos firmados, fotos, etc.) de cada uno
+  // sigue siendo manual, uno por uno — este importador solo crea el EXPEDIENTE del cliente
+  // (nombre/contacto/municipio) para no tener que escribirlo de nuevo.
+  //
+  // Plantilla de ejemplo: el único formato que esta función sabe leer. Las columnas Nombre y Email
+  // son las más importantes — Email se usa para no crear un cliente duplicado si ya existe uno con
+  // ese correo (en ese caso actualiza sus datos en vez de duplicarlo). "Estado" es opcional: si se
+  // deja en blanco se asume "Cliente" (ya compró), porque para eso es este importador — si en
+  // realidad es un prospecto que todavía no ha comprado, se puede poner "Lead".
+  window.leonV2DownloadClientImportTemplate=function(){
+    const rows=[
+      {Nombre:'Juan Pérez', Email:'juan.perez@correo.com', Telefono:'787-555-0101', Municipio:'Bayamón', Direccion:'Calle 5 #123, Urb. Las Flores', Compania:'', Fuente:'Referido', Consultor:'', Estado:'Cliente'},
+      {Nombre:'María Rodríguez', Email:'maria.rodriguez@correo.com', Telefono:'787-555-0202', Municipio:'Caguas', Direccion:'', Compania:'Panadería MR', Fuente:'Feria', Consultor:'Juan Pérez', Estado:'Cliente'}
+    ];
+    leonV2DownloadCsv(rows,'leon_plantilla_importar_clientes.csv');
+    showToast('Plantilla descargada — llénala con el mismo formato (mismas columnas) y luego usa "Importar clientes".','info');
+  };
+  // Parser de CSV genérico y minimalista (sin librerías externas): soporta campos entre comillas
+  // dobles con comas o saltos de línea adentro (ej. "Calle 5, Urb. Las Flores"), igual que el CSV
+  // que exportamos nosotros mismos o que exporta Excel/Google Sheets. Devuelve un arreglo de filas,
+  // cada fila como arreglo de celdas en el mismo orden que el encabezado.
+  function leonV2ParseCsvText(text){
+    const rows=[]; let row=[]; let cell=''; let inQuotes=false;
+    // Quita el BOM inicial si viene (Excel lo agrega; nosotros también lo agregamos al exportar).
+    if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+    for(let i=0;i<text.length;i++){
+      const ch=text[i];
+      if(inQuotes){
+        if(ch==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else { inQuotes=false; } }
+        else cell+=ch;
+      } else {
+        if(ch==='"') inQuotes=true;
+        else if(ch===','){ row.push(cell); cell=''; }
+        else if(ch==='\r'){ /* ignorar, lo maneja \n */ }
+        else if(ch==='\n'){ row.push(cell); rows.push(row); row=[]; cell=''; }
+        else cell+=ch;
+      }
+    }
+    if(cell.length||row.length){ row.push(cell); rows.push(row); }
+    return rows.filter(r=>r.length>1||(r[0]||'').trim()!=='');
+  }
+  // Convierte las filas crudas del CSV (con encabezado) en objetos {Nombre:..., Email:..., ...},
+  // emparejando encabezados sin importar mayúsculas/acentos/espacios (para que "email", "Correo" o
+  // "E-mail" funcionen igual, ya que no todo el mundo exporta su hoja con los nombres exactos).
+  function leonV2NormalizeHeader(h){
+    return String(h||'').trim().toLowerCase()
+      .replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u')
+      .replace(/[^a-z0-9]/g,'');
+  }
+  const CLIENT_IMPORT_HEADER_ALIASES={
+    nombre:'Nombre', name:'Nombre',
+    email:'Email', correo:'Email', emailcliente:'Email',
+    telefono:'Telefono', phone:'Telefono', tel:'Telefono', celular:'Telefono',
+    municipio:'Municipio', ciudad:'Municipio',
+    direccion:'Direccion', address:'Direccion',
+    compania:'Compania', empresa:'Compania', negocio:'Compania',
+    fuente:'Fuente', source:'Fuente',
+    consultor:'Consultor', vendedor:'Consultor',
+    estado:'Estado', etapa:'Estado', stage:'Estado'
+  };
+  function leonV2RowsToClientObjects(csvRows){
+    if(!csvRows.length) return [];
+    const headerRow=csvRows[0].map(h=>CLIENT_IMPORT_HEADER_ALIASES[leonV2NormalizeHeader(h)]||null);
+    const out=[];
+    for(let r=1;r<csvRows.length;r++){
+      const raw=csvRows[r];
+      if(!raw || raw.every(c=>!String(c||'').trim())) continue;
+      const obj={};
+      headerRow.forEach((key,idx)=>{ if(key) obj[key]=(raw[idx]||'').trim(); });
+      out.push(obj);
+    }
+    return out;
+  }
+  window.handleClientsImportFile=function(event){
+    const file=event.target.files[0]; if(!file) return;
+    const summaryBox=document.getElementById('v2-clients-import-summary');
+    const reader=new FileReader();
+    reader.onload=()=>{
+      let csvRows, parsedObjs;
+      try{
+        csvRows=leonV2ParseCsvText(String(reader.result||''));
+        parsedObjs=leonV2RowsToClientObjects(csvRows);
+      }catch(err){ showToast('No se pudo leer el archivo — asegúrate de que sea un CSV válido.','error'); event.target.value=''; return; }
+      if(!parsedObjs.length){ showToast('El archivo no tiene filas de clientes para importar. Descarga la plantilla para ver el formato exacto.','warning'); event.target.value=''; return; }
+      let created=0, updated=0, skipped=0;
+      const now=new Date().toISOString();
+      const actor=(state.currentUser&&state.currentUser.name)||'Importación CSV';
+      if(!state.clients) state.clients=[];
+      parsedObjs.forEach(row=>{
+        const name=(row.Nombre||'').trim();
+        if(!name){ skipped++; return; }
+        const email=(row.Email||'').trim();
+        const consultorNameRaw=(row.Consultor||'').trim();
+        const matchedConsultor=consultorNameRaw ? (state.users||[]).find(u=>u.name && u.name.toLowerCase()===consultorNameRaw.toLowerCase()) : null;
+        const stageRaw=(row.Estado||'').trim().toLowerCase();
+        const stage=stageRaw==='lead' ? 'Lead' : 'Cliente'; // por defecto "Cliente" — este importador es para clientes que ya compraron
+        let existing=email?findClient(email):null;
+        if(existing){
+          existing.name=name||existing.name;
+          existing.phone=row.Telefono||existing.phone;
+          existing.municipio=row.Municipio||existing.municipio;
+          existing.address=row.Direccion||existing.address;
+          existing.company=row.Compania||existing.company;
+          existing.source=row.Fuente||existing.source||'Importado';
+          if(matchedConsultor){ existing.consultorName=matchedConsultor.name; existing.consultorId=matchedConsultor.id; }
+          existing.lastContact=now;
+          existing.activity=existing.activity||[];
+          existing.activity.push({type:'importado',text:'Datos actualizados por importación CSV',at:now,by:actor});
+          updated++;
+        } else {
+          const c={
+            id:'cli-'+Date.now()+'-'+Math.floor(Math.random()*999)+'-'+created,
+            name, company:row.Compania||'', email, phone:row.Telefono||'', municipio:row.Municipio||'',
+            address:row.Direccion||'', locationUrl:'', source:row.Fuente||'Importado',
+            consultorName:matchedConsultor?matchedConsultor.name:(consultorNameRaw||null),
+            consultorId:matchedConsultor?matchedConsultor.id:null,
+            stage, createdAt:now, lastContact:now, nextAction:'', activity:[]
+          };
+          c.activity.push({type:'cliente_creado',text:'Cliente importado desde CSV'+(stage==='Cliente'?' (ya había comprado)':''),at:now,by:actor});
+          state.clients.push(c);
+          created++;
+        }
+      });
+      if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('clients');
+      if(typeof leonV2Audit==='function') leonV2Audit('Importó clientes CSV', created+' nuevo(s), '+updated+' actualizado(s), '+skipped+' fila(s) omitida(s) sin nombre');
+      if(summaryBox){
+        summaryBox.classList.remove('hidden');
+        summaryBox.innerHTML=`<div class="p-4 rounded-xl ${skipped?'bg-amber-50 border border-amber-200 text-amber-800':'bg-emerald-50 border border-emerald-200 text-emerald-800'} text-xs"><i class="fa-solid fa-circle-check mr-1"></i><b>Importación completa:</b> ${created} cliente(s) nuevo(s), ${updated} actualizado(s)${skipped?', '+skipped+' fila(s) omitida(s) por no tener Nombre':''}.</div>`;
+      }
+      showToast('Importación completa: '+created+' nuevo(s), '+updated+' actualizado(s)'+(skipped?', '+skipped+' omitida(s)':'')+'.','success');
+      renderClientsList();
+      event.target.value='';
+    };
+    reader.onerror=()=>{ showToast('No se pudo leer el archivo.','error'); event.target.value=''; };
+    reader.readAsText(file,'utf-8');
+  };
+
   window.leonV2ExportVentasCsv=function(){
     const isAdmin=state.currentUser&&state.currentUser.role==='Administrador';
     const all=(state.quotesHistory||[]).filter(q=>q.status==='Aceptada'||q.status==='Anulada');
@@ -5282,13 +5500,28 @@
     showToast('Respaldo restaurado — todos los datos fueron reemplazados.','success');
   };
 
-  window.leonV2Close=id=>document.getElementById(id)?.classList.remove('show');
+  window.leonV2Close=id=>{const el=document.getElementById(id); if(!el)return; el.classList.remove('show'); el.style.zIndex='';};
   window.leonV2CloseChoice=()=>leonV2Close('leon-v2-proposal-choice');
   window.leonV2CloseClientForm=()=>{v2ConsumptionOnlyMode=false;const banner=document.getElementById('v2-consumption-banner');if(banner)banner.classList.add('hidden');leonV2Close('leon-v2-client-form');};
   function products(){return (window.state&&state.products)||[]}
   function users(){return (window.state&&state.users)||[]}
   function consultants(){return users().filter(u=>/vendedor|consultor/i.test(u.role));}
-  function open(id){document.getElementById(id)?.classList.add('show')}
+  // Reporte real: dentro del expediente del cliente (ya abierto, un modal .v2-modal con z-index:100),
+  // al presionar "Portal" (u otro botón que abre OTRO modal encima) la ventana nueva aparecía DETRÁS
+  // en vez de encima. Causa: TODOS los .v2-modal comparten el mismo z-index:100 en el CSS, así que
+  // cuál queda visualmente arriba dependía solo del orden en el HTML (no de cuál se abrió más
+  // reciente) — y varios modales "hijos" aparecen ANTES en el <body> que "leon-v2-client-dossier".
+  // Arreglo: cada vez que se abre un modal le asignamos un z-index propio, siempre mayor que el del
+  // último abierto — así el que se acaba de abrir SIEMPRE queda visualmente encima, sin importar el
+  // orden en el HTML ni cuántos modales ya estuvieran abiertos debajo.
+  let v2ModalZCounter = 100;
+  function open(id){
+    const el = document.getElementById(id);
+    if(!el) return;
+    v2ModalZCounter += 1;
+    el.style.zIndex = String(v2ModalZCounter);
+    el.classList.add('show');
+  }
 
   // Convierte la URL de video guardada (YouTube, Vimeo o MP4/data URL directo) en el reproductor
   // adecuado. YouTube/Vimeo necesitan iframe embed; un archivo subido o link directo usa <video>.
@@ -6826,7 +7059,7 @@
     (state.clients||[]).forEach(c=>{ leonV2ClientCategories(c).forEach(cat=>catSet.add(cat)); if(c.municipio) muniSet.add(c.municipio); });
     const catOptions=Array.from(catSet).sort().map(cat=>`<option value="${esc(cat)}">${esc(categoryLabel(cat))}</option>`).join('');
     const muniOptions=Array.from(muniSet).sort().map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
-    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h3 class="text-xl font-black text-slate-900">Clientes</h3><p class="text-xs text-slate-500 mt-1">Expediente 360° — contacto, propuestas vinculadas y actividad por cliente.</p></div><div class="flex flex-wrap gap-2"><input type="text" id="v2-clients-search" oninput="renderClientsList()" placeholder="Buscar por nombre, correo o municipio..." class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none w-56 max-w-full"><select id="v2-clients-filter-cat" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo producto</option>${catOptions}</select><select id="v2-clients-filter-muni" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo municipio</option>${muniOptions}</select><button onclick="leonV2ExportClientsCsv()" title="Descargar CSV" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-csv mr-1"></i>CSV</button></div></div><div id="v2-clients-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div></div>`;
+    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h3 class="text-xl font-black text-slate-900">Clientes</h3><p class="text-xs text-slate-500 mt-1">Expediente 360° — contacto, propuestas vinculadas y actividad por cliente.</p></div><div class="flex flex-wrap gap-2"><input type="text" id="v2-clients-search" oninput="renderClientsList()" placeholder="Buscar por nombre, correo o municipio..." class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none w-56 max-w-full"><select id="v2-clients-filter-cat" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo producto</option>${catOptions}</select><select id="v2-clients-filter-muni" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo municipio</option>${muniOptions}</select><button onclick="leonV2ExportClientsCsv()" title="Descargar CSV" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-csv mr-1"></i>CSV</button>${leonV2IsAdmin()?`<button onclick="leonV2DownloadClientImportTemplate()" title="Descargar plantilla de ejemplo" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-arrow-down mr-1"></i>Plantilla</button><input type="file" id="v2-clients-import-file" accept=".csv" class="hidden" onchange="handleClientsImportFile(event)"><button onclick="document.getElementById('v2-clients-import-file').click()" title="Importar varios clientes desde un archivo CSV" class="px-3 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase"><i class="fa-solid fa-file-import mr-1"></i>Importar clientes</button>`:''}</div></div><div id="v2-clients-import-summary" class="hidden mb-4"></div><div id="v2-clients-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div></div>`;
     renderClientsList();
   }
   function renderClientsList(){
@@ -7597,7 +7830,7 @@
   };
 
   function renderBranding(){
-    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex items-center justify-between mb-2 flex-wrap gap-2"><div><h3 class="text-xl font-black text-slate-900">Editor de Sitio Web</h3><p class="text-xs text-slate-500 mt-1">Cambia el logo y el banner principal que ven todos los visitantes — sin tocar código.</p></div><span class="v2-pill">CMS</span></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"><div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">Logo de la Marca</h4><div class="flex items-center gap-4"><div id="cms-logo-preview" class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0"></div><div class="flex-grow min-w-0"><input type="file" id="cms-logo-file" accept="image/*" class="hidden" onchange="handleCmsLogoUpload(event)"><button type="button" onclick="document.getElementById('cms-logo-file').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Subir Logo</button><p id="cms-logo-status" class="text-[10px] text-slate-400 font-mono mt-2">Sin cambios recientes.</p></div></div></div><div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">Banner Principal (Inicio)</h4><div class="flex items-center gap-4"><div id="cms-hero-preview" class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0"><i class="fa-solid fa-image text-slate-300"></i></div><div class="flex-grow min-w-0"><input type="file" id="cms-hero-file" accept="image/*,video/*" class="hidden" onchange="handleCmsHeroUpload(event)"><button type="button" onclick="document.getElementById('cms-hero-file').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Subir Imagen o Video</button><p id="cms-hero-status" class="text-[10px] text-slate-400 font-mono mt-2">Acepta imagen o video (MP4, máx. 25MB).</p><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">O pega un enlace (URL) de imagen o video</label><div class="flex gap-2 mt-1"><input type="url" id="cms-hero-url" placeholder="https://..." class="flex-grow border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white min-w-0"><button type="button" onclick="handleCmsHeroUrlSubmit()" class="px-3 rounded-xl bg-ink-900 text-white text-[10px] font-black uppercase shrink-0">Usar</button></div><p class="text-[9px] text-slate-400 mt-1">Más liviano que subir el archivo — ideal si la foto/video ya está alojado en otro sitio.</p></div><label class="flex items-center gap-2 mt-3 text-[11px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="cms-hero-overlay" ${state.siteContent.heroOverlay===false?'':'checked'} onchange="state.siteContent.heroOverlay=this.checked;renderSiteBranding();if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('siteContent')"> Aplicar degradado oscuro sobre la foto/video (mejora la legibilidad del texto)</label></div></div></div></div><button onclick="resetSiteBranding()" class="mt-5 text-[10px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-wider transition"><i class="fa-solid fa-rotate-left mr-1"></i>Restaurar valores por defecto</button><div class="mt-6 p-4 rounded-2xl ${window.__fbDb?'bg-emerald-50 border border-emerald-100 text-emerald-800':'bg-amber-50 border border-amber-100 text-amber-800'} text-xs"><i class="fa-solid ${window.__fbDb?'fa-circle-check':'fa-triangle-exclamation'} mr-1"></i> ${window.__fbDb?'Conectado a la base de datos — estos cambios se guardan y se ven iguales para todos los visitantes, en todos los dispositivos del equipo.':'Sin conexión a la base de datos ahora mismo — estos cambios solo viven en esta pestaña.'} Nota: fotos o videos muy pesados (más de ~1MB) no caben en un documento de Firestore y no se sincronizarán aunque se vean bien en esta pantalla — para medios grandes en producción, lo correcto es Firebase Storage, no guardarlos como texto en la base de datos.</div></div>
+    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex items-center justify-between mb-2 flex-wrap gap-2"><div><h3 class="text-xl font-black text-slate-900">Editor de Sitio Web</h3><p class="text-xs text-slate-500 mt-1">Cambia el logo y el banner principal que ven todos los visitantes — sin tocar código.</p></div><span class="v2-pill">CMS</span></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"><div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">Logo de la Marca</h4><div class="flex items-center gap-4"><div id="cms-logo-preview" class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0"></div><div class="flex-grow min-w-0"><input type="file" id="cms-logo-file" accept="image/*" class="hidden" onchange="handleCmsLogoUpload(event)"><button type="button" onclick="document.getElementById('cms-logo-file').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Subir Logo</button><p id="cms-logo-status" class="text-[10px] text-slate-400 font-mono mt-2">Sin cambios recientes.</p></div></div></div><div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">Banner Principal (Inicio)</h4><div class="flex items-center gap-4"><div id="cms-hero-preview" class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0"><i class="fa-solid fa-image text-slate-300"></i></div><div class="flex-grow min-w-0"><input type="file" id="cms-hero-file" accept="image/*,video/*" class="hidden" onchange="handleCmsHeroUpload(event)"><button type="button" onclick="document.getElementById('cms-hero-file').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Subir Imagen o Video</button><p id="cms-hero-status" class="text-[10px] text-slate-400 font-mono mt-2">Acepta imagen o video (MP4, máx. 25MB).</p><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">O pega un enlace (URL) de imagen o video</label><div class="flex gap-2 mt-1"><input type="url" id="cms-hero-url" placeholder="https://..." class="flex-grow border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white min-w-0"><button type="button" onclick="handleCmsHeroUrlSubmit()" class="px-3 rounded-xl bg-ink-900 text-white text-[10px] font-black uppercase shrink-0">Usar</button></div><p class="text-[9px] text-slate-400 mt-1">Más liviano que subir el archivo — ideal si la foto/video ya está alojado en otro sitio. También acepta un enlace de YouTube o Vimeo (se incrusta y reproduce solo, sin necesitar el archivo).</p></div><label class="flex items-center gap-2 mt-3 text-[11px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="cms-hero-overlay" ${state.siteContent.heroOverlay===false?'':'checked'} onchange="state.siteContent.heroOverlay=this.checked;renderSiteBranding();if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('siteContent')"> Aplicar degradado oscuro sobre la foto/video (mejora la legibilidad del texto)</label></div></div></div></div><button onclick="resetSiteBranding()" class="mt-5 text-[10px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-wider transition"><i class="fa-solid fa-rotate-left mr-1"></i>Restaurar valores por defecto</button><div class="mt-6 p-4 rounded-2xl ${window.__fbDb?'bg-emerald-50 border border-emerald-100 text-emerald-800':'bg-amber-50 border border-amber-100 text-amber-800'} text-xs"><i class="fa-solid ${window.__fbDb?'fa-circle-check':'fa-triangle-exclamation'} mr-1"></i> ${window.__fbDb?'Conectado a la base de datos — estos cambios se guardan y se ven iguales para todos los visitantes, en todos los dispositivos del equipo.':'Sin conexión a la base de datos ahora mismo — estos cambios solo viven en esta pestaña.'} Nota: fotos o videos muy pesados (más de ~1MB) no caben en un documento de Firestore y no se sincronizarán aunque se vean bien en esta pantalla — para medios grandes en producción, lo correcto es Firebase Storage, no guardarlos como texto en la base de datos.</div></div>
     <div class="v2-card p-6 mt-6"><div class="flex items-center justify-between mb-2 flex-wrap gap-2"><div><h3 class="text-xl font-black text-slate-900">Galería de Proyectos</h3><p class="text-xs text-slate-500 mt-1">Cambia las fotos y el texto que se muestran en "Nuestro Trabajo" del sitio público.</p></div><button onclick="addCmsGalleryItem()" class="bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Añadir foto</button></div><div id="cms-gallery-list" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4"></div></div>`;
     renderSiteBranding();
     renderGalleryCmsEditor();
@@ -7607,7 +7840,7 @@
     const wrap = document.getElementById('cms-gallery-list');
     if (!wrap) return;
     const items = state.siteContent.gallery || [];
-    wrap.innerHTML = items.map((item, i) => `<div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><div class="flex items-center gap-4"><div class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0">${item.mediaType==='video'&&item.videoUrl?'<i class="fa-solid fa-clapperboard text-brand-400 text-xl"></i>':`<img src="${esc(item.imageUrl)}" class="w-full h-full object-cover">`}</div><div class="flex-grow min-w-0"><input type="file" id="cms-gallery-file-${i}" accept="image/*,video/*" class="hidden" onchange="handleCmsGalleryUpload(event, ${i})"><button type="button" onclick="document.getElementById('cms-gallery-file-${i}').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Cambiar Foto o Video</button><p id="cms-gallery-status-${i}" class="text-[10px] text-slate-400 font-mono mt-2">Sin cambios recientes.</p><div class="mt-2 flex gap-2"><input type="url" id="cms-gallery-url-${i}" placeholder="O pega un enlace (URL)..." class="flex-grow border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white min-w-0"><button type="button" onclick="handleCmsGalleryUrlSubmit(${i})" class="px-3 rounded-xl bg-ink-900 text-white text-[10px] font-black uppercase shrink-0">Usar</button></div></div></div><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">Título</label><input value="${esc(item.title)}" oninput="handleCmsGalleryText(${i},'title',this.value)" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white"></div><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">Descripción</label><textarea rows="2" oninput="handleCmsGalleryText(${i},'text',this.value)" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white">${esc(item.text)}</textarea></div><button onclick="removeCmsGalleryItem(${i})" class="mt-3 text-[10px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-wider transition"><i class="fa-solid fa-trash mr-1"></i>Eliminar foto</button></div>`).join('') || '<div class="v2-empty col-span-full">Sin fotos todavía.</div>';
+    wrap.innerHTML = items.map((item, i) => `<div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><div class="flex items-center gap-4"><div class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0">${item.mediaType==='video'&&item.videoUrl?'<i class="fa-solid fa-clapperboard text-brand-400 text-xl"></i>':`<img src="${esc(item.imageUrl)}" class="w-full h-full object-cover">`}</div><div class="flex-grow min-w-0"><input type="file" id="cms-gallery-file-${i}" accept="image/*,video/*" class="hidden" onchange="handleCmsGalleryUpload(event, ${i})"><button type="button" onclick="document.getElementById('cms-gallery-file-${i}').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Cambiar Foto o Video</button><p id="cms-gallery-status-${i}" class="text-[10px] text-slate-400 font-mono mt-2">Sin cambios recientes.</p><div class="mt-2 flex gap-2"><input type="url" id="cms-gallery-url-${i}" placeholder="O pega un enlace (URL) o de YouTube/Vimeo..." class="flex-grow border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white min-w-0"><button type="button" onclick="handleCmsGalleryUrlSubmit(${i})" class="px-3 rounded-xl bg-ink-900 text-white text-[10px] font-black uppercase shrink-0">Usar</button></div></div></div><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">Título</label><input value="${esc(item.title)}" oninput="handleCmsGalleryText(${i},'title',this.value)" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white"></div><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">Descripción</label><textarea rows="2" oninput="handleCmsGalleryText(${i},'text',this.value)" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white">${esc(item.text)}</textarea></div><button onclick="removeCmsGalleryItem(${i})" class="mt-3 text-[10px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-wider transition"><i class="fa-solid fa-trash mr-1"></i>Eliminar foto</button></div>`).join('') || '<div class="v2-empty col-span-full">Sin fotos todavía.</div>';
   }
 
   function renderReports(){
@@ -9283,7 +9516,7 @@
       <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-5">${state.users.map(u=>`<div class="v2-card p-4">
         <div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0">${u.photoUrl?`<img src="${esc(u.photoUrl)}" class="w-full h-full object-cover">`:`<i class="fa-solid fa-user text-slate-300"></i>`}</div><div class="min-w-0"><b class="text-sm block truncate">${esc(u.name)}</b><span class="text-[10px] text-slate-400 border border-slate-200 rounded px-1.5 py-0.5">${esc(u.role)}</span></div></div>
         <div class="text-xs text-slate-500 mt-3 space-y-1"><div><i class="fa-solid fa-envelope w-4 text-slate-400"></i> ${esc(u.email)}</div><div><i class="fa-solid fa-phone w-4 text-slate-400"></i> ${esc(u.phone||'—')}</div>${u.hireDate?`<div><i class="fa-solid fa-calendar-day w-4 text-slate-400"></i> Contratado: ${esc(u.hireDate)}</div>`:''}${u.emergencyContactName?`<div><i class="fa-solid fa-phone-volume w-4 text-slate-400"></i> Emergencia: ${esc(u.emergencyContactName)}${u.emergencyContactPhone?' · '+esc(u.emergencyContactPhone):''}</div>`:''}</div>
-        <div class="flex flex-wrap gap-2 mt-3"><button onclick="leonV2OpenVendorContract('${u.id}')" class="v2-tab ${u.contract?'':'active'}"><i class="fa-solid fa-file-signature mr-1"></i>${u.contract?'Contrato':'Crear contrato'}</button>${u.contract?`<button onclick="leonV2PrintVendorContract('${u.id}')" class="v2-tab"><i class="fa-solid fa-file-pdf mr-1"></i>PDF</button>`:''}${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2OpenDeleteEmployeeConfirm('${u.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-trash mr-1"></i>Eliminar</button>`:''}</div>
+        <div class="flex flex-wrap gap-2 mt-3"><button onclick="leonV2OpenVendorContract('${u.id}')" class="v2-tab ${u.contract?'':'active'}"><i class="fa-solid fa-file-signature mr-1"></i>${u.contract?'Contrato':'Crear contrato'}</button>${u.contract?`<button onclick="leonV2PrintVendorContract('${u.id}')" class="v2-tab"><i class="fa-solid fa-file-pdf mr-1"></i>PDF</button>`:''}${(u.contract&&u.photoUrl)?`<button onclick="leonV2DownloadEmployeeBadge('${u.id}')" class="v2-tab" style="background:#0876c9;color:#fff;border-color:#0876c9" title="Descargar carnet de empleado"><i class="fa-solid fa-id-badge mr-1"></i>Carnet</button>`:(u.contract?`<button disabled title="Falta subir la foto de perfil en 'Crear contrato' para poder generar el carnet" class="v2-tab opacity-50 cursor-not-allowed"><i class="fa-solid fa-id-badge mr-1"></i>Carnet</button>`:'')}${(state.currentUser&&state.currentUser.role==='Administrador')?`<button onclick="leonV2OpenDeleteEmployeeConfirm('${u.id}')" class="v2-tab" style="color:#dc2626"><i class="fa-solid fa-trash mr-1"></i>Eliminar</button>`:''}</div>
         <div class="mt-3 pt-3 border-t border-slate-100"><div class="flex justify-between items-center"><span class="text-[10px] font-black uppercase text-slate-400">Documentos (${(u.documents||[]).length})</span><label class="text-brand-600 text-[11px] font-bold cursor-pointer"><i class="fa-solid fa-upload mr-1"></i>Subir<input type="file" class="hidden" onchange="handleEmployeeDocFile(event,'${u.id}')"></label></div>
           ${(u.documents||[]).length?`<div class="mt-2 space-y-1">${u.documents.map((d,i)=>`<div class="flex items-center justify-between text-[11px] bg-slate-50 rounded-lg px-2 py-1.5"><a href="${d.dataUrl}" download="${esc(d.name)}" class="text-slate-600 truncate flex-grow hover:text-brand-600"><i class="fa-solid fa-paperclip mr-1"></i>${esc(d.name)}</a><button onclick="leonV2RemoveEmployeeDoc('${u.id}',${i})" class="text-slate-400 hover:text-red-500 ml-2"><i class="fa-solid fa-trash"></i></button></div>`).join('')}</div>`:''}
         </div>
@@ -9404,7 +9637,7 @@
       </div>
       <label class="flex items-start gap-2 text-xs text-slate-600 p-3 rounded-xl bg-slate-50 border border-slate-200"><input type="checkbox" id="vc-clauses-accept" class="mt-0.5" ${c.clausesAcceptedAt?'checked':''}>${c.clausesAcceptedAt?`He leído y acepto las cláusulas de este contrato. <span class="text-slate-400">(aceptado el ${esc(new Date(c.clausesAcceptedAt).toLocaleDateString())})</span>`:'He leído y acepto las cláusulas de este contrato. *'}</label>
       <div><label class="text-[10px] font-black uppercase text-slate-500 mb-1 block"><i class="fa-solid fa-signature mr-1"></i>Firma del empleado ${c.signatureDataUrl?'(ya hay una firma guardada — firma de nuevo solo si quieres reemplazarla)':''}</label>${leonV2SignaturePadHtml('vc-signature')}${c.signatureDataUrl?`<div class="mt-2 text-[10px] text-slate-400">Firma actual guardada: <img src="${c.signatureDataUrl}" class="inline-block h-8 align-middle border border-slate-100 rounded ml-1"></div>`:''}</div>
-      <div class="flex flex-wrap gap-3"><button type="submit" class="flex-grow py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase tracking-widest">Guardar contrato de vendedor</button>${u.contract?`<button type="button" onclick="leonV2PrintVendorContract('${u.id}')" class="px-5 py-3 rounded-xl bg-ink-900 text-white font-black text-xs uppercase tracking-widest"><i class="fa-solid fa-file-pdf mr-2"></i>Descargar PDF</button><button type="button" onclick="leonV2EmailVendorContract('${u.id}')" class="px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest"><i class="fa-solid fa-envelope mr-2"></i>Enviar por correo</button>`:''}</div>
+      <div class="flex flex-wrap gap-3"><button type="submit" class="flex-grow py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase tracking-widest">Guardar contrato de vendedor</button>${u.contract?`<button type="button" onclick="leonV2PrintVendorContract('${u.id}')" class="px-5 py-3 rounded-xl bg-ink-900 text-white font-black text-xs uppercase tracking-widest"><i class="fa-solid fa-file-pdf mr-2"></i>Descargar PDF</button><button type="button" onclick="leonV2EmailVendorContract('${u.id}')" class="px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest"><i class="fa-solid fa-envelope mr-2"></i>Enviar por correo</button>`:''}${(u.contract&&u.photoUrl)?`<button type="button" onclick="leonV2DownloadEmployeeBadge('${u.id}')" class="px-5 py-3 rounded-xl bg-[#0876c9] text-white font-black text-xs uppercase tracking-widest"><i class="fa-solid fa-id-badge mr-2"></i>Descargar carnet</button>`:(u.contract?`<button type="button" disabled title="Sube una foto de perfil arriba para poder generar el carnet" class="px-5 py-3 rounded-xl border border-slate-200 text-slate-400 font-black text-xs uppercase tracking-widest cursor-not-allowed"><i class="fa-solid fa-id-badge mr-2"></i>Descargar carnet</button>`:'')}</div>
     </form>`;
     document.getElementById('v2-vendor-contract-content').innerHTML = html;
     open('leon-v2-vendor-contract');
@@ -9458,6 +9691,110 @@
     </body></html>`);
     w.document.close();
   };
+
+  // ===================== CARNET DE EMPLEADO (ID BADGE) =====================
+  // Reporte real: "una vez el empleado llene su contrato el mismo sistema le creará su carnet y
+  // podrá descargarlo desde la página" — pero antes necesita una foto de perfil (sin foto no hay
+  // carnet honesto que mostrar). Se genera por completo con <canvas> (sin librerías externas),
+  // igual que los íconos de la PWA (leonV2BuildAppIconDataUrl) — el resultado es un PNG real que se
+  // descarga de inmediato, no solo una vista para imprimir.
+  function leonV2LoadImagePromise(src){
+    return new Promise(resolve=>{
+      if(!src){ resolve(null); return; }
+      const img=new Image();
+      img.onload=()=>resolve(img);
+      img.onerror=()=>resolve(null);
+      img.src=src;
+    });
+  }
+  window.leonV2BuildEmployeeBadgeDataUrl=function(u){
+    return Promise.all([
+      leonV2LoadImagePromise(u.photoUrl||''),
+      leonV2LoadImagePromise((window.state&&state.siteContent&&state.siteContent.logoUrl)||'')
+    ]).then(([photoImg, logoImg])=>{
+      if(!photoImg) return null; // sin foto de perfil no se genera carnet
+      const W=640, H=1016;
+      const canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
+      const ctx=canvas.getContext('2d');
+      ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
+      // Encabezado con degradado de marca (mismos colores que el ícono de la app)
+      const headerH=210;
+      const grad=ctx.createLinearGradient(0,0,W,headerH);
+      grad.addColorStop(0,'#0a1a2e'); grad.addColorStop(0.55,'#025fae'); grad.addColorStop(1,'#1893f5');
+      ctx.fillStyle=grad; ctx.fillRect(0,0,W,headerH);
+      ctx.textAlign='center';
+      let titleY=70, subtitleY=104;
+      if(logoImg){
+        const logoH=46, logoW=Math.min(170, logoImg.width*(logoH/logoImg.height));
+        ctx.drawImage(logoImg, (W-logoW)/2, 22, logoW, logoH);
+        titleY=108; subtitleY=140;
+      }
+      ctx.fillStyle='#ffffff';
+      ctx.font='bold 30px Arial, Helvetica, sans-serif';
+      ctx.fillText('LEON HOME SOLUTIONS', W/2, titleY);
+      ctx.font='bold 15px Arial, Helvetica, sans-serif';
+      ctx.fillStyle='rgba(255,255,255,0.85)';
+      ctx.fillText('IDENTIFICACIÓN DE EMPLEADO', W/2, subtitleY);
+      // Foto circular, superpuesta al borde inferior del encabezado
+      const photoSize=220;
+      const cx=W/2, cy=headerH;
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, photoSize/2, 0, Math.PI*2); ctx.closePath();
+      ctx.fillStyle='#ffffff'; ctx.shadowColor='rgba(15,23,42,0.35)'; ctx.shadowBlur=18;
+      ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, photoSize/2-7, 0, Math.PI*2); ctx.closePath(); ctx.clip();
+      const scale=Math.max((photoSize-14)/photoImg.width, (photoSize-14)/photoImg.height);
+      const pw=photoImg.width*scale, ph=photoImg.height*scale;
+      ctx.drawImage(photoImg, cx-pw/2, cy-ph/2, pw, ph);
+      ctx.restore();
+      let y=cy+photoSize/2+60;
+      ctx.fillStyle='#0f172a';
+      ctx.font='bold 32px Arial, Helvetica, sans-serif';
+      ctx.fillText(u.name||'', W/2, y);
+      y+=38;
+      ctx.font='bold 15px Arial, Helvetica, sans-serif';
+      ctx.fillStyle='#0876c9';
+      ctx.fillText((u.role||'').toUpperCase(), W/2, y);
+      y+=46;
+      ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(60,y); ctx.lineTo(W-60,y); ctx.stroke();
+      y+=48;
+      ctx.textAlign='left';
+      [['No. de empleado', u.id||'—'], ['Teléfono', u.phone||'—'], ['Correo', u.email||'—']].forEach(([label,val])=>{
+        ctx.fillStyle='#94a3b8'; ctx.font='bold 12px Arial, Helvetica, sans-serif';
+        ctx.fillText(label.toUpperCase(), 60, y);
+        ctx.fillStyle='#1e293b'; ctx.font='19px Arial, Helvetica, sans-serif';
+        ctx.fillText(String(val), 60, y+24);
+        y+=62;
+      });
+      const footerH=90;
+      const fgrad=ctx.createLinearGradient(0,H-footerH,W,H);
+      fgrad.addColorStop(0,'#0a1a2e'); fgrad.addColorStop(1,'#025fae');
+      ctx.fillStyle=fgrad; ctx.fillRect(0,H-footerH,W,footerH);
+      ctx.fillStyle='#ffffff'; ctx.textAlign='center'; ctx.font='bold 12px Arial, Helvetica, sans-serif';
+      ctx.fillText('VÁLIDO MIENTRAS SEA EMPLEADO ACTIVO DE LEON HOME SOLUTIONS', W/2, H-footerH/2-6);
+      ctx.font='11px Arial, Helvetica, sans-serif'; ctx.fillStyle='rgba(255,255,255,0.75)';
+      ctx.fillText('Emitido el '+new Date().toLocaleDateString(), W/2, H-footerH/2+18);
+      return canvas.toDataURL('image/png');
+    });
+  };
+  window.leonV2DownloadEmployeeBadge=function(userId){
+    const u=(state.users||[]).find(x=>x.id===userId);
+    if(!u){ showToast('No se encontró el empleado.','warning'); return; }
+    if(!u.contract){ showToast('Primero completa el contrato de este empleado — el carnet se habilita automáticamente al guardarlo.','warning'); return; }
+    if(!u.photoUrl){ showToast('Primero sube una foto de perfil del empleado desde "Crear contrato" — sin foto no se puede generar el carnet.','warning'); return; }
+    leonV2BuildEmployeeBadgeDataUrl(u).then(dataUrl=>{
+      if(!dataUrl){ showToast('No se pudo generar el carnet — revisa que la foto de perfil sea válida.','error'); return; }
+      const a=document.createElement('a');
+      a.href=dataUrl; a.download='carnet_'+(u.name||'empleado').trim().replace(/\s+/g,'_').toLowerCase()+'.png';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      if(typeof leonV2Audit==='function') leonV2Audit('Carnet de empleado descargado', u.name);
+      showToast('Carnet descargado.','success');
+    });
+  };
+
   window.handleVendorPhotoUpload=function(event){
     const file = event.target.files[0]; if(!file) return;
     if(!file.type.startsWith('image/')){ showToast('La foto debe ser una imagen.','error'); return; }
