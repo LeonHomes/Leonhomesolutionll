@@ -32,18 +32,72 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://www.gstatic.com">
     <link rel="preconnect" href="https://firestore.googleapis.com">
+    <link rel="preconnect" href="https://accounts.google.com">
+    <!-- Google Identity Services — necesaria para que cada empleado conecte SU PROPIO Google
+         Calendar desde Configuración (ver Integración con Google Calendar). Se carga siempre pero
+         no hace nada hasta que el administrador configure un Client ID y alguien pulse "Conectar". -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Colores de marca como VARIABLES CSS (no valores fijos) — pedido real: poder cambiar los
+         colores de toda la página (panel de control Y página principal, son el mismo set de clases
+         Tailwind en los dos) desde Configuración, y que se vea igual en todas las pantallas sin
+         tocar código. Tailwind (vía el CDN de abajo) genera las clases .bg-brand-600, .text-ink-900,
+         etc. usando estos nombres de variable como su valor — así, cambiar la variable en tiempo de
+         ejecución (leonV2ApplyThemeColors, más abajo en el script principal) repinta YA todo lo que
+         esté en pantalla, sin tener que regenerar ni recargar nada. Los valores de aquí son los
+         originales de LEON — se usan tal cual mientras nadie los personalice.-->
+    <style id="leon-theme-vars">
+      :root{
+        --c-brand-50:#eef8ff; --c-brand-100:#dcf0ff; --c-brand-200:#b9e2ff; --c-brand-300:#83cdff;
+        --c-brand-400:#45b0ff; --c-brand-500:#1893f5; --c-brand-600:#0574d6; --c-brand-700:#025fae;
+        --c-brand-800:#08508c; --c-brand-900:#0c4373; --c-brand-dark:#062c4d;
+        --c-ink-default:#0b1220; --c-ink-50:#f4f6f9; --c-ink-100:#e7eaf0; --c-ink-700:#161f30;
+        --c-ink-800:#111827; --c-ink-900:#0a0f1a; --c-ink-950:#05070c;
+      }
+    </style>
+    <!-- Aplica YA los colores personalizados guardados en este navegador (si hay), ANTES de que se
+         pinte nada — así no hay un parpadeo del azul original seguido del color real al cargar.
+         Es una copia mínima e independiente del generador de rampa de abajo (leonV2ApplyThemeColors)
+         porque tiene que poder correr aquí, antes de que el resto del script de la app exista
+         siquiera. La versión real/compartida (Firestore) llega un poco después y confirma o corrige
+         esto — ver leonV2ApplyThemeColors más abajo en el script principal. -->
+    <script>
+      (function(){
+        try{
+          const raw = localStorage.getItem('leonThemeColorsCache');
+          if(!raw) return;
+          const tc = JSON.parse(raw);
+          function mix(hex,target,amt){
+            hex=hex.replace('#',''); const n=parseInt(hex,16); const c=[(n>>16)&255,(n>>8)&255,n&255];
+            const t = target==='white' ? [255,255,255] : [0,0,0];
+            return '#'+c.map((v,i)=>Math.round(Math.max(0,Math.min(255,v+(t[i]-v)*amt))).toString(16).padStart(2,'0')).join('');
+          }
+          const root=document.documentElement.style;
+          if(tc && tc.brandBase){
+            const b=tc.brandBase;
+            const stops={50:['white',.95],100:['white',.88],200:['white',.74],300:['white',.56],400:['white',.34],500:['white',.14],600:[null,0],700:['black',.16],800:['black',.30],900:['black',.43],dark:['black',.56]};
+            Object.keys(stops).forEach(k=>{ const [dir,amt]=stops[k]; root.setProperty('--c-brand-'+k, dir?mix(b,dir,amt):b); });
+          }
+          if(tc && tc.inkBase){
+            const b=tc.inkBase;
+            const stops={50:['white',.97],100:['white',.94],700:['white',.25],800:['white',.08],900:[null,0],950:['black',.15]};
+            root.setProperty('--c-ink-default', mix(b,'black',.05));
+            Object.keys(stops).forEach(k=>{ const [dir,amt]=stops[k]; root.setProperty('--c-ink-'+k, dir?mix(b,dir,amt):b); });
+          }
+        }catch(e){}
+      })();
+    </script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         brand: {
-                            50: '#eef8ff', 100: '#dcf0ff', 200: '#b9e2ff', 300: '#83cdff',
-                            400: '#45b0ff', 500: '#1893f5', 600: '#0574d6', 700: '#025fae',
-                            800: '#08508c', 900: '#0c4373', dark: '#062c4d'
+                            50: 'var(--c-brand-50)', 100: 'var(--c-brand-100)', 200: 'var(--c-brand-200)', 300: 'var(--c-brand-300)',
+                            400: 'var(--c-brand-400)', 500: 'var(--c-brand-500)', 600: 'var(--c-brand-600)', 700: 'var(--c-brand-700)',
+                            800: 'var(--c-brand-800)', 900: 'var(--c-brand-900)', dark: 'var(--c-brand-dark)'
                         },
-                        ink: { DEFAULT: '#0b1220', 50: '#f4f6f9', 100: '#e7eaf0', 700: '#161f30', 800: '#111827', 900: '#0a0f1a', 950: '#05070c' }
+                        ink: { DEFAULT: 'var(--c-ink-default)', 50: 'var(--c-ink-50)', 100: 'var(--c-ink-100)', 700: 'var(--c-ink-700)', 800: 'var(--c-ink-800)', 900: 'var(--c-ink-900)', 950: 'var(--c-ink-950)' }
                     },
                     fontFamily: { sans: ['Inter', 'sans-serif'] },
                     boxShadow: {
@@ -1068,11 +1122,28 @@
             // editables desde Configuración sin tocar el código. Se le preguntan al cliente en la
             // llamada y la respuesta (texto libre) queda guardada junto a la nota de esa llamada.
             callQuestions: ['Presupuesto aproximado','¿Cómo se enteró de nosotros?','Mejor horario para contactarle','¿Es dueño(a) de la propiedad?','¿Para cuándo quiere instalar el equipo?'],
+            // Status del lead (qué tan interesado está) — independiente del estado de la propuesta
+            // (pipelineStatuses) y de si ya es "Cliente" confirmado (stage). Editable desde
+            // Configuración igual que las preguntas de llamada. "Cliente" se asigna solo (ver
+            // leonV2PromoteClientToCustomer) cuando se confirma una venta de verdad.
+            leadStatuses: ['Nuevo','Contactado','Interesado','Sin respuesta','Volver a llamar luego','No interesado','Cliente'],
             // Contador para el número de expediente (caseNumber) de cada cliente — ej. EXP-00001.
             // Vive aparte de los IDs internos (cli-xxxxx) porque esos no son prácticos de decir o
             // escribir a mano durante una llamada; este sí. Un solo contador compartido por todo el
             // equipo (ver leonV2EnsureCaseNumber) para que nunca se repita un número entre vendedores.
             caseCounter: { next: 1 },
+            // Integración con Google Calendar — el administrador pega aquí el "Client ID" de OAuth
+            // que genera en Google Cloud Console (ver Configuración → Google Calendar). Es un solo
+            // valor compartido por todo el equipo (como cualquier otro meta-doc); cada empleado
+            // luego conecta SU PROPIA cuenta de Google desde Configuración usando este Client ID.
+            googleCalendarClientId: '',
+            // Colores de la marca — pedido real: "cambiar la apariencia y los colores de la página
+            // ya sea tanto en el panel de control como en la página principal... que si se actualiza
+            // se actualice en todas las pantallas". Vacío ('') = usar los colores originales de LEON
+            // (ver :root en <style id="leon-theme-vars">). Un solo valor compartido por todo el
+            // equipo — se aplica con leonV2ApplyThemeColors() en cuanto cambia, en cualquier pestaña
+            // conectada a Firestore, incluyendo la página pública.
+            themeColors: { brandBase:'', inkBase:'' },
             // Papelera (soft-delete) y auditoría — ver leonV2SoftDelete/leonV2Audit más abajo.
             trash: [],
             auditLog: [],
@@ -1170,6 +1241,10 @@
             calcRenderProductGrid();
             calcUpdateTermOptions('calc-bp-provider', 'calc-bp-term-wrap', 'calc-bp-term');
             initHeroBlobParallax();
+            // Confirma/corrige los colores personalizados con lo que de verdad hay en memoria ahora
+            // (el <script> de arriba en <head> ya aplicó la copia en caché de este navegador, si
+            // había una, para evitar el parpadeo del azul original al cargar).
+            if (typeof window.leonV2ApplyThemeColors === 'function') window.leonV2ApplyThemeColors();
             // Conecta los oyentes de Firestore en tiempo real (si Firebase cargó bien). A partir
             // de aquí, cualquier cambio hecho desde OTRO dispositivo/pestaña llega solo, sin recargar.
             if (typeof window.leonV2InitFirebaseSync === 'function') window.leonV2InitFirebaseSync();
@@ -4474,7 +4549,7 @@
       const dupes=leonV2FindPossibleDuplicateClients(q.clientName, q.clientPhone, q.clientEmail);
       // Nace como Lead — el momento en que se registra su primera propuesta. Solo pasa a 'Cliente'
       // cuando una venta suya queda confirmada de verdad (ver leonV2PromoteClientToCustomer).
-      c={id:'cli-'+Date.now()+'-'+Math.floor(Math.random()*999),name:q.clientName||'',company:q.clientCompany||'',email:q.clientEmail,phone:q.clientPhone||'',municipio:q.clientMunicipio||'',address:q.clientAddress||'',locationUrl:q.clientLocationUrl||'',source:q.source||(q.origin==='Asistido'?'Consultor':'Sitio Web'),consultorName:q.vendorName||null,stage:'Lead',createdAt:now,lastContact:now,nextAction:'',activity:[]};
+      c={id:'cli-'+Date.now()+'-'+Math.floor(Math.random()*999),name:q.clientName||'',company:q.clientCompany||'',email:q.clientEmail,phone:q.clientPhone||'',municipio:q.clientMunicipio||'',address:q.clientAddress||'',locationUrl:q.clientLocationUrl||'',source:q.source||(q.origin==='Asistido'?'Consultor':'Sitio Web'),consultorName:q.vendorName||null,stage:'Lead',leadStatus:'Nuevo',createdAt:now,createdBy:actor,lastContact:now,nextAction:'',activity:[]};
       state.clients.push(c);
       c.activity.push({type:'cliente_creado',text:'Lead creado — propuesta '+(q.id||'')+' registrada',at:now,by:actor});
       if(dupes.length){
@@ -4519,6 +4594,39 @@
     return c.caseNumber;
   }
   window.leonV2EnsureCaseNumber=leonV2EnsureCaseNumber;
+  // Clientes/leads que ya existían antes de que este campo existiera reciben "Nuevo" la primera vez
+  // que se tocan — igual que leonV2EnsureCaseNumber con el número de expediente.
+  function leonV2EnsureLeadStatus(c){
+    if(!c) return '';
+    if(!c.leadStatus) c.leadStatus = (c.stage==='Cliente') ? 'Cliente' : 'Nuevo';
+    return c.leadStatus;
+  }
+  window.leonV2EnsureLeadStatus=leonV2EnsureLeadStatus;
+  // Deja solo los dígitos de un teléfono (quita guiones, paréntesis, espacios, +1, etc.) y se queda
+  // con los últimos 10 — así "787-555-1234", "(787) 555-1234" y "17875551234" se reconocen como EL
+  // MISMO número al buscar un duplicado.
+  function leonV2NormalizePhone(phone){
+    const digits=String(phone||'').replace(/\D/g,'');
+    return digits.length>10 ? digits.slice(-10) : digits;
+  }
+  // Reporte real: si se registra una llamada de un lead sin buscarlo primero en el selector (ej.
+  // porque el empleado no se dio cuenta de que ya existe), antes se creaba un expediente NUEVO cada
+  // vez — con 100 llamadas al mismo lead terminabas con 100 expedientes sueltos en vez de uno con
+  // 100 llamadas adentro. Esta función busca por teléfono (normalizado) y, si no hay teléfono o no
+  // coincide, por correo, ANTES de crear un cliente nuevo desde el formulario de llamada.
+  function leonV2FindExistingLeadForCall(phone, email){
+    const normPhone=leonV2NormalizePhone(phone);
+    const normEmail=String(email||'').trim().toLowerCase();
+    if(normPhone.length>=7){
+      const byPhone=(state.clients||[]).find(cl=>leonV2NormalizePhone(cl.phone)===normPhone);
+      if(byPhone) return byPhone;
+    }
+    if(normEmail){
+      const byEmail=(state.clients||[]).find(cl=>(cl.email||'').trim().toLowerCase()===normEmail);
+      if(byEmail) return byEmail;
+    }
+    return null;
+  }
 
   // Abre el formulario de "Registrar llamada". Si se pasa clientId, el cliente ya queda fijo
   // (se usa desde el expediente del cliente); si no, se puede buscar un cliente existente O crear
@@ -4545,9 +4653,10 @@
     const html = `<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2"><i class="fa-solid fa-phone-volume"></i> REGISTRAR LLAMADA</div><h3 class="text-2xl font-black">¿Qué se habló con el cliente?</h3><p class="text-sm text-slate-500">Queda visible para todo el equipo que tenga acceso a este cliente.</p></div><button onclick="leonV2Close('leon-v2-call-log')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
     <form onsubmit="leonV2SaveCallLog(event,${c?`'${c.id}'`:'null'})" class="mt-6 space-y-5">
       ${pickerHtml}
-      <div class="grid sm:grid-cols-2 gap-4">
+      <div class="grid sm:grid-cols-3 gap-4">
         <div><label class="text-[10px] font-black uppercase text-slate-500">Tipo</label><select id="cl-type" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option>Llamada entrante</option><option>Llamada saliente</option><option>Nota</option></select></div>
-        <div><label class="text-[10px] font-black uppercase text-slate-500">Próximo seguimiento (opcional)</label><input type="date" id="cl-followup" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Status del lead</label><select id="cl-leadstatus" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="">Sin cambio</option>${(state.leadStatuses||[]).map(s=>`<option value="${esc(s)}" ${c&&c.leadStatus===s?'selected':''}>${esc(s)}</option>`).join('')}</select></div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Próximo seguimiento (opcional)</label><div class="flex gap-2 mt-1"><input type="date" id="cl-followup" title="Fecha de seguimiento" class="w-1/2 border border-slate-200 rounded-xl px-3 py-3 text-sm"><input type="time" id="cl-followup-time" title="Hora de seguimiento" class="w-1/2 border border-slate-200 rounded-xl px-3 py-3 text-sm"></div></div>
       </div>
       <div><label class="text-[10px] font-black uppercase text-slate-500">¿De qué trató la llamada? *</label><textarea id="cl-notes" required rows="3" placeholder="Resumen de la conversación — qué preguntó, qué le preocupa, qué se le prometió..." class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></textarea></div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200">
@@ -4577,53 +4686,321 @@
       } else {
         const newName=(document.getElementById('cl-new-name')?.value||'').trim();
         if(!newName){ showToast('Escribe el nombre del cliente, o selecciona uno existente.','error'); return; }
-        const now0=new Date().toISOString();
-        c={ id:'cli-'+Date.now()+'-'+Math.floor(Math.random()*999), name:newName,
-          company:'', email:(document.getElementById('cl-new-email')?.value||'').trim(),
-          phone:(document.getElementById('cl-new-phone')?.value||'').trim(),
-          municipio:(document.getElementById('cl-new-municipio')?.value||'').trim(),
-          address:'', locationUrl:'', source:'Llamada', consultorName:(state.currentUser&&state.currentUser.name)||null,
-          consultorId:(state.currentUser&&state.currentUser.id)||null,
-          stage:'Lead', createdAt:now0, lastContact:now0, nextAction:'', activity:[], calls:[] };
-        if(!state.clients) state.clients=[];
-        state.clients.push(c);
-        leonV2EnsureCaseNumber(c);
-        c.activity.push({type:'cliente_creado',text:'Lead creado desde una llamada entrante/saliente',at:now0,by:(state.currentUser&&state.currentUser.name)||'Sistema'});
+        const newPhone=(document.getElementById('cl-new-phone')?.value||'').trim();
+        const newEmail=(document.getElementById('cl-new-email')?.value||'').trim();
+        // Antes de crear un expediente nuevo, busca si YA existe uno con ese mismo teléfono o
+        // correo — así "100 llamadas al mismo lead" quedan las 100 dentro de un solo expediente,
+        // aunque cada vez se haya escrito el nombre sin buscar primero en el selector de arriba.
+        const matched=leonV2FindExistingLeadForCall(newPhone, newEmail);
+        if(matched){
+          c=matched;
+          // Completa huecos con lo que se acaba de escribir, sin pisar datos que ya tenía.
+          if(newPhone && !c.phone) c.phone=newPhone;
+          if(newEmail && !c.email) c.email=newEmail;
+          showToast('Ya existe un expediente con ese teléfono/correo ('+c.name+', '+(c.caseNumber||leonV2EnsureCaseNumber(c))+') — la llamada se agrega ahí, sin duplicar.','info');
+        } else {
+          const now0=new Date().toISOString();
+          const actorName=(state.currentUser&&state.currentUser.name)||'Sistema';
+          c={ id:'cli-'+Date.now()+'-'+Math.floor(Math.random()*999), name:newName,
+            company:'', email:newEmail,
+            phone:newPhone,
+            municipio:(document.getElementById('cl-new-municipio')?.value||'').trim(),
+            address:'', locationUrl:'', source:'Llamada', consultorName:(state.currentUser&&state.currentUser.name)||null,
+            consultorId:(state.currentUser&&state.currentUser.id)||null,
+            stage:'Lead', leadStatus:'Nuevo', createdAt:now0, createdBy:actorName, lastContact:now0, nextAction:'', activity:[], calls:[] };
+          if(!state.clients) state.clients=[];
+          state.clients.push(c);
+          leonV2EnsureCaseNumber(c);
+          c.activity.push({type:'cliente_creado',text:'Lead creado desde una llamada entrante/saliente',at:now0,by:actorName});
+        }
       }
     }
     if(!c){ showToast('No se encontró el cliente.','error'); return; }
     leonV2EnsureCaseNumber(c);
+    leonV2EnsureLeadStatus(c);
     const now=new Date().toISOString();
     const actor=(state.currentUser&&state.currentUser.name)||'Equipo';
     const interests=Array.from(document.querySelectorAll('.cl-interest:checked')).map(i=>i.value);
     const answers={};
     (state.callQuestions||[]).forEach((q,i)=>{ const el=document.getElementById('cl-q-'+i); const val=el?el.value.trim():''; if(val) answers[q]=val; });
+    const statusSel=document.getElementById('cl-leadstatus');
+    const newLeadStatus=statusSel?statusSel.value:'';
+    const prevLeadStatus=c.leadStatus;
+    if(newLeadStatus) c.leadStatus=newLeadStatus;
     const entry={
       id:'call-'+Date.now()+'-'+Math.floor(Math.random()*999),
       at:now, by:actor,
       type:document.getElementById('cl-type').value,
       notes:document.getElementById('cl-notes').value.trim(),
       interests, answers,
-      nextFollowUp:document.getElementById('cl-followup').value||''
+      leadStatus: newLeadStatus || prevLeadStatus || '',
+      nextFollowUp:document.getElementById('cl-followup').value||'',
+      nextFollowUpTime:document.getElementById('cl-followup-time')?.value||''
     };
     if(!c.calls) c.calls=[];
     c.calls.unshift(entry);
     c.lastContact=now;
     if(!c.activity) c.activity=[];
-    c.activity.push({type:'llamada',text:entry.type+' — '+(entry.notes.length>80?entry.notes.slice(0,80)+'…':entry.notes),at:now,by:actor});
+    c.activity.push({type:'llamada',text:entry.type+' — '+(entry.notes.length>80?entry.notes.slice(0,80)+'…':entry.notes)+(newLeadStatus&&newLeadStatus!==prevLeadStatus?' · Status: '+newLeadStatus:''),at:now,by:actor});
     if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('clients');
     if(typeof leonV2Audit==='function') leonV2Audit('Llamada/nota registrada', c.name+' ('+c.caseNumber+') — '+entry.type);
     showToast('Llamada registrada en el expediente de '+c.name+'.','success');
+    // Si quedó un próximo seguimiento con fecha, y quien registró la llamada ya conectó su Google
+    // Calendar (ver Configuración → Integración con Google Calendar), se crea el evento allá mismo
+    // — sin bloquear nada de lo anterior si Google tarda o falla.
+    if(typeof leonV2CreateGcalEventForFollowUp==='function') leonV2CreateGcalEventForFollowUp(c, entry);
     leonV2Close('leon-v2-call-log');
     if(document.getElementById('leon-v2-client-dossier')?.classList.contains('show')) window.leonV2OpenClientDossier(c.id);
     if(typeof renderClientsList==='function' && document.getElementById('v2-clients-list')) renderClientsList();
-    if(typeof renderCallsLog==='function' && document.getElementById('v2-calls-log-list')) renderCallsLog();
+    if(typeof renderCallsLogList==='function' && document.getElementById('v2-calls-log-list')) renderCallsLogList();
+  };
+  // Combina fecha+hora de un seguimiento en un objeto Date real, para poder comparar/ordenar.
+  // Si no hay hora capturada (llamadas viejas, o el usuario la dejó en blanco) se asume medianoche,
+  // así el día sigue funcionando igual que antes de agregar la hora.
+  function leonV2FollowUpDateTime(dateStr, timeStr){
+    if(!dateStr) return null;
+    const d=new Date(dateStr+'T'+(timeStr||'00:00')+':00');
+    return isNaN(d.getTime())?null:d;
+  }
+  window.leonV2FollowUpDateTime=leonV2FollowUpDateTime;
+  // Texto legible "28 oct 2026, 2:30 p.m." — o solo la fecha si no se capturó hora.
+  function leonV2FormatFollowUp(dateStr, timeStr){
+    const d=leonV2FollowUpDateTime(dateStr, timeStr);
+    if(!d) return dateStr||'';
+    const dateFmt=d.toLocaleDateString('es-PR',{day:'numeric',month:'short',year:'numeric'});
+    if(!timeStr) return dateFmt;
+    const timeFmt=d.toLocaleTimeString('es-PR',{hour:'numeric',minute:'2-digit'});
+    return dateFmt+', '+timeFmt;
+  }
+  window.leonV2FormatFollowUp=leonV2FormatFollowUp;
+  // ===================== INTEGRACIÓN CON GOOGLE CALENDAR =====================
+  // Pedido real: "sería bueno que el recordatorio se conectara al google calendar... que yo agende
+  // algo y se cree el agendado en google calendar", "que no envíe notificaciones" (los recordatorios
+  // propios de Google se desactivan al crear el evento, con reminders.useDefault=false).
+  // Cada empleado conecta SU PROPIA cuenta de Google (OAuth vía Google Identity Services, sin
+  // backend) desde Configuración; el administrador configura una sola vez el Client ID que generó
+  // en Google Cloud Console (state.googleCalendarClientId, sincronizado como cualquier otro meta-doc).
+  // Límite real de este enfoque 100% en el navegador (sin servidor): el token de acceso dura ~1 hora
+  // y no hay "refresh token" de verdad — por eso leonV2EnsureGcalToken intenta renovarlo en silencio
+  // (prompt:'') antes de cada evento, y si eso falla, simplemente no se crea el evento esa vez (no
+  // bloquea ni interrumpe el guardado de la llamada) — la persona solo necesita volver a pulsar
+  // "Conectar con Google" de vez en cuando desde Configuración.
+  let v2GcalTokenClient=null, v2GcalAccessToken=null, v2GcalTokenExpiry=0, v2GcalConnectedEmail=null, v2GcalPendingResolve=null;
+  function leonV2InitGcalTokenClient(){
+    if(v2GcalTokenClient) return v2GcalTokenClient;
+    if(!(window.google && window.google.accounts && window.google.accounts.oauth2)) return null;
+    if(!state.googleCalendarClientId) return null;
+    v2GcalTokenClient=google.accounts.oauth2.initTokenClient({
+      client_id: state.googleCalendarClientId,
+      scope:'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email',
+      callback:(resp)=>{
+        if(resp && resp.access_token){
+          v2GcalAccessToken=resp.access_token;
+          v2GcalTokenExpiry=Date.now()+((Number(resp.expires_in)||3600)*1000)-60000;
+          leonV2FetchGcalProfileEmail();
+        } else {
+          v2GcalAccessToken=null;
+        }
+        const resolve=v2GcalPendingResolve; v2GcalPendingResolve=null;
+        if(resolve) resolve(resp&&resp.access_token?resp.access_token:null);
+        if(typeof renderGoogleCalendarSettings==='function' && document.getElementById('v2-gcal-connect-box')) renderGoogleCalendarSettings();
+      }
+    });
+    return v2GcalTokenClient;
+  }
+  window.leonV2ConnectGoogleCalendar=function(){
+    const tc=leonV2InitGcalTokenClient();
+    if(!tc){ showToast('Falta configurar el Client ID de Google (o la librería de Google todavía no cargó) — intenta de nuevo en un momento.','error'); return; }
+    v2GcalPendingResolve=null;
+    tc.requestAccessToken({prompt:'consent'});
+  };
+  function leonV2EnsureGcalToken(){
+    return new Promise(resolve=>{
+      if(v2GcalAccessToken && Date.now()<v2GcalTokenExpiry){ resolve(v2GcalAccessToken); return; }
+      const tc=leonV2InitGcalTokenClient();
+      if(!tc){ resolve(null); return; }
+      v2GcalPendingResolve=resolve;
+      try{ tc.requestAccessToken({prompt:''}); }
+      catch(e){ v2GcalPendingResolve=null; resolve(null); }
+    });
+  }
+  window.leonV2DisconnectGoogleCalendar=function(){
+    if(window.google && google.accounts && google.accounts.oauth2 && v2GcalAccessToken){
+      try{ google.accounts.oauth2.revoke(v2GcalAccessToken, ()=>{}); }catch(e){}
+    }
+    v2GcalAccessToken=null; v2GcalTokenExpiry=0; v2GcalConnectedEmail=null;
+    showToast('Google Calendar desconectado.','info');
+    if(typeof renderGoogleCalendarSettings==='function') renderGoogleCalendarSettings();
+  };
+  function leonV2FetchGcalProfileEmail(){
+    if(!v2GcalAccessToken) return;
+    fetch('https://www.googleapis.com/oauth2/v3/userinfo', {headers:{Authorization:'Bearer '+v2GcalAccessToken}})
+      .then(r=>r.ok?r.json():null)
+      .then(d=>{ if(d&&d.email){ v2GcalConnectedEmail=d.email; if(typeof renderGoogleCalendarSettings==='function') renderGoogleCalendarSettings(); } })
+      .catch(()=>{});
+  }
+  window.leonV2SaveGoogleCalendarClientId=function(){
+    const input=document.getElementById('v2-gcal-clientid');
+    const v=(input?.value||'').trim();
+    state.googleCalendarClientId=v;
+    if(typeof window.leonV2SyncMeta==='function') window.leonV2SyncMeta('googleCalendarClientId');
+    v2GcalTokenClient=null; // se re-crea con el nuevo Client ID la próxima vez que haga falta
+    showToast('Client ID de Google guardado.','success');
+    if(typeof leonV2Audit==='function') leonV2Audit('Google Calendar configurado', v?'Client ID actualizado':'Client ID borrado');
+    if(typeof renderGoogleCalendarSettings==='function') renderGoogleCalendarSettings();
+  };
+  // Crea el evento en el Google Calendar de QUIEN está guardando la llamada (no en el del cliente,
+  // claro) — solo si ya conectó su cuenta y quedó una fecha de seguimiento. Bloque de 30 minutos por
+  // defecto, sin invitados (nadie recibe correo de invitación) y sin recordatorios de Google.
+  function leonV2CreateGcalEventForFollowUp(c, entry){
+    if(!entry || !entry.nextFollowUp) return;
+    if(!state.googleCalendarClientId) return;
+    leonV2EnsureGcalToken().then(token=>{
+      if(!token) return; // no conectado o no se pudo renovar en silencio — no molesta con una alerta
+      const start=leonV2FollowUpDateTime(entry.nextFollowUp, entry.nextFollowUpTime) || new Date(entry.nextFollowUp+'T09:00:00');
+      const end=new Date(start.getTime()+30*60000);
+      const body={
+        summary:'Seguimiento — '+(c.name||'Cliente')+(c.caseNumber?' ('+c.caseNumber+')':''),
+        description:'Notas de la llamada: '+(entry.notes||'')+(c.phone?'\nTeléfono: '+c.phone:'')+(c.email?'\nCorreo: '+c.email:''),
+        start:{dateTime:start.toISOString(), timeZone:'America/Puerto_Rico'},
+        end:{dateTime:end.toISOString(), timeZone:'America/Puerto_Rico'},
+        reminders:{useDefault:false, overrides:[]}
+      };
+      fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', Authorization:'Bearer '+token},
+        body: JSON.stringify(body)
+      }).then(r=>r.ok?r.json():Promise.reject(r))
+        .then(ev=>{
+          entry.gcalEventId=ev.id; entry.gcalEventLink=ev.htmlLink;
+          if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('clients');
+          showToast('Seguimiento agregado a tu Google Calendar.','success');
+        })
+        .catch(()=>{ /* no bloquea nada — la llamada ya quedó guardada en el expediente de todas formas */ });
+    });
+  }
+  window.leonV2CreateGcalEventForFollowUp=leonV2CreateGcalEventForFollowUp;
+  // Tarjeta de Configuración: Client ID (solo admin) + botón de conectar/desconectar (todos).
+  function renderGoogleCalendarSettings(){
+    const adminBox=document.getElementById('v2-gcal-admin-box');
+    const connectBox=document.getElementById('v2-gcal-connect-box');
+    if(adminBox){
+      adminBox.innerHTML = leonV2IsAdmin() ? `<div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+        <label class="text-[10px] font-black uppercase text-slate-500">Client ID de Google (OAuth) — solo administrador</label>
+        <div class="flex gap-2 mt-2 flex-wrap"><input id="v2-gcal-clientid" placeholder="xxxxxxxx.apps.googleusercontent.com" value="${esc(state.googleCalendarClientId||'')}" class="flex-grow min-w-[220px] px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-mono outline-none"><button onclick="leonV2SaveGoogleCalendarClientId()" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Guardar</button></div>
+        <p class="text-[10px] text-slate-400 mt-2">Se obtiene creando un OAuth Client ID (tipo "Aplicación web") en Google Cloud Console, con <code>https://leonhomesolutionsllc.com</code> como origen autorizado. Una vez guardado aquí, cada empleado puede conectar su cuenta abajo — no hace falta tocar código.</p>
+      </div>` : '';
+    }
+    if(connectBox){
+      const hasClientId=!!(state.googleCalendarClientId);
+      const connected=!!v2GcalAccessToken && Date.now()<v2GcalTokenExpiry;
+      connectBox.innerHTML = `<div class="p-4 rounded-2xl ${connected?'bg-emerald-50 border border-emerald-100':'bg-amber-50 border border-amber-100'}">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div class="text-[10px] font-black uppercase ${connected?'text-emerald-700':'text-amber-700'}">Mi Google Calendar</div>
+            <div class="text-sm font-bold mt-1">${connected?('Conectado'+(v2GcalConnectedEmail?' como '+esc(v2GcalConnectedEmail):'')+' — tus próximos seguimientos se agregan ahí, sin notificaciones de Google.'):(hasClientId?'No conectado todavía. Conecta tu cuenta para que tus seguimientos aparezcan en tu Google Calendar.':'El administrador todavía no ha configurado la integración (falta el Client ID).')}</div>
+          </div>
+          ${hasClientId?(connected?'<button onclick="leonV2DisconnectGoogleCalendar()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 whitespace-nowrap">Desconectar</button>':'<button onclick="leonV2ConnectGoogleCalendar()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase whitespace-nowrap"><i class="fa-brands fa-google mr-1"></i>Conectar con Google</button>'):''}
+        </div>
+      </div>`;
+    }
+  }
+  window.renderGoogleCalendarSettings=renderGoogleCalendarSettings;
+  // ===================== COLORES DE LA MARCA (APARIENCIA) =====================
+  // Pedido real: "cambiar la apariencia y los colores de la página, tanto en el panel de control
+  // como en la página principal, para que si se actualiza se actualice en todas las pantallas".
+  // Los dos juegos de colores de Tailwind (brand=azul de acento, ink=navy oscuro de botones/menús)
+  // viven como VARIABLES CSS en :root (ver <style id="leon-theme-vars"> en <head>) en vez de valores
+  // fijos — así cambiarlas aquí repinta TODO lo que ya está en pantalla al instante, sin recargar,
+  // tanto en el panel de control como en la página pública (son el mismo juego de clases en los dos).
+  // Se genera una rampa de tonos completa (claro→oscuro) a partir de UN solo color que elige el
+  // administrador, mezclándolo hacia blanco/negro en proporciones fijas — no es una copia exacta del
+  // algoritmo de Tailwind, pero da una rampa visualmente coherente para cualquier color que se escoja.
+  function leonV2ColorMix(hex, target, amt){
+    hex=String(hex||'').replace('#','');
+    if(!/^[0-9a-fA-F]{6}$/.test(hex)) return '#000000';
+    const n=parseInt(hex,16); const c=[(n>>16)&255,(n>>8)&255,n&255];
+    const t = target==='white' ? [255,255,255] : [0,0,0];
+    return '#'+c.map((v,i)=>Math.round(Math.max(0,Math.min(255,v+(t[i]-v)*amt))).toString(16).padStart(2,'0')).join('');
+  }
+  const LEON_BRAND_RAMP_RECIPE={50:['white',.95],100:['white',.88],200:['white',.74],300:['white',.56],400:['white',.34],500:['white',.14],600:[null,0],700:['black',.16],800:['black',.30],900:['black',.43],dark:['black',.56]};
+  const LEON_INK_RAMP_RECIPE={50:['white',.97],100:['white',.94],700:['white',.25],800:['white',.08],900:[null,0],950:['black',.15]};
+  function leonV2BrandRampFromBase(hex){
+    const out={}; Object.keys(LEON_BRAND_RAMP_RECIPE).forEach(k=>{ const [dir,amt]=LEON_BRAND_RAMP_RECIPE[k]; out[k]=dir?leonV2ColorMix(hex,dir,amt):hex; }); return out;
+  }
+  function leonV2InkRampFromBase(hex){
+    const out={ 'default': leonV2ColorMix(hex,'black',.05) };
+    Object.keys(LEON_INK_RAMP_RECIPE).forEach(k=>{ const [dir,amt]=LEON_INK_RAMP_RECIPE[k]; out[k]=dir?leonV2ColorMix(hex,dir,amt):hex; });
+    return out;
+  }
+  const LEON_DEFAULT_BRAND_BASE='#0574d6', LEON_DEFAULT_INK_BASE='#0a0f1a';
+  // Aplica state.themeColors al documento ahora mismo. Si un color no tiene override (cadena vacía),
+  // se le quita la variable inline y vuelve a caer en el valor original del <style id="leon-theme-vars">.
+  // También refresca la copia en localStorage que usa el <script> de <head> para evitar el parpadeo
+  // del azul original la próxima vez que se cargue la página en ESTE navegador.
+  window.leonV2ApplyThemeColors=function(){
+    const tc=state.themeColors||{};
+    const root=document.documentElement.style;
+    if(tc.brandBase){
+      const ramp=leonV2BrandRampFromBase(tc.brandBase);
+      Object.keys(ramp).forEach(k=>root.setProperty('--c-brand-'+k, ramp[k]));
+    } else {
+      Object.keys(LEON_BRAND_RAMP_RECIPE).forEach(k=>root.removeProperty('--c-brand-'+k));
+    }
+    if(tc.inkBase){
+      const ramp=leonV2InkRampFromBase(tc.inkBase);
+      root.setProperty('--c-ink-default', ramp['default']);
+      Object.keys(LEON_INK_RAMP_RECIPE).forEach(k=>root.setProperty('--c-ink-'+k, ramp[k]));
+    } else {
+      root.removeProperty('--c-ink-default');
+      Object.keys(LEON_INK_RAMP_RECIPE).forEach(k=>root.removeProperty('--c-ink-'+k));
+    }
+    try{ localStorage.setItem('leonThemeColorsCache', JSON.stringify({brandBase:tc.brandBase||'', inkBase:tc.inkBase||''})); }catch(e){}
+  };
+  window.leonV2SaveThemeColors=function(){
+    if(!leonV2IsAdmin()){ showToast('Solo un administrador puede cambiar los colores de la página.','error'); return; }
+    const brandInput=document.getElementById('v2-theme-brand');
+    const inkInput=document.getElementById('v2-theme-ink');
+    if(!state.themeColors) state.themeColors={brandBase:'',inkBase:''};
+    state.themeColors.brandBase=(brandInput?.value||'').trim();
+    state.themeColors.inkBase=(inkInput?.value||'').trim();
+    leonV2ApplyThemeColors();
+    if(typeof window.leonV2SyncMeta==='function') window.leonV2SyncMeta('themeColors');
+    if(typeof leonV2Audit==='function') leonV2Audit('Colores de la página actualizados', 'Marca: '+(state.themeColors.brandBase||'original')+' · Oscuro: '+(state.themeColors.inkBase||'original'));
+    showToast('Colores guardados — ya se aplicaron en toda la página.','success');
+    if(typeof renderBranding==='function' && document.getElementById('v2-theme-brand')) renderBranding();
+  };
+  window.leonV2ResetThemeColors=function(){
+    if(!leonV2IsAdmin()){ showToast('Solo un administrador puede cambiar los colores de la página.','error'); return; }
+    state.themeColors={brandBase:'',inkBase:''};
+    leonV2ApplyThemeColors();
+    if(typeof window.leonV2SyncMeta==='function') window.leonV2SyncMeta('themeColors');
+    if(typeof leonV2Audit==='function') leonV2Audit('Colores de la página restaurados', 'Volvió al azul/navy original de LEON');
+    showToast('Colores restaurados al diseño original.','info');
+    if(typeof renderBranding==='function' && document.getElementById('v2-theme-brand')) renderBranding();
+  };
+  // Franja de muestras (50→900/dark) para previsualizar la rampa generada antes de guardar.
+  function leonV2ThemeSwatchesHtml(baseHex, isInk){
+    const ramp = isInk ? leonV2InkRampFromBase(baseHex) : leonV2BrandRampFromBase(baseHex);
+    const order = isInk ? ['50','100','700','800','900','950'] : ['50','100','200','300','400','500','600','700','800','900','dark'];
+    return `<div class="flex rounded-lg overflow-hidden border border-slate-200 mt-2" style="height:28px">${order.map(k=>`<div class="flex-1" style="background:${isInk?(k==='900'?baseHex:ramp[k]):(k==='600'?baseHex:ramp[k])}" title="${k}"></div>`).join('')}</div>`;
+  }
+  // Repinta solo las franjas de muestra (NO guarda nada todavía) cada vez que el admin mueve un
+  // selector de color en Editor de Sitio Web → Apariencia, para que vea la rampa resultante antes
+  // de darle "Guardar colores".
+  window.leonV2ThemeColorPreview=function(){
+    const brandHex=document.getElementById('v2-theme-brand')?.value||LEON_DEFAULT_BRAND_BASE;
+    const inkHex=document.getElementById('v2-theme-ink')?.value||LEON_DEFAULT_INK_BASE;
+    const brandHexInput=document.getElementById('v2-theme-brand-hex'); if(brandHexInput) brandHexInput.value=brandHex;
+    const inkHexInput=document.getElementById('v2-theme-ink-hex'); if(inkHexInput) inkHexInput.value=inkHex;
+    const brandBox=document.getElementById('v2-theme-brand-swatches'); if(brandBox) brandBox.innerHTML=leonV2ThemeSwatchesHtml(brandHex,false);
+    const inkBox=document.getElementById('v2-theme-ink-swatches'); if(inkBox) inkBox.innerHTML=leonV2ThemeSwatchesHtml(inkHex,true);
   };
   // Timeline de llamadas/notas de UN cliente — se inyecta dentro del expediente (leonV2OpenClientDossier).
   function leonV2ClientCallsHtml(c){
     const calls=(c.calls||[]);
     return `<div class="v2-card p-6"><div class="flex justify-between items-center"><h4 class="font-black"><i class="fa-solid fa-phone-volume text-brand-500 mr-2"></i>Llamadas y notas (${calls.length})</h4><button onclick="leonV2OpenCallLogForm('${c.id}')" class="text-[11px] font-bold text-brand-600 hover:text-brand-800 uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Registrar llamada</button></div>
-    <div class="mt-4 space-y-2 max-h-96 overflow-y-auto">${calls.length?calls.map(call=>`<div class="p-3 bg-slate-50 rounded-xl"><div class="flex justify-between items-start gap-2"><div><span class="v2-status bg-blue-50 text-blue-700">${esc(call.type)}</span><span class="text-[11px] text-slate-400 ml-2">${new Date(call.at).toLocaleString()} · ${esc(call.by)}</span></div></div><p class="text-xs text-slate-700 mt-2">${esc(call.notes)}</p>${call.interests&&call.interests.length?`<div class="flex flex-wrap gap-1 mt-2">${call.interests.map(i=>`<span class="text-[9px] font-black uppercase bg-brand-50 text-brand-700 border border-brand-100 px-2 py-0.5 rounded-full">${esc(categoryLabel(i))}</span>`).join('')}</div>`:''}${call.answers&&Object.keys(call.answers).length?`<div class="mt-2 text-[11px] text-slate-500 space-y-0.5">${Object.entries(call.answers).map(([q,a])=>`<div><b class="text-slate-600">${esc(q)}:</b> ${esc(a)}</div>`).join('')}</div>`:''}${call.nextFollowUp?`<div class="text-[11px] text-amber-700 mt-2"><i class="fa-solid fa-calendar-clock mr-1"></i>Próximo seguimiento: ${esc(call.nextFollowUp)}</div>`:''}</div>`).join(''):'<div class="text-sm text-slate-400">Sin llamadas ni notas todavía.</div>'}</div></div>`;
+    <div class="mt-4 space-y-2 max-h-96 overflow-y-auto">${calls.length?calls.map(call=>`<div class="p-3 bg-slate-50 rounded-xl"><div class="flex justify-between items-start gap-2"><div><span class="v2-status bg-blue-50 text-blue-700">${esc(call.type)}</span><span class="text-[11px] text-slate-400 ml-2">${new Date(call.at).toLocaleString()} · ${esc(call.by)}</span></div></div><p class="text-xs text-slate-700 mt-2">${esc(call.notes)}</p>${call.interests&&call.interests.length?`<div class="flex flex-wrap gap-1 mt-2">${call.interests.map(i=>`<span class="text-[9px] font-black uppercase bg-brand-50 text-brand-700 border border-brand-100 px-2 py-0.5 rounded-full">${esc(categoryLabel(i))}</span>`).join('')}</div>`:''}${call.answers&&Object.keys(call.answers).length?`<div class="mt-2 text-[11px] text-slate-500 space-y-0.5">${Object.entries(call.answers).map(([q,a])=>`<div><b class="text-slate-600">${esc(q)}:</b> ${esc(a)}</div>`).join('')}</div>`:''}${call.nextFollowUp?`<div class="text-[11px] text-amber-700 mt-2"><i class="fa-solid fa-calendar-clock mr-1"></i>Próximo seguimiento: ${esc(leonV2FormatFollowUp(call.nextFollowUp,call.nextFollowUpTime))}</div>`:''}</div>`).join(''):'<div class="text-sm text-slate-400">Sin llamadas ni notas todavía.</div>'}</div></div>`;
   }
   window.leonV2ClientCallsHtml=leonV2ClientCallsHtml;
   // Bitácora centralizada de llamadas — sección "Llamadas" del menú: todas las llamadas/notas de
@@ -4631,9 +5008,22 @@
   // Administrador ve todo, cada vendedor solo ve las de sus propios clientes), más recientes primero,
   // con buscador por nombre, teléfono o número de expediente.
   function renderCallsLog(){
-    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h3 class="text-xl font-black text-slate-900">Llamadas</h3><p class="text-xs text-slate-500 mt-1">Todo lo que el equipo ha hablado con cada cliente — más reciente primero.</p></div><div class="flex flex-wrap gap-2"><input type="text" id="v2-calls-search" oninput="renderCallsLog()" placeholder="Buscar por nombre, teléfono o expediente..." class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none w-64 max-w-full"><button onclick="leonV2OpenNewCallIntake()" class="bg-gradient-to-r from-brand-600 to-brand-400 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Registrar llamada</button></div></div><div id="v2-calls-log-list" class="space-y-3"></div></div>`;
+    // Filtro por status del lead — pedido real: poder seleccionar "no contestó"/"pendiente de
+    // llamar" y de una vez ver a quién hay que darle seguimiento, sin escribir nada en el buscador.
+    // El encabezado (buscador + filtro) se construye UNA sola vez aquí; oninput/onchange solo
+    // refrescan la lista (renderCallsLogList) para no perder el valor seleccionado en el <select>
+    // en cada tecla/cambio — antes se reconstruía todo el bloque y el filtro se reseteaba solo.
+    const leadStatusOptions=(state.leadStatuses||[]).map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h3 class="text-xl font-black text-slate-900">Llamadas</h3><p class="text-xs text-slate-500 mt-1">Todo lo que el equipo ha hablado con cada cliente — más reciente primero.</p></div><div class="flex flex-wrap gap-2"><input type="text" id="v2-calls-search" oninput="renderCallsLogList()" placeholder="Buscar por nombre, teléfono o expediente..." class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none w-64 max-w-full"><select id="v2-calls-filter-leadstatus" onchange="renderCallsLogList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo status de lead</option>${leadStatusOptions}</select><button onclick="leonV2OpenNewCallIntake()" class="bg-gradient-to-r from-brand-600 to-brand-400 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Registrar llamada</button></div></div><div id="v2-calls-log-list" class="space-y-3"></div></div>`;
+    renderCallsLogList();
+  }
+  window.renderCallsLog=renderCallsLog;
+  function renderCallsLogList(){
     const term=(document.getElementById('v2-calls-search')?.value||'').toLowerCase().trim();
+    const leadStatusFilter=document.getElementById('v2-calls-filter-leadstatus')?.value||'';
     let clients=leonV2ScopedClients(state.clients||[]);
+    clients.forEach(leonV2EnsureLeadStatus);
+    if(leadStatusFilter) clients=clients.filter(c=>c.leadStatus===leadStatusFilter);
     let rows=[];
     clients.forEach(c=>{ (c.calls||[]).forEach(call=>rows.push({c,call})); });
     if(term){
@@ -4646,9 +5036,9 @@
     }
     rows.sort((a,b)=>new Date(b.call.at)-new Date(a.call.at));
     const box=document.getElementById('v2-calls-log-list');
-    box.innerHTML=rows.length?rows.slice(0,200).map(({c,call})=>`<div class="v2-card p-4 cursor-pointer hover:border-brand-300 transition" onclick="leonV2Close('leon-v2-call-log');leonV2OpenClientDossier('${c.id}')"><div class="flex justify-between items-start gap-3 flex-wrap"><div><b class="text-sm">${esc(c.name)}</b> <span class="text-slate-400 text-xs">· ${esc(c.caseNumber||'')}</span><div class="text-[11px] text-slate-500 mt-0.5">${esc(c.phone||'Sin teléfono')}</div></div><div class="text-right"><span class="v2-status bg-blue-50 text-blue-700">${esc(call.type)}</span><div class="text-[11px] text-slate-400 mt-1">${new Date(call.at).toLocaleString()} · ${esc(call.by)}</div></div></div><p class="text-xs text-slate-600 mt-2 line-clamp-2">${esc(call.notes)}</p>${call.interests&&call.interests.length?`<div class="flex flex-wrap gap-1 mt-2">${call.interests.map(i=>`<span class="text-[9px] font-black uppercase bg-brand-50 text-brand-700 border border-brand-100 px-2 py-0.5 rounded-full">${esc(categoryLabel(i))}</span>`).join('')}</div>`:''}</div>`).join(''):'<div class="v2-empty">Sin llamadas registradas todavía. Usa "Registrar llamada" para dejar la primera nota.</div>';
+    box.innerHTML=rows.length?rows.slice(0,200).map(({c,call})=>{ leonV2EnsureLeadStatus(c); return `<div class="v2-card p-4 cursor-pointer hover:border-brand-300 transition" onclick="leonV2Close('leon-v2-call-log');leonV2OpenClientDossier('${c.id}')"><div class="flex justify-between items-start gap-3 flex-wrap"><div><div class="flex items-center gap-2 flex-wrap"><b class="text-sm">${esc(c.name)}</b> <span class="text-slate-400 text-xs">· ${esc(c.caseNumber||'')}</span>${leonV2LeadStatusSelectHtml(c)}</div><div class="text-[11px] text-slate-500 mt-0.5">${esc(c.phone||'Sin teléfono')}</div></div><div class="text-right"><span class="v2-status bg-blue-50 text-blue-700">${esc(call.type)}</span><div class="text-[11px] text-slate-400 mt-1">${new Date(call.at).toLocaleString()} · ${esc(call.by)}</div></div></div><p class="text-xs text-slate-600 mt-2 line-clamp-2">${esc(call.notes)}</p>${call.interests&&call.interests.length?`<div class="flex flex-wrap gap-1 mt-2">${call.interests.map(i=>`<span class="text-[9px] font-black uppercase bg-brand-50 text-brand-700 border border-brand-100 px-2 py-0.5 rounded-full">${esc(categoryLabel(i))}</span>`).join('')}</div>`:''}</div>`; }).join(''):'<div class="v2-empty">Sin llamadas registradas todavía. Usa "Registrar llamada" para dejar la primera nota.</div>';
   }
-  window.renderCallsLog=renderCallsLog;
+  window.renderCallsLogList=renderCallsLogList;
   // Enmascara SSN/ID/pasaporte para mostrar en pantalla — deja visibles solo los últimos 4
   // caracteres. Esto reduce exposición accidental en pantalla compartida, pero NO es cifrado:
   // el valor sigue viviendo sin cifrar en la memoria de esta pestaña.
@@ -4826,6 +5216,7 @@
     if(!c) return;
     if(c.stage==='Cliente') return;
     c.stage='Cliente';
+    c.leadStatus='Cliente'; // el status del lead también se cierra solo cuando la venta es real
     c.clientSince=c.clientSince||new Date().toISOString();
     if(!c.activity) c.activity=[];
     c.activity.push({type:'cliente_confirmado',text:reason||'Confirmado como cliente — venta aceptada',at:new Date().toISOString(),by:(state.currentUser&&state.currentUser.name)||'Sistema'});
@@ -5053,7 +5444,7 @@
             address:row.Direccion||'', locationUrl:'', source:row.Fuente||'Importado',
             consultorName:matchedConsultor?matchedConsultor.name:(consultorNameRaw||null),
             consultorId:matchedConsultor?matchedConsultor.id:null,
-            stage, createdAt:now, lastContact:now, nextAction:'', activity:[]
+            stage, leadStatus: stage==='Cliente'?'Cliente':'Nuevo', createdAt:now, createdBy:actor, lastContact:now, nextAction:'', activity:[]
           };
           c.activity.push({type:'cliente_creado',text:'Cliente importado desde CSV'+(stage==='Cliente'?' (ya había comprado)':''),at:now,by:actor});
           state.clients.push(c);
@@ -5270,7 +5661,7 @@
 
   const FB_LIST_COLLECTIONS = ['categories','products','users','quotes','quotesHistory','clients','trash','commissions','tickets','projects','followupTasks','properties','roofAssessments','employeeInvites','creditApps'];
   const FB_LOG_COLLECTIONS = ['auditLog','securityLog'];
-  const FB_META_DOCS = ['siteContent','commissionRules','pipelineStatuses','ticketStatuses','projectStages','loginLockouts','callQuestions','caseCounter'];
+  const FB_META_DOCS = ['siteContent','commissionRules','pipelineStatuses','ticketStatuses','projectStages','loginLockouts','callQuestions','caseCounter','leadStatuses','googleCalendarClientId','themeColors'];
   let fbApplyingRemote = false; // true mientras aplicamos un cambio QUE YA VINO de Firestore, para no reenviarlo
 
   // Firestore rechaza cualquier documento de más de ~1MB. Fotos/videos grandes (base64) pueden
@@ -5430,6 +5821,11 @@
   // instante sin tener que recargar la página.
   function leonV2RerenderAfterSync(){
     try{
+      // Si el cambio que acaba de llegar de Firestore fue justo el de los colores (otro
+      // administrador los cambió, o este mismo cambio confirmándose), repinta la página YA —
+      // esto es lo que hace que "si se actualiza a mí se actualice en todas las pantallas" sea
+      // real para cualquiera que tenga el sistema abierto en ese momento, no solo al recargar.
+      if(typeof window.leonV2ApplyThemeColors==='function') window.leonV2ApplyThemeColors();
       if(typeof renderGallery==='function') renderGallery();
       if(typeof renderSiteBranding==='function') renderSiteBranding();
       if(typeof renderProducts==='function' && document.getElementById('products-grid')) renderProducts((typeof lastRenderedCategory!=='undefined' && lastRenderedCategory)?lastRenderedCategory:'All');
@@ -6168,19 +6564,19 @@
   function buildCRM(){
     const old=document.querySelector('#internal-view > .max-w-7xl'); if(!old)return; old.innerHTML=`<div class="leon-v2-shell"><div class="flex flex-col lg:flex-row justify-between gap-4 mb-6"><div><div class="v2-pill bg-white"><i class="fa-solid fa-shield-halved text-brand-600"></i><span id="v2-role-pill">Administrador</span></div><h2 class="text-3xl md:text-4xl font-black text-slate-900 mt-3" id="v2-greeting">Buenos días 👋</h2><p class="text-sm text-slate-500 mt-1">Tu espacio comercial se adapta automáticamente a tus permisos.</p><div id="v2-db-status" class="mt-2"></div></div><div class="flex items-center gap-3"><div class="relative"><button onclick="leonV2ToggleNotifications()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Notificaciones"><i class="fa-solid fa-bell"></i><span id="v2-notif-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-glass-lg z-50 max-h-96 overflow-y-auto"></div></div><button onclick="leonV2OpenSection('clients')" class="px-4 py-3 rounded-xl border bg-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-2"></i>Buscar cliente</button><button onclick="logoutUser()" class="px-4 py-3 rounded-xl bg-red-50 text-red-600 text-xs font-black"><i class="fa-solid fa-right-from-bracket mr-2"></i>Salir</button></div></div><div class="grid lg:grid-cols-[230px_1fr] gap-6 v2-layout"><aside class="v2-nav h-fit"><div class="px-3 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Workspace</div><div id="v2-nav"></div></aside><section id="v2-main" class="min-w-0"></section></div></div>`;renderNav();renderDashboard();leonV2RefreshNotifications();if(typeof window.leonV2UpdateDbStatusBadge==='function')window.leonV2UpdateDbStatusBadge();
   }
-  const navItems=[['dashboard','fa-chart-pie','Dashboard'],['clients','fa-address-card','Clientes'],['calls','fa-phone-volume','Llamadas'],['pipeline','fa-filter-circle-dollar','Seguimiento de Ventas'],['creditapps','fa-file-invoice-dollar','Solicitudes de Crédito'],['ventas','fa-cash-register','Ventas'],['historial','fa-clock-rotate-left','Historial'],['catalog','fa-boxes-stacked','Catálogo'],['roofintel','fa-house-chimney-crack','Roof Intelligence'],['proposals','fa-file-signature','Propuestas'],['payroll','fa-sitemap','Comisiones'],['empleados','fa-users-gear','Empleados'],['tickets','fa-ticket','Tickets'],['projects','fa-helmet-safety','Proyectos'],['reports','fa-chart-line','Reportes'],['branding','fa-pen-ruler','Sitio Web'],['users','fa-user-shield','Usuarios'],['trash','fa-trash-can','Papelera'],['audit','fa-clipboard-list','Auditoría'],['settings','fa-gear','Configuración']];
+  const navItems=[['dashboard','fa-chart-pie','Dashboard'],['clients','fa-address-card','Clientes'],['calls','fa-phone-volume','Llamadas'],['calendar','fa-calendar-days','Calendario'],['pipeline','fa-filter-circle-dollar','Seguimiento de Ventas'],['creditapps','fa-file-invoice-dollar','Solicitudes de Crédito'],['ventas','fa-cash-register','Ventas'],['historial','fa-clock-rotate-left','Historial'],['catalog','fa-boxes-stacked','Catálogo'],['roofintel','fa-house-chimney-crack','Roof Intelligence'],['proposals','fa-file-signature','Propuestas'],['payroll','fa-sitemap','Comisiones'],['empleados','fa-users-gear','Empleados'],['tickets','fa-ticket','Tickets'],['projects','fa-helmet-safety','Proyectos'],['reports','fa-chart-line','Reportes'],['branding','fa-pen-ruler','Sitio Web'],['users','fa-user-shield','Usuarios'],['trash','fa-trash-can','Papelera'],['audit','fa-clipboard-list','Auditoría'],['settings','fa-gear','Configuración']];
   // Qué secciones del panel puede ver cada rol — única fuente de verdad (antes vivía inline dentro
   // de applyRolePermissions). También se usa para el bloque de "Permisos del sistema" del contrato
   // de empleado (leonV2ContractPermissionsHtml), así el contrato firmado siempre coincide con el
   // acceso real que el sistema le da a esa persona — nunca una lista aparte que se pueda desviar.
   const ROLE_ACCESS={
     Administrador: navItems.map(x=>x[0]),
-    Vendedor: ['dashboard','clients','calls','pipeline','creditapps','ventas','historial','catalog','roofintel','proposals','payroll','tickets','projects','reports'],
-    ['Nuevo Consultor']: ['dashboard','clients','calls','creditapps','ventas','catalog','roofintel','proposals','payroll','tickets'],
-    ['Call Center']: ['dashboard','clients','calls','pipeline','ventas','historial','tickets'],
+    Vendedor: ['dashboard','clients','calls','calendar','pipeline','creditapps','ventas','historial','catalog','roofintel','proposals','payroll','tickets','projects','reports'],
+    ['Nuevo Consultor']: ['dashboard','clients','calls','calendar','creditapps','ventas','catalog','roofintel','proposals','payroll','tickets'],
+    ['Call Center']: ['dashboard','clients','calls','calendar','pipeline','ventas','historial','tickets'],
     ['Técnico']: ['dashboard','roofintel','projects','tickets']
   };
-  window.leonV2OpenSection=sec=>{document.querySelectorAll('#v2-nav button').forEach(b=>b.classList.toggle('active',b.dataset.sec===sec));({dashboard:renderDashboard,clients:renderClients,calls:renderCallsLog,pipeline:renderPipeline,creditapps:renderCreditApps,ventas:renderVentas,historial:renderHistorialSection,catalog:renderCatalog,roofintel:renderRoofIntel,proposals:renderProposals,payroll:renderPayroll,empleados:renderEmpleados,tickets:renderTickets,projects:renderProjects,reports:renderReports,branding:renderBranding,users:renderUsers,trash:renderTrash,audit:renderAudit,settings:renderSettings}[sec]||renderDashboard)()};
+  window.leonV2OpenSection=sec=>{document.querySelectorAll('#v2-nav button').forEach(b=>b.classList.toggle('active',b.dataset.sec===sec));({dashboard:renderDashboard,clients:renderClients,calls:renderCallsLog,calendar:renderCallsCalendar,pipeline:renderPipeline,creditapps:renderCreditApps,ventas:renderVentas,historial:renderHistorialSection,catalog:renderCatalog,roofintel:renderRoofIntel,proposals:renderProposals,payroll:renderPayroll,empleados:renderEmpleados,tickets:renderTickets,projects:renderProjects,reports:renderReports,branding:renderBranding,users:renderUsers,trash:renderTrash,audit:renderAudit,settings:renderSettings}[sec]||renderDashboard)()};
   function renderNav(){const role=state.currentUser?.role||'Administrador';document.getElementById('v2-role-pill').textContent=role;document.getElementById('v2-nav').innerHTML=navItems.map(([s,i,t])=>`<button data-sec="${s}" onclick="leonV2OpenSection('${s}')"><i class="fa-solid ${i} w-4"></i>${t}</button>`).join('');document.querySelector('#v2-nav button')?.classList.add('active')}
   function kpi(title,val,sub,icon){return `<div class="v2-card v2-kpi p-5"><div class="text-[10px] font-black uppercase tracking-widest text-slate-500">${title}</div><div class="text-3xl font-black text-slate-900 mt-2">${val}</div><div class="text-xs text-brand-600 font-bold mt-2">${sub}</div><i class="fa-solid ${icon} absolute right-5 top-5 text-xl text-brand-300"></i></div>`}
 
@@ -6191,6 +6587,129 @@
   }
   function animateV2Bars(){requestAnimationFrame(()=>{document.querySelectorAll('.v2-bar-fill[data-target]').forEach(el=>{el.style.width=el.dataset.target+'%'})})}
 
+  // ===================== SEGUIMIENTOS PENDIENTES DE LLAMADAS =====================
+  // Pedido real: "cuando entres al panel de control si tienes pendiente darle seguimiento a un
+  // leads puede que aparezca en pantalla que debes darle seguimiento". Se basa en la llamada más
+  // reciente de cada cliente (c.calls[0], ya que se guarda con unshift = más nueva primero): si
+  // esa llamada tiene un "Próximo seguimiento" con fecha de hoy o anterior (vencido), aparece aquí.
+  // Respeta el mismo alcance que el resto del sistema (leonV2ScopedClients): un administrador ve
+  // los pendientes de todo el equipo, un vendedor solo los suyos.
+  function leonV2PendingFollowUps(){
+    const today=new Date(); today.setHours(0,0,0,0);
+    const now=new Date();
+    const clients=leonV2ScopedClients(state.clients||[]);
+    const due=[];
+    clients.forEach(c=>{
+      const lastCall=(c.calls||[])[0];
+      if(lastCall && lastCall.nextFollowUp){
+        const d=new Date(lastCall.nextFollowUp+'T00:00:00');
+        if(!isNaN(d.getTime()) && d<=today){
+          const dueAt=leonV2FollowUpDateTime(lastCall.nextFollowUp, lastCall.nextFollowUpTime) || d;
+          due.push({c, call:lastCall, dueDate:lastCall.nextFollowUp, dueTime:lastCall.nextFollowUpTime||'', dueAt, overdue: dueAt<now});
+        }
+      }
+    });
+    due.sort((a,b)=>a.dueAt-b.dueAt);
+    return due;
+  }
+  window.leonV2PendingFollowUps=leonV2PendingFollowUps;
+  function leonV2FollowUpBannerHtml(){
+    const due=leonV2PendingFollowUps();
+    if(!due.length) return '';
+    return `<div class="v2-card p-5 mb-6 border-2 border-amber-300 bg-amber-50/60">
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <h3 class="font-black text-amber-800 text-sm"><i class="fa-solid fa-bell mr-2"></i>Seguimientos pendientes (${due.length})</h3>
+        <button onclick="leonV2OpenSection('calendar')" class="text-[10px] font-black uppercase text-amber-700 hover:text-amber-900"><i class="fa-solid fa-calendar-days mr-1"></i>Ver calendario</button>
+      </div>
+      <div class="mt-3 space-y-2">${due.slice(0,8).map(({c,call,dueDate,dueTime,overdue})=>{
+        return `<div class="flex items-center justify-between gap-3 bg-white rounded-xl px-3 py-2 border border-amber-200 flex-wrap"><div><b class="text-sm">${esc(c.name)}</b><span class="text-[11px] text-slate-500 ml-1">${esc(c.phone||'')}</span><div class="text-[11px] ${overdue?'text-red-600 font-bold':'text-amber-700'} mt-0.5">${overdue?'Vencido':'Para hoy'} — seguimiento programado ${esc(leonV2FormatFollowUp(dueDate,dueTime))}</div></div><div class="flex items-center gap-2"><button onclick="leonV2OpenCallLogForm('${c.id}')" class="v2-tab text-[11px]"><i class="fa-solid fa-phone-volume mr-1"></i>Llamar</button><button onclick="leonV2OpenClientDossier('${c.id}')" class="v2-tab active text-[11px]">Ver expediente</button></div></div>`;
+      }).join('')}${due.length>8?`<div class="text-[11px] text-slate-400 mt-1">y ${due.length-8} más...</div>`:''}</div>
+    </div>`;
+  }
+  window.leonV2FollowUpBannerHtml=leonV2FollowUpBannerHtml;
+  // ===================== CALENDARIO DE SEGUIMIENTOS =====================
+  // Pedido real: "integra tipo un calendario para el seguimiento de las llamadas porque así tu
+  // pones hora fecha día" — vista mensual donde cada llamada registrada con un "próximo
+  // seguimiento" (fecha + hora, capturados en el formulario de Registrar llamada) aparece en su
+  // día correspondiente. Respeta el mismo alcance que el resto del CRM (leonV2ScopedClients):
+  // Administrador ve todo, cada vendedor solo ve los seguimientos de sus propios clientes.
+  let v2CalCursor=null; // {year, month} del mes que se muestra — null hasta el primer render, entonces se fija en el mes actual.
+  let v2CalSelectedDay=null; // 'YYYY-MM-DD' del día seleccionado en el panel de abajo; null = hoy.
+  function leonV2AllFollowUpEntries(){
+    const clients=leonV2ScopedClients(state.clients||[]);
+    const items=[];
+    clients.forEach(c=>{
+      (c.calls||[]).forEach(call=>{
+        if(call.nextFollowUp){
+          const dt=leonV2FollowUpDateTime(call.nextFollowUp, call.nextFollowUpTime);
+          if(dt) items.push({c, call, date:call.nextFollowUp, time:call.nextFollowUpTime||'', dt});
+        }
+      });
+    });
+    items.sort((a,b)=>a.dt-b.dt);
+    return items;
+  }
+  window.leonV2AllFollowUpEntries=leonV2AllFollowUpEntries;
+  window.leonV2CalNav=function(delta){
+    if(!v2CalCursor){ const n=new Date(); v2CalCursor={year:n.getFullYear(), month:n.getMonth()}; }
+    v2CalCursor.month+=delta;
+    if(v2CalCursor.month<0){ v2CalCursor.month=11; v2CalCursor.year--; }
+    if(v2CalCursor.month>11){ v2CalCursor.month=0; v2CalCursor.year++; }
+    renderCallsCalendar();
+  };
+  window.leonV2CalToday=function(){ v2CalCursor=null; v2CalSelectedDay=null; renderCallsCalendar(); };
+  window.leonV2CalSelectDay=function(dateStr){ v2CalSelectedDay=dateStr; renderCallsCalendar(); };
+  function leonV2CalDayDetailHtml(dateStr, allItems){
+    const dayItems=allItems.filter(it=>it.date===dateStr).slice().sort((a,b)=>a.dt-b.dt);
+    const dateObj=new Date(dateStr+'T00:00:00');
+    const label=dateObj.toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    return `<div class="v2-card p-5"><h4 class="font-black text-sm capitalize"><i class="fa-solid fa-calendar-day text-brand-500 mr-2"></i>${esc(label)}</h4>
+      <div class="mt-3 space-y-2">${dayItems.length?dayItems.map(({c,call,time})=>`<div class="flex items-center justify-between gap-3 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200 flex-wrap"><div><span class="text-[11px] font-black text-brand-600">${time?esc(leonV2FormatFollowUp(call.nextFollowUp,time).split(', ').slice(1).join(', ')):'Todo el día'}</span> <b class="text-sm ml-1">${esc(c.name)}</b><div class="text-[11px] text-slate-500">${esc(c.phone||'Sin teléfono')}</div></div><div class="flex items-center gap-2">${leonV2LeadStatusSelectHtml(c)}<button onclick="leonV2OpenCallLogForm('${c.id}')" class="v2-tab text-[11px]"><i class="fa-solid fa-phone-volume mr-1"></i>Llamar</button><button onclick="leonV2OpenClientDossier('${c.id}')" class="v2-tab active text-[11px]">Ver expediente</button></div></div>`).join(''):'<div class="text-sm text-slate-400">Sin seguimientos programados este día.</div>'}</div>
+    </div>`;
+  }
+  function renderCallsCalendar(){
+    if(!v2CalCursor){ const n=new Date(); v2CalCursor={year:n.getFullYear(), month:n.getMonth()}; }
+    const {year,month}=v2CalCursor;
+    const allItems=leonV2AllFollowUpEntries();
+    const todayStr=new Date().toISOString().slice(0,10);
+    const selected=v2CalSelectedDay||todayStr;
+    const firstOfMonth=new Date(year,month,1);
+    const startWeekday=firstOfMonth.getDay(); // 0=domingo
+    const daysInMonth=new Date(year,month+1,0).getDate();
+    const monthLabel=firstOfMonth.toLocaleDateString('es-PR',{month:'long',year:'numeric'});
+    const countsByDay={};
+    allItems.forEach(it=>{ countsByDay[it.date]=(countsByDay[it.date]||0)+1; });
+    let cells='';
+    for(let i=0;i<startWeekday;i++) cells+=`<div class="rounded-xl" style="min-height:64px"></div>`;
+    for(let day=1;day<=daysInMonth;day++){
+      const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const count=countsByDay[dateStr]||0;
+      const isToday=dateStr===todayStr;
+      const isSelected=dateStr===selected;
+      const overdue=count>0 && dateStr<todayStr;
+      cells+=`<div onclick="leonV2CalSelectDay('${dateStr}')" class="cursor-pointer rounded-xl p-2 border ${isSelected?'border-brand-400 bg-brand-50':'border-slate-100 hover:border-brand-200'} ${isToday?'ring-2 ring-brand-300':''}" style="min-height:64px">
+        <div class="text-[11px] font-black ${isToday?'text-brand-600':'text-slate-600'}">${day}</div>
+        ${count?`<div class="mt-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block ${overdue?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}">${count} seguim.</div>`:''}
+      </div>`;
+    }
+    const weekdayLabels=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6">
+      <div class="flex flex-wrap justify-between items-center gap-3 mb-5">
+        <div><h3 class="text-xl font-black text-slate-900">Calendario de seguimientos</h3><p class="text-xs text-slate-500 mt-1">Cada llamada con fecha y hora de "próximo seguimiento" aparece en su día.</p></div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="leonV2CalNav(-1)" class="v2-tab"><i class="fa-solid fa-chevron-left"></i></button>
+          <button onclick="leonV2CalToday()" class="v2-tab">Hoy</button>
+          <span class="text-sm font-black capitalize px-2">${esc(monthLabel)}</span>
+          <button onclick="leonV2CalNav(1)" class="v2-tab"><i class="fa-solid fa-chevron-right"></i></button>
+          <button onclick="leonV2OpenNewCallIntake()" class="bg-gradient-to-r from-brand-600 to-brand-400 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider ml-2"><i class="fa-solid fa-plus mr-1"></i>Registrar llamada</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase text-slate-400 mb-1">${weekdayLabels.map(w=>`<div>${w}</div>`).join('')}</div>
+      <div class="grid grid-cols-7 gap-1">${cells}</div>
+      <div class="mt-5">${leonV2CalDayDetailHtml(selected, allItems)}</div>
+    </div>`;
+  }
+  window.renderCallsCalendar=renderCallsCalendar;
   function renderDashboard(){
     // Cada vendedor ve su PROPIO dashboard (sus propuestas, sus clientes) — solo Administrador ve
     // el negocio completo. Ver leonV2ScopedQuotes/leonV2ScopedClients.
@@ -6205,7 +6724,7 @@
     const tiempoCierreProm=tiemposCierre.length?Math.round(tiemposCierre.reduce((s,d)=>s+d,0)/tiemposCierre.length):0;
     const vencidas=qs.filter(q=>{const d=daysBetween(q.createdAt,new Date().toISOString());return d!==null&&d>14}).length;
     const sinSeguimiento=leonV2ScopedClients(state.clients).filter(c=>{const d=daysBetween(c.lastContact,new Date().toISOString());return d===null||d>7}).length;
-    document.getElementById('v2-main').innerHTML=`<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Oportunidades',money(total),qs.length+' propuestas activas','fa-sack-dollar')}${kpi('Propuestas',qs.length+hist.length,'Activas + historial','fa-file-signature')}${kpi('Clientes',new Set(qs.concat(hist).map(q=>q.clientEmail||q.clientName)).size,'Expedientes registrados','fa-users')}${kpi('Equipo',users().length,'Usuarios con acceso','fa-user-shield')}</div><div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">${kpi('Ticket Promedio',money(ticketProm),'Sobre propuestas aceptadas','fa-receipt')}${kpi('Tiempo de Cierre',tiempoCierreProm+' días',aceptadasH.length?'Promedio hasta aceptación':'Sin datos aún','fa-hourglass-half')}${kpi('Propuestas Vencidas',vencidas,'Más de 14 días activas','fa-triangle-exclamation')}${kpi('Sin Seguimiento',sinSeguimiento,'Clientes sin contacto en 7+ días','fa-user-clock')}</div><div class="grid xl:grid-cols-2 gap-6 mt-6"><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Pipeline por Estado</h3><button onclick="leonV2OpenSection('reports')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-pipeline"></div></div><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-brand-500"></i> Catálogo por Categoría</h3><button onclick="leonV2OpenSection('catalog')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-cat"></div></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Mis tareas de seguimiento</h3><span class="v2-pill">Asignadas a ti</span></div><div id="v2-dash-my-tasks" class="mt-4 space-y-2"></div></div><div class="v2-card p-6 mt-6"><h3 class="font-black">Acciones rápidas</h3><div class="grid sm:grid-cols-4 gap-3 mt-4"><button onclick="leonV2OpenNewCallIntake()" class="p-4 rounded-xl bg-brand-50 text-brand-700 text-xs font-black text-left"><i class="fa-solid fa-phone-volume mr-2"></i>Registrar llamada</button><button onclick="openNewQuoteModal()" class="p-4 rounded-xl bg-blue-50 text-blue-700 text-xs font-black text-left"><i class="fa-solid fa-plus mr-2"></i>Nueva cotización</button><button onclick="leonV2OpenSection('catalog')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-box mr-2"></i>Gestionar catálogo</button><button onclick="leonV2OpenSection('historial')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-clock-rotate-left mr-2"></i>Ver historial</button></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black">Actividad reciente</h3><span class="v2-pill">Auditoría</span></div><div class="mt-4 space-y-3">${qs.slice(0,6).map(q=>`<div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl"><div><b class="text-sm">${esc(q.clientName)}</b><div class="text-[11px] text-slate-500">${esc(q.id)} · ${esc(q.origin||'Autogestionado')}</div></div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div>`).join('')||'<div class="text-sm text-slate-400">Sin actividad todavía.</div>'}</div></div>`;
+    document.getElementById('v2-main').innerHTML=`${leonV2FollowUpBannerHtml()}<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Oportunidades',money(total),qs.length+' propuestas activas','fa-sack-dollar')}${kpi('Propuestas',qs.length+hist.length,'Activas + historial','fa-file-signature')}${kpi('Clientes',new Set(qs.concat(hist).map(q=>q.clientEmail||q.clientName)).size,'Expedientes registrados','fa-users')}${kpi('Equipo',users().length,'Usuarios con acceso','fa-user-shield')}</div><div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">${kpi('Ticket Promedio',money(ticketProm),'Sobre propuestas aceptadas','fa-receipt')}${kpi('Tiempo de Cierre',tiempoCierreProm+' días',aceptadasH.length?'Promedio hasta aceptación':'Sin datos aún','fa-hourglass-half')}${kpi('Propuestas Vencidas',vencidas,'Más de 14 días activas','fa-triangle-exclamation')}${kpi('Sin Seguimiento',sinSeguimiento,'Clientes sin contacto en 7+ días','fa-user-clock')}</div><div class="grid xl:grid-cols-2 gap-6 mt-6"><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Pipeline por Estado</h3><button onclick="leonV2OpenSection('reports')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-pipeline"></div></div><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-brand-500"></i> Catálogo por Categoría</h3><button onclick="leonV2OpenSection('catalog')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-cat"></div></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Mis tareas de seguimiento</h3><span class="v2-pill">Asignadas a ti</span></div><div id="v2-dash-my-tasks" class="mt-4 space-y-2"></div></div><div class="v2-card p-6 mt-6"><h3 class="font-black">Acciones rápidas</h3><div class="grid sm:grid-cols-4 gap-3 mt-4"><button onclick="leonV2OpenNewCallIntake()" class="p-4 rounded-xl bg-brand-50 text-brand-700 text-xs font-black text-left"><i class="fa-solid fa-phone-volume mr-2"></i>Registrar llamada</button><button onclick="openNewQuoteModal()" class="p-4 rounded-xl bg-blue-50 text-blue-700 text-xs font-black text-left"><i class="fa-solid fa-plus mr-2"></i>Nueva cotización</button><button onclick="leonV2OpenSection('catalog')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-box mr-2"></i>Gestionar catálogo</button><button onclick="leonV2OpenSection('historial')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-clock-rotate-left mr-2"></i>Ver historial</button></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black">Actividad reciente</h3><span class="v2-pill">Auditoría</span></div><div class="mt-4 space-y-3">${qs.slice(0,6).map(q=>`<div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl"><div><b class="text-sm">${esc(q.clientName)}</b><div class="text-[11px] text-slate-500">${esc(q.id)} · ${esc(q.origin||'Autogestionado')}</div></div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div>`).join('')||'<div class="text-sm text-slate-400">Sin actividad todavía.</div>'}</div></div>`;
     document.getElementById('v2-dash-bars-pipeline').innerHTML=v2Bars(pipelineBars);
     document.getElementById('v2-dash-bars-cat').innerHTML=v2Bars(catBars);
     animateV2Bars();
@@ -7223,15 +7742,24 @@
     (state.clients||[]).forEach(c=>{ leonV2ClientCategories(c).forEach(cat=>catSet.add(cat)); if(c.municipio) muniSet.add(c.municipio); });
     const catOptions=Array.from(catSet).sort().map(cat=>`<option value="${esc(cat)}">${esc(categoryLabel(cat))}</option>`).join('');
     const muniOptions=Array.from(muniSet).sort().map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
-    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h3 class="text-xl font-black text-slate-900">Clientes</h3><p class="text-xs text-slate-500 mt-1">Expediente 360° — contacto, propuestas vinculadas y actividad por cliente.</p></div><div class="flex flex-wrap gap-2"><input type="text" id="v2-clients-search" oninput="renderClientsList()" placeholder="Buscar por nombre, teléfono, correo, municipio o expediente..." class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none w-64 max-w-full"><select id="v2-clients-filter-cat" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo producto</option>${catOptions}</select><select id="v2-clients-filter-muni" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo municipio</option>${muniOptions}</select><button onclick="leonV2OpenNewCallIntake()" title="Registrar llamada" class="px-3 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase"><i class="fa-solid fa-phone-volume mr-1"></i>Registrar llamada</button><button onclick="leonV2ExportClientsCsv()" title="Descargar CSV" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-csv mr-1"></i>CSV</button>${leonV2IsAdmin()?`<button onclick="leonV2DownloadClientImportTemplate()" title="Descargar plantilla de ejemplo" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-arrow-down mr-1"></i>Plantilla</button><input type="file" id="v2-clients-import-file" accept=".csv" class="hidden" onchange="handleClientsImportFile(event)"><button onclick="document.getElementById('v2-clients-import-file').click()" title="Importar varios clientes desde un archivo CSV" class="px-3 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase"><i class="fa-solid fa-file-import mr-1"></i>Importar clientes</button>`:''}</div></div><div id="v2-clients-import-summary" class="hidden mb-4"></div><div id="v2-clients-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div></div>`;
+    // Filtro por status del lead (Nuevo/Contactado/Interesado/Sin respuesta/etc.) — pedido real:
+    // poder seleccionar "no contestado" o "pendiente de llamar" y de una vez ver a quién hay que
+    // darle seguimiento, sin tener que escribir nada en el buscador.
+    const leadStatusOptions=(state.leadStatuses||[]).map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h3 class="text-xl font-black text-slate-900">Clientes</h3><p class="text-xs text-slate-500 mt-1">Expediente 360° — contacto, propuestas vinculadas y actividad por cliente.</p></div><div class="flex flex-wrap gap-2"><input type="text" id="v2-clients-search" oninput="renderClientsList()" placeholder="Buscar por nombre, teléfono, correo, municipio o expediente..." class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none w-64 max-w-full"><select id="v2-clients-filter-leadstatus" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo status de lead</option>${leadStatusOptions}</select><select id="v2-clients-filter-cat" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo producto</option>${catOptions}</select><select id="v2-clients-filter-muni" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo municipio</option>${muniOptions}</select><button onclick="leonV2OpenNewCallIntake()" title="Registrar llamada" class="px-3 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase"><i class="fa-solid fa-phone-volume mr-1"></i>Registrar llamada</button><button onclick="leonV2ExportClientsCsv()" title="Descargar CSV" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-csv mr-1"></i>CSV</button>${leonV2IsAdmin()?`<button onclick="leonV2DownloadClientImportTemplate()" title="Descargar plantilla de ejemplo" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-arrow-down mr-1"></i>Plantilla</button><input type="file" id="v2-clients-import-file" accept=".csv" class="hidden" onchange="handleClientsImportFile(event)"><button onclick="document.getElementById('v2-clients-import-file').click()" title="Importar varios clientes desde un archivo CSV" class="px-3 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase"><i class="fa-solid fa-file-import mr-1"></i>Importar clientes</button>`:''}</div></div><div id="v2-clients-import-summary" class="hidden mb-4"></div><div id="v2-clients-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div></div>`;
     renderClientsList();
   }
   function renderClientsList(){
     const term=(document.getElementById('v2-clients-search')?.value||'').toLowerCase().trim();
     const catFilter=document.getElementById('v2-clients-filter-cat')?.value||'';
     const muniFilter=document.getElementById('v2-clients-filter-muni')?.value||'';
+    const leadStatusFilter=document.getElementById('v2-clients-filter-leadstatus')?.value||'';
     // Cada vendedor ve solo SUS clientes — ver leonV2ScopedClients. Solo Administrador ve todos.
     let list=leonV2ScopedClients(state.clients).slice().sort((a,b)=>new Date(b.lastContact||0)-new Date(a.lastContact||0));
+    // Se asegura el status ANTES de filtrar por él (clientes viejos sin leadStatus asignado
+    // todavía deben contar como "Nuevo"/"Cliente" al filtrar, igual que al mostrarse en pantalla).
+    list.forEach(leonV2EnsureLeadStatus);
+    if(leadStatusFilter) list=list.filter(c=>c.leadStatus===leadStatusFilter);
     // Búsqueda ampliada: antes solo encontraba por nombre/correo/municipio — ahora también por
     // teléfono y número de expediente (EXP-00001), que es como el equipo suele identificar al
     // cliente durante una llamada. Buscar por apellido ya funcionaba (coincidencia parcial sobre
@@ -7241,12 +7769,15 @@
     if(muniFilter)list=list.filter(c=>c.municipio===muniFilter);
     document.getElementById('v2-clients-list').innerHTML=list.length?list.map(c=>{
       leonV2EnsureCaseNumber(c);
+      leonV2EnsureLeadStatus(c);
       const qCount=leonV2ScopedQuotes((state.quotes||[]).concat(state.quotesHistory||[])).filter(q=>q.clientEmail&&c.email&&q.clientEmail.toLowerCase()===c.email.toLowerCase()).length;
       const ls=leonV2LeadScore(c);
       const cats=leonV2ClientCategories(c);
       const stage=leonV2ClientStage(c);
       const stageBadge=`<span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${stage==='Cliente'?'bg-emerald-50 text-emerald-700 border border-emerald-200':'bg-amber-50 text-amber-700 border border-amber-200'}">${stage}</span>`;
-      return `<div class="v2-card p-5 cursor-pointer hover:border-brand-300 transition" onclick="leonV2OpenClientDossier('${c.id}')"><div class="flex justify-between items-start"><div><div class="flex items-center gap-2 mb-1">${stageBadge}<span class="text-[9px] text-slate-400 font-mono">${esc(c.caseNumber||'')}</span></div><b class="text-sm">${esc(c.name)}</b><div class="text-xs text-slate-500">${esc(c.company||'Cliente residencial')}</div></div><div class="flex flex-col items-end gap-1"><div class="flex items-center gap-2"><span class="v2-pill">${esc(c.source||'—')}</span><button onclick="event.stopPropagation();leonV2OpenEditClient('${c.id}')" title="Editar informacion del cliente" class="text-slate-400 hover:text-brand-600 text-xs px-1"><i class="fa-solid fa-user-pen"></i></button><button onclick="event.stopPropagation();leonV2OpenCallLogForm('${c.id}')" title="Registrar llamada" class="text-slate-400 hover:text-brand-600 text-xs px-1"><i class="fa-solid fa-phone-volume"></i></button></div>${leonV2ScoreBadge(ls.tier)}</div></div><div class="text-xs text-slate-500 mt-3 space-y-1"><div><i class="fa-solid fa-envelope w-4 text-slate-400"></i> ${esc(c.email||'')}</div><div><i class="fa-solid fa-phone w-4 text-slate-400"></i> ${esc(c.phone||'—')}</div><div><i class="fa-solid fa-location-dot w-4 text-slate-400"></i> ${esc(c.municipio||'—')}</div></div>${cats.length?`<div class="flex flex-wrap gap-1 mt-3">${cats.map(cat=>`<span class="text-[9px] font-black uppercase bg-brand-50 text-brand-700 border border-brand-100 px-2 py-0.5 rounded-full">${esc(categoryLabel(cat))}</span>`).join('')}</div>`:''}<div class="flex justify-between items-center mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400"><span>${qCount} propuesta(s) · ${(c.calls||[]).length} llamada(s)</span><span>${esc(c.consultorName||'Sin consultor')}</span></div></div>`;
+      // Quién y cuándo se registró este lead — visible para todo el equipo, no solo quien lo creó.
+      const createdByLine=(c.createdBy||c.createdAt)?`<div class="mt-1"><i class="fa-solid fa-user-plus w-4 text-slate-400"></i> Registrado por <b>${esc(c.createdBy||c.consultorName||'Equipo')}</b>${c.createdAt?' · '+esc(new Date(c.createdAt).toLocaleDateString('es-PR',{year:'numeric',month:'short',day:'numeric'})):''}</div>`:'';
+      return `<div class="v2-card p-5 cursor-pointer hover:border-brand-300 transition" onclick="leonV2OpenClientDossier('${c.id}')"><div class="flex justify-between items-start"><div><div class="flex items-center gap-2 mb-1 flex-wrap">${stageBadge}${leonV2LeadStatusSelectHtml(c)}<span class="text-[9px] text-slate-400 font-mono">${esc(c.caseNumber||'')}</span></div><b class="text-sm">${esc(c.name)}</b><div class="text-xs text-slate-500">${esc(c.company||'Cliente residencial')}</div></div><div class="flex flex-col items-end gap-1"><div class="flex items-center gap-2"><span class="v2-pill">${esc(c.source||'—')}</span><button onclick="event.stopPropagation();leonV2OpenEditClient('${c.id}')" title="Editar informacion del cliente" class="text-slate-400 hover:text-brand-600 text-xs px-1"><i class="fa-solid fa-user-pen"></i></button><button onclick="event.stopPropagation();leonV2OpenCallLogForm('${c.id}')" title="Registrar llamada" class="text-slate-400 hover:text-brand-600 text-xs px-1"><i class="fa-solid fa-phone-volume"></i></button></div>${leonV2ScoreBadge(ls.tier)}</div></div><div class="text-xs text-slate-500 mt-3 space-y-1"><div><i class="fa-solid fa-envelope w-4 text-slate-400"></i> ${esc(c.email||'')}</div><div><i class="fa-solid fa-phone w-4 text-slate-400"></i> ${esc(c.phone||'—')}</div><div><i class="fa-solid fa-location-dot w-4 text-slate-400"></i> ${esc(c.municipio||'—')}</div>${createdByLine}</div>${cats.length?`<div class="flex flex-wrap gap-1 mt-3">${cats.map(cat=>`<span class="text-[9px] font-black uppercase bg-brand-50 text-brand-700 border border-brand-100 px-2 py-0.5 rounded-full">${esc(categoryLabel(cat))}</span>`).join('')}</div>`:''}<div class="flex justify-between items-center mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400"><span>${qCount} propuesta(s) · ${(c.calls||[]).length} llamada(s)</span><span>${esc(c.consultorName||'Sin consultor')}</span></div></div>`;
     }).join(''):'<div class="v2-empty col-span-full">No hay clientes que coincidan. El expediente se crea automáticamente al generar una propuesta.</div>';
   }
   window.renderClientsList=renderClientsList;
@@ -7261,7 +7792,10 @@
     const activity=(c.activity||[]).slice().reverse();
     const dossierStage=leonV2ClientStage(c);
     leonV2EnsureCaseNumber(c); // clientes creados antes de este contador reciben su número aquí mismo
-    const html=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">EXPEDIENTE ${esc(c.caseNumber||'')}</div><h3 class="text-2xl md:text-3xl font-black">${esc(c.name)}</h3><p class="text-sm text-slate-500">${esc(c.company||'Cliente residencial')}</p><div class="mt-2 flex items-center gap-2 flex-wrap">${leonV2ScoreBadge(leonV2LeadScore(c).tier)} <span class="text-[10px] text-slate-400">${leonV2LeadScore(c).score} pts</span><span class="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${dossierStage==='Cliente'?'bg-emerald-50 text-emerald-700 border border-emerald-200':'bg-amber-50 text-amber-700 border border-amber-200'}">${dossierStage==='Cliente'?'Cliente confirmado':'Lead'}</span></div></div><button onclick="leonV2Close('leon-v2-client-dossier')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+    leonV2EnsureLeadStatus(c);
+    // Quién y cuándo registró este lead — visible para todo el equipo, no solo quien lo creó.
+    const dossierCreatedByLine=(c.createdBy||c.createdAt)?`<div class="text-[11px] text-slate-400 mt-1"><i class="fa-solid fa-user-plus mr-1"></i>Registrado por <b class="text-slate-500">${esc(c.createdBy||c.consultorName||'Equipo')}</b>${c.createdAt?' · '+esc(new Date(c.createdAt).toLocaleString('es-PR',{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})):''}</div>`:'';
+    const html=`<div class="flex justify-between items-start gap-4"><div><div class="v2-pill mb-2">EXPEDIENTE ${esc(c.caseNumber||'')}</div><h3 class="text-2xl md:text-3xl font-black">${esc(c.name)}</h3><p class="text-sm text-slate-500">${esc(c.company||'Cliente residencial')}</p><div class="mt-2 flex items-center gap-2 flex-wrap">${leonV2ScoreBadge(leonV2LeadScore(c).tier)} <span class="text-[10px] text-slate-400">${leonV2LeadScore(c).score} pts</span><span class="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${dossierStage==='Cliente'?'bg-emerald-50 text-emerald-700 border border-emerald-200':'bg-amber-50 text-amber-700 border border-amber-200'}">${dossierStage==='Cliente'?'Cliente confirmado':'Lead'}</span>${leonV2LeadStatusSelectHtml(c)}</div>${dossierCreatedByLine}</div><button onclick="leonV2Close('leon-v2-client-dossier')" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
       <div class="v2-card p-4"><div class="text-[10px] uppercase font-black text-slate-500">Correo</div><div class="text-sm font-bold mt-1 break-all">${esc(c.email||'—')}</div></div>
       <div class="v2-card p-4"><div class="text-[10px] uppercase font-black text-slate-500">Teléfono</div><div class="text-sm font-bold mt-1">${esc(c.phone||'—')}</div></div>
@@ -8002,8 +8536,22 @@
 
   function renderBranding(){
     document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex items-center justify-between mb-2 flex-wrap gap-2"><div><h3 class="text-xl font-black text-slate-900">Editor de Sitio Web</h3><p class="text-xs text-slate-500 mt-1">Cambia el logo y el banner principal que ven todos los visitantes — sin tocar código.</p></div><span class="v2-pill">CMS</span></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"><div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">Logo de la Marca</h4><div class="flex items-center gap-4"><div id="cms-logo-preview" class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0"></div><div class="flex-grow min-w-0"><input type="file" id="cms-logo-file" accept="image/*" class="hidden" onchange="handleCmsLogoUpload(event)"><button type="button" onclick="document.getElementById('cms-logo-file').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Subir Logo</button><p id="cms-logo-status" class="text-[10px] text-slate-400 font-mono mt-2">Sin cambios recientes.</p></div></div></div><div class="p-5 rounded-2xl border border-brand-100 bg-brand-50/40"><h4 class="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3">Banner Principal (Inicio)</h4><div class="flex items-center gap-4"><div id="cms-hero-preview" class="w-16 h-16 rounded-xl border border-brand-200 bg-white overflow-hidden flex items-center justify-center shrink-0"><i class="fa-solid fa-image text-slate-300"></i></div><div class="flex-grow min-w-0"><input type="file" id="cms-hero-file" accept="image/*,video/*" class="hidden" onchange="handleCmsHeroUpload(event)"><button type="button" onclick="document.getElementById('cms-hero-file').click()" class="w-full bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-upload text-brand-400 mr-1"></i> Subir Imagen o Video</button><p id="cms-hero-status" class="text-[10px] text-slate-400 font-mono mt-2">Acepta imagen o video (MP4, máx. 25MB).</p><div class="mt-3"><label class="text-[10px] font-black uppercase text-slate-500">O pega un enlace (URL) de imagen o video</label><div class="flex gap-2 mt-1"><input type="url" id="cms-hero-url" placeholder="https://..." class="flex-grow border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white min-w-0"><button type="button" onclick="handleCmsHeroUrlSubmit()" class="px-3 rounded-xl bg-ink-900 text-white text-[10px] font-black uppercase shrink-0">Usar</button></div><p class="text-[9px] text-slate-400 mt-1">Más liviano que subir el archivo — ideal si la foto/video ya está alojado en otro sitio. También acepta un enlace de YouTube o Vimeo (se incrusta y reproduce solo, sin necesitar el archivo).</p></div><label class="flex items-center gap-2 mt-3 text-[11px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="cms-hero-overlay" ${state.siteContent.heroOverlay===false?'':'checked'} onchange="state.siteContent.heroOverlay=this.checked;renderSiteBranding();if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('siteContent')"> Aplicar degradado oscuro sobre la foto/video (mejora la legibilidad del texto)</label></div></div></div></div><button onclick="resetSiteBranding()" class="mt-5 text-[10px] font-bold text-slate-400 hover:text-red-500 uppercase tracking-wider transition"><i class="fa-solid fa-rotate-left mr-1"></i>Restaurar valores por defecto</button><div class="mt-6 p-4 rounded-2xl ${window.__fbDb?'bg-emerald-50 border border-emerald-100 text-emerald-800':'bg-amber-50 border border-amber-100 text-amber-800'} text-xs"><i class="fa-solid ${window.__fbDb?'fa-circle-check':'fa-triangle-exclamation'} mr-1"></i> ${window.__fbDb?'Conectado a la base de datos — estos cambios se guardan y se ven iguales para todos los visitantes, en todos los dispositivos del equipo.':'Sin conexión a la base de datos ahora mismo — estos cambios solo viven en esta pestaña.'} Nota: fotos o videos muy pesados (más de ~1MB) no caben en un documento de Firestore y no se sincronizarán aunque se vean bien en esta pantalla — para medios grandes en producción, lo correcto es Firebase Storage, no guardarlos como texto en la base de datos.</div></div>
+    <div class="v2-card p-6 mt-6"><div class="flex items-center justify-between mb-2 flex-wrap gap-2"><div><h3 class="text-xl font-black text-slate-900"><i class="fa-solid fa-palette text-brand-500 mr-2"></i>Apariencia — colores de la página</h3><p class="text-xs text-slate-500 mt-1">Cambia el color de acento (botones, enlaces, insignias) y el color oscuro (menús, botones oscuros) de TODA la página — el panel de control y la página principal usan los mismos colores, así que un cambio aquí se ve en los dos. Al guardar se aplica de inmediato, incluso en otras pestañas/dispositivos que ya tengan el sistema abierto.</p></div></div>
+      <div class="grid sm:grid-cols-2 gap-6 mt-4">
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Color de acento (botones, enlaces, insignias)</label>
+          <div class="flex items-center gap-3 mt-2"><input type="color" id="v2-theme-brand" value="${esc(state.themeColors?.brandBase||LEON_DEFAULT_BRAND_BASE)}" oninput="leonV2ThemeColorPreview()" class="w-14 h-10 rounded-lg border border-slate-200 cursor-pointer"><input type="text" id="v2-theme-brand-hex" value="${esc(state.themeColors?.brandBase||LEON_DEFAULT_BRAND_BASE)}" oninput="document.getElementById('v2-theme-brand').value=this.value;leonV2ThemeColorPreview()" class="flex-grow px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono outline-none"></div>
+          <div id="v2-theme-brand-swatches"></div>
+        </div>
+        <div><label class="text-[10px] font-black uppercase text-slate-500">Color oscuro (menús, botones oscuros, texto)</label>
+          <div class="flex items-center gap-3 mt-2"><input type="color" id="v2-theme-ink" value="${esc(state.themeColors?.inkBase||LEON_DEFAULT_INK_BASE)}" oninput="leonV2ThemeColorPreview()" class="w-14 h-10 rounded-lg border border-slate-200 cursor-pointer"><input type="text" id="v2-theme-ink-hex" value="${esc(state.themeColors?.inkBase||LEON_DEFAULT_INK_BASE)}" oninput="document.getElementById('v2-theme-ink').value=this.value;leonV2ThemeColorPreview()" class="flex-grow px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono outline-none"></div>
+          <div id="v2-theme-ink-swatches"></div>
+        </div>
+      </div>
+      <div class="flex gap-3 mt-5 flex-wrap"><button onclick="leonV2SaveThemeColors()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-floppy-disk mr-1"></i>Guardar colores</button><button onclick="leonV2ResetThemeColors()" class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-500 hover:text-red-500"><i class="fa-solid fa-rotate-left mr-1"></i>Restaurar colores originales</button></div>
+    </div>
     <div class="v2-card p-6 mt-6"><div class="flex items-center justify-between mb-2 flex-wrap gap-2"><div><h3 class="text-xl font-black text-slate-900">Galería de Proyectos</h3><p class="text-xs text-slate-500 mt-1">Cambia las fotos y el texto que se muestran en "Nuestro Trabajo" del sitio público.</p></div><button onclick="addCmsGalleryItem()" class="bg-ink-900 hover:bg-ink-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Añadir foto</button></div><div id="cms-gallery-list" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4"></div></div>`;
     renderSiteBranding();
+    leonV2ThemeColorPreview();
     renderGalleryCmsEditor();
   }
 
@@ -8846,10 +9394,12 @@
       <div class="p-3 rounded-xl bg-red-50 border border-red-100 text-[11px] text-red-800 mt-4"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Restaurar reemplaza todos los datos actuales — no se puede deshacer. Pide confirmación antes de aplicar.</div>
     </div>
     <div class="v2-card p-6 mb-6"><h3 class="font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-plug-circle-bolt text-brand-500"></i> Integrations Center</h3><p class="text-xs text-slate-500 mt-1">Estado real de cada proveedor externo que usa (o podría usar) Roof Intelligence. Nunca se muestra "Conectado" a menos que de verdad funcione hoy, sin backend — los que requieren clave/API secreta se marcan honestamente como pendientes, porque una clave nunca debe vivir en este archivo (viaja en el código fuente que cualquiera puede ver).</p><div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">${leonV2RoofIntegrationsHtml()}</div></div>`:''}
-    <div class="grid lg:grid-cols-2 gap-6"><div class="v2-card p-6"><h3 class="font-black text-slate-900">Simular Rol (solo demo)</h3><p class="text-xs text-slate-500 mt-1">Cambia de rol para revisar cómo se ve el sistema desde cada perfil, sin cerrar sesión.</p><select id="v2-role-selector" onchange="changeRoleSimulated(this.value)" class="w-full mt-4 px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="Administrador">Administrador</option><option value="Vendedor">Vendedor</option><option value="Call Center">Call Center</option><option value="Nuevo Consultor">Nuevo Consultor</option><option value="Técnico">Técnico</option></select></div><div class="v2-card p-6"><h3 class="font-black text-slate-900">Seguridad — estado real</h3><div class="space-y-3 mt-4 text-xs"><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>Acceso staff:</b> cada empleado tiene su propia contraseña (la eligió al completar su invitación, o se la asignó el administrador en "Agregar empleado" / Usuarios) + un PIN de 5 dígitos — ya no es una sola clave compartida. Los usuarios sembrados de esta demo siguen usando la clave demo como respaldo. Pero la validación sigue pasando en el navegador, no es autenticación real de servidor todavía — para producción hace falta un proveedor real (Firebase Authentication o backend con sesiones/JWT) que valide credenciales en un servidor, nunca en el navegador, y las contraseñas deben guardarse con hash, nunca en texto plano como aquí.</div><div class="p-3 ${window.__fbDb?'bg-emerald-50 border border-emerald-100 text-emerald-800':'bg-amber-50 border border-amber-100 text-amber-800'} rounded-xl">${window.__fbDb?'<b>Almacenamiento:</b> conectado a Firestore (Firebase) en tiempo real — los cambios se guardan de verdad y se ven en todos los dispositivos del equipo, no solo en esta pestaña.'+(window.__fbOfflineReady?' Además hay caché offline activo: si se pierde internet, la app sigue leyendo y encolando cambios en este dispositivo, y los sincroniza solos en cuanto vuelve la señal.':''):'<b>Almacenamiento:</b> sin conexión a la base de datos ahora mismo — todo vive en memoria de esta pestaña (variable <code>state</code>) y no sobrevive un refresco.'} La seguridad de esos datos depende de las reglas de Firestore configuradas en la consola de Firebase, no de esta pantalla.</div><div class="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800"><b>Compresión de imágenes:</b> real, vía canvas — recodifica los píxeles, no es una animación falsa.</div><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>Identificación (SSN/ID/Pasaporte):</b> se enmascara antes de guardarse y solo se conservan los últimos 4 caracteres — no hay cifrado real porque no hay servidor. Para datos reales, la identificación completa no debe tocar el navegador sin cifrado en tránsito y en reposo.</div><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>PIN / segundo factor:</b> real como flujo (correo + clave, luego PIN de 5 dígitos por usuario, con bloqueo tras 5 fallos)${window.__fbDb?' y el registro de accesos + los bloqueos ya se guardan en la base de datos compartida — visibles desde cualquier dispositivo.':', pero sin conexión a la base de datos ahora mismo el bloqueo vive solo en esta pestaña.'} Aún falta lo que ninguna base de datos por sí sola resuelve: el PIN se muestra en pantalla al crearlo en vez de llegar por correo (hace falta una Cloud Function que envíe el correo), y la validación de la clave sigue pasando por el navegador en vez de un proveedor de autenticación real (Firebase Authentication). Ver el registro de accesos abajo.</div></div></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-key text-brand-500"></i> Accesos y PIN (segundo factor)</h3><p class="text-xs text-slate-500 mt-1">Quién intentó iniciar sesión, cuándo, y si el PIN fue correcto — para detectar accesos sospechosos.</p><div id="v2-lockouts" class="flex flex-wrap gap-2 mt-4"></div><div id="v2-security-log" class="overflow-x-auto mt-4"></div></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900">Estados del Pipeline</h3><p class="text-xs text-slate-500 mt-1">Los estados que aparecen en el selector de cada propuesta activa. Agrega o quita los que tu operación necesite.</p><div id="v2-status-list" class="flex flex-wrap gap-2 mt-4"></div><form onsubmit="leonV2AddPipelineStatus(event)" class="flex gap-2 mt-4"><input id="v2-new-status" placeholder="Nuevo estado, ej. Pendiente de inspección" class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Agregar</button></form></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900"><i class="fa-solid fa-phone-volume text-brand-500 mr-2"></i>Preguntas de llamada (CRM)</h3><p class="text-xs text-slate-500 mt-1">Las preguntas de calificación que aparecen en "Registrar llamada" (además de en qué equipo está interesado, que sale directo del catálogo). Agrega o quita las que tu operación necesite — sin tocar código.</p><div id="v2-callquestions-list" class="flex flex-wrap gap-2 mt-4"></div><form onsubmit="leonV2AddCallQuestion(event)" class="flex gap-2 mt-4"><input id="v2-new-callquestion" placeholder="Nueva pregunta, ej. ¿Tiene techo de zinc o de losa?" class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Agregar</button></form></div></div>`;
+    <div class="grid lg:grid-cols-2 gap-6"><div class="v2-card p-6"><h3 class="font-black text-slate-900">Simular Rol (solo demo)</h3><p class="text-xs text-slate-500 mt-1">Cambia de rol para revisar cómo se ve el sistema desde cada perfil, sin cerrar sesión.</p><select id="v2-role-selector" onchange="changeRoleSimulated(this.value)" class="w-full mt-4 px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm outline-none"><option value="Administrador">Administrador</option><option value="Vendedor">Vendedor</option><option value="Call Center">Call Center</option><option value="Nuevo Consultor">Nuevo Consultor</option><option value="Técnico">Técnico</option></select></div><div class="v2-card p-6"><h3 class="font-black text-slate-900">Seguridad — estado real</h3><div class="space-y-3 mt-4 text-xs"><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>Acceso staff:</b> cada empleado tiene su propia contraseña (la eligió al completar su invitación, o se la asignó el administrador en "Agregar empleado" / Usuarios) + un PIN de 5 dígitos — ya no es una sola clave compartida. Los usuarios sembrados de esta demo siguen usando la clave demo como respaldo. Pero la validación sigue pasando en el navegador, no es autenticación real de servidor todavía — para producción hace falta un proveedor real (Firebase Authentication o backend con sesiones/JWT) que valide credenciales en un servidor, nunca en el navegador, y las contraseñas deben guardarse con hash, nunca en texto plano como aquí.</div><div class="p-3 ${window.__fbDb?'bg-emerald-50 border border-emerald-100 text-emerald-800':'bg-amber-50 border border-amber-100 text-amber-800'} rounded-xl">${window.__fbDb?'<b>Almacenamiento:</b> conectado a Firestore (Firebase) en tiempo real — los cambios se guardan de verdad y se ven en todos los dispositivos del equipo, no solo en esta pestaña.'+(window.__fbOfflineReady?' Además hay caché offline activo: si se pierde internet, la app sigue leyendo y encolando cambios en este dispositivo, y los sincroniza solos en cuanto vuelve la señal.':''):'<b>Almacenamiento:</b> sin conexión a la base de datos ahora mismo — todo vive en memoria de esta pestaña (variable <code>state</code>) y no sobrevive un refresco.'} La seguridad de esos datos depende de las reglas de Firestore configuradas en la consola de Firebase, no de esta pantalla.</div><div class="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800"><b>Compresión de imágenes:</b> real, vía canvas — recodifica los píxeles, no es una animación falsa.</div><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>Identificación (SSN/ID/Pasaporte):</b> se enmascara antes de guardarse y solo se conservan los últimos 4 caracteres — no hay cifrado real porque no hay servidor. Para datos reales, la identificación completa no debe tocar el navegador sin cifrado en tránsito y en reposo.</div><div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800"><b>PIN / segundo factor:</b> real como flujo (correo + clave, luego PIN de 5 dígitos por usuario, con bloqueo tras 5 fallos)${window.__fbDb?' y el registro de accesos + los bloqueos ya se guardan en la base de datos compartida — visibles desde cualquier dispositivo.':', pero sin conexión a la base de datos ahora mismo el bloqueo vive solo en esta pestaña.'} Aún falta lo que ninguna base de datos por sí sola resuelve: el PIN se muestra en pantalla al crearlo en vez de llegar por correo (hace falta una Cloud Function que envíe el correo), y la validación de la clave sigue pasando por el navegador en vez de un proveedor de autenticación real (Firebase Authentication). Ver el registro de accesos abajo.</div></div></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-key text-brand-500"></i> Accesos y PIN (segundo factor)</h3><p class="text-xs text-slate-500 mt-1">Quién intentó iniciar sesión, cuándo, y si el PIN fue correcto — para detectar accesos sospechosos.</p><div id="v2-lockouts" class="flex flex-wrap gap-2 mt-4"></div><div id="v2-security-log" class="overflow-x-auto mt-4"></div></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900">Estados del Pipeline</h3><p class="text-xs text-slate-500 mt-1">Los estados que aparecen en el selector de cada propuesta activa. Agrega o quita los que tu operación necesite.</p><div id="v2-status-list" class="flex flex-wrap gap-2 mt-4"></div><form onsubmit="leonV2AddPipelineStatus(event)" class="flex gap-2 mt-4"><input id="v2-new-status" placeholder="Nuevo estado, ej. Pendiente de inspección" class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Agregar</button></form></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900"><i class="fa-solid fa-phone-volume text-brand-500 mr-2"></i>Preguntas de llamada (CRM)</h3><p class="text-xs text-slate-500 mt-1">Las preguntas de calificación que aparecen en "Registrar llamada" (además de en qué equipo está interesado, que sale directo del catálogo). Agrega o quita las que tu operación necesite — sin tocar código.</p><div id="v2-callquestions-list" class="flex flex-wrap gap-2 mt-4"></div><form onsubmit="leonV2AddCallQuestion(event)" class="flex gap-2 mt-4"><input id="v2-new-callquestion" placeholder="Nueva pregunta, ej. ¿Tiene techo de zinc o de losa?" class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Agregar</button></form></div><div class="v2-card p-6 lg:col-span-2"><h3 class="font-black text-slate-900"><i class="fa-solid fa-gauge-high text-brand-500 mr-2"></i>Status de leads</h3><p class="text-xs text-slate-500 mt-1">Qué tan interesado está un lead (Interesado, No interesado, Sin respuesta...). Se elige al registrar una llamada o directo desde su expediente. "Cliente" lo asigna el sistema solo cuando se confirma una venta de verdad — no lo borres o perderás ese indicador.</p><div id="v2-leadstatuses-list" class="flex flex-wrap gap-2 mt-4"></div><form onsubmit="leonV2AddLeadStatus(event)" class="flex gap-2 mt-4"><input id="v2-new-leadstatus" placeholder="Nuevo status, ej. Lo llamo mañana" class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"><button type="submit" class="px-4 py-2.5 rounded-xl bg-ink-900 text-white text-xs font-black uppercase">Agregar</button></form></div><div class="v2-card p-6 lg:col-span-2" id="v2-gcal-card"><h3 class="font-black text-slate-900"><i class="fa-brands fa-google text-brand-500 mr-2"></i>Integración con Google Calendar</h3><p class="text-xs text-slate-500 mt-1">Cuando alguien registra una llamada con "próximo seguimiento" (fecha y hora), se crea automáticamente un evento en SU Google Calendar personal — sin recordatorios/notificaciones de Google, esos se desactivan al crear el evento. Cada persona conecta su propia cuenta de Google abajo; el Client ID de arriba se configura una sola vez.</p><div id="v2-gcal-admin-box" class="mt-4"></div><div id="v2-gcal-connect-box" class="mt-4"></div></div></div>`;
     const sel=document.getElementById('v2-role-selector'); if(sel) sel.value=role;
     renderPipelineStatusList();
     renderCallQuestionsList();
+    renderLeadStatusesList();
+    renderGoogleCalendarSettings();
     renderSecurityAccessLog();
   }
   function renderSecurityAccessLog(){
@@ -8923,6 +9473,69 @@
     showToast('Pregunta eliminada (las llamadas ya guardadas conservan la respuesta que tenían).','info');
     if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('callQuestions');
   };
+  // Mismo patrón otra vez, para el status de leads (Interesado/No interesado/...).
+  function renderLeadStatusesList(){
+    const box=document.getElementById('v2-leadstatuses-list'); if(!box)return;
+    box.innerHTML=(state.leadStatuses||[]).map(s=>`<span class="v2-pill">${esc(s)} <button onclick="leonV2RemoveLeadStatus('${esc(s).replace(/'/g,"&#39;")}')" class="ml-1 text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button></span>`).join('')||'<span class="text-xs text-slate-400">Sin status configurados.</span>';
+  }
+  window.leonV2AddLeadStatus=e=>{
+    e.preventDefault();
+    const input=document.getElementById('v2-new-leadstatus');
+    const val=(input.value||'').trim();
+    if(!val){showToast('Escribe el nombre del status.','warning');return}
+    if(!state.leadStatuses) state.leadStatuses=[];
+    if(state.leadStatuses.includes(val)){showToast('Ese status ya existe.','warning');return}
+    state.leadStatuses.push(val);
+    leonV2Audit('Status de lead agregado', val);
+    input.value='';
+    renderLeadStatusesList();
+    showToast('Status agregado.','success');
+    if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('leadStatuses');
+  };
+  window.leonV2RemoveLeadStatus=val=>{
+    state.leadStatuses=(state.leadStatuses||[]).filter(s=>s!==val);
+    leonV2Audit('Status de lead eliminado', val);
+    renderLeadStatusesList();
+    showToast('Status eliminado de la lista (los leads que ya lo tenían lo conservan).','info');
+    if(typeof window.leonV2SyncMeta==='function')window.leonV2SyncMeta('leadStatuses');
+  };
+  // Cambio rápido del status de un lead sin tener que registrar una llamada — desde el expediente
+  // o desde la tarjeta en la lista de Clientes.
+  window.leonV2SetLeadStatus=function(clientId, val){
+    const c=(state.clients||[]).find(x=>x.id===clientId); if(!c) return;
+    const prev=c.leadStatus;
+    if(prev===val) return;
+    c.leadStatus=val;
+    if(!c.activity) c.activity=[];
+    c.activity.push({type:'status_lead',text:'Status cambiado de "'+(prev||'Nuevo')+'" a "'+val+'"',at:new Date().toISOString(),by:(state.currentUser&&state.currentUser.name)||'Equipo'});
+    if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('clients');
+    if(typeof leonV2Audit==='function') leonV2Audit('Status de lead cambiado', c.name+' — '+val);
+    showToast('Status de '+c.name+' actualizado a "'+val+'".','success');
+    if(document.getElementById('v2-clients-list')) renderClientsList();
+    if(document.getElementById('leon-v2-client-dossier')?.classList.contains('show')) window.leonV2OpenClientDossier(c.id);
+  };
+  // Color del badge de status — los nombres por defecto tienen su propio color; cualquier status
+  // nuevo que el administrador agregue cae en el estilo neutro.
+  function leonV2LeadStatusBadgeClass(status){
+    const map={
+      'Nuevo':'bg-blue-50 text-blue-700 border-blue-200',
+      'Contactado':'bg-sky-50 text-sky-700 border-sky-200',
+      'Interesado':'bg-emerald-50 text-emerald-700 border-emerald-200',
+      'Sin respuesta':'bg-amber-50 text-amber-700 border-amber-200',
+      'Volver a llamar luego':'bg-amber-50 text-amber-700 border-amber-200',
+      'No interesado':'bg-red-50 text-red-700 border-red-200',
+      'Cliente':'bg-emerald-100 text-emerald-800 border-emerald-300'
+    };
+    return map[status] || 'bg-slate-50 text-slate-600 border-slate-200';
+  }
+  window.leonV2LeadStatusBadgeClass=leonV2LeadStatusBadgeClass;
+  // Selector de status para usar dentro de una tarjeta/expediente — onchange llama a
+  // leonV2SetLeadStatus directamente, sin tener que abrir ningún formulario aparte.
+  function leonV2LeadStatusSelectHtml(c){
+    leonV2EnsureLeadStatus(c);
+    return `<select onclick="event.stopPropagation()" onchange="event.stopPropagation();leonV2SetLeadStatus('${c.id}',this.value)" class="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full border ${leonV2LeadStatusBadgeClass(c.leadStatus)} outline-none">${(state.leadStatuses||[]).map(s=>`<option value="${esc(s)}" ${s===c.leadStatus?'selected':''}>${esc(s)}</option>`).join('')}${!(state.leadStatuses||[]).includes(c.leadStatus)?`<option value="${esc(c.leadStatus)}" selected>${esc(c.leadStatus)}</option>`:''}</select>`;
+  }
+  window.leonV2LeadStatusSelectHtml=leonV2LeadStatusSelectHtml;
   // Cambio de estado no terminal (a diferencia de approveQuote/rejectQuote, esto no mueve la
   // propuesta al historial — solo actualiza dónde está dentro del pipeline activo).
   window.leonV2SetQuoteStatus=(id, status)=>{
