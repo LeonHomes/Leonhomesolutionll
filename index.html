@@ -3447,7 +3447,7 @@
 <style id="leon-v2-styles">
 /* LEON CRM V2 — enhanced experience */
 .leon-v2-shell{font-family:inherit}
-.v2-card{background:#fff;border:1px solid #e4eef8;border-radius:22px;box-shadow:0 10px 35px rgba(15,23,42,.06)}
+.v2-card{background:#fff;border:1px solid #e4eef8;border-radius:22px;box-shadow:0 10px 35px rgba(15,23,42,.06);transition:box-shadow .2s ease,transform .2s ease}
 .v2-card:hover{box-shadow:0 16px 45px rgba(15,23,42,.09)}
 .v2-nav{position:relative;background:rgba(7,17,31,.82);color:#fff;border-radius:22px;padding:10px;box-shadow:0 18px 45px rgba(2,20,40,.28);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(24,147,245,.22);overflow:hidden}
 .v2-nav::before{content:'';position:absolute;inset:0;background:linear-gradient(150deg,rgba(24,147,245,.16) 0%,rgba(255,255,255,.03) 40%,rgba(24,147,245,.10) 100%);pointer-events:none}
@@ -3456,12 +3456,23 @@
 @keyframes navSheenDark{0%{left:-60%}50%,100%{left:140%}}
 .v2-nav button{width:100%;text-align:left;padding:11px 13px;border-radius:12px;color:#a9b7c8;font-size:12px;font-weight:800;display:flex;gap:10px;align-items:center}
 .v2-nav button:hover,.v2-nav button.active{background:linear-gradient(90deg,rgba(24,147,245,.24),rgba(24,147,245,.08));color:#fff}
+.v2-nav-group{margin-top:2px}
+.v2-nav-group-toggle{width:100%;text-align:left;padding:11px 13px;border-radius:12px;color:#7d93aa;font-size:10.5px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;display:flex;gap:10px;align-items:center;cursor:pointer;background:none;border:none}
+.v2-nav-group-toggle:hover{color:#fff;background:rgba(255,255,255,.04)}
+.v2-nav-group-toggle span{flex:1}
+.v2-nav-chevron{font-size:9px;transition:transform .2s ease;color:#5c7390}
+.v2-nav-chevron.is-open{transform:rotate(90deg);color:#7d93aa}
+.v2-nav-group-items{max-height:0;overflow:hidden;transition:max-height .25s ease}
+.v2-nav-group-items.is-open{max-height:620px}
+.v2-nav-group-items button{padding-left:30px}
 .v2-kpi{position:relative;overflow:hidden}
+.v2-kpi:hover{transform:translateY(-2px)}
 .v2-kpi:after{content:'';position:absolute;width:90px;height:90px;border-radius:50%;right:-35px;top:-35px;background:rgba(24,147,245,.08)}
+.v2-kpi-icon{position:relative;z-index:1;width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,rgba(24,147,245,.16),rgba(24,147,245,.05));color:#0876c9;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
 .v2-status{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;padding:5px 9px;border-radius:999px}
 .v2-table th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;text-align:left;padding:12px}
 .v2-table td{padding:14px 12px;border-top:1px solid #edf3f8;font-size:12px}
-.v2-tab{padding:9px 13px;border-radius:10px;font-size:11px;font-weight:900;color:#64748b}
+.v2-tab{padding:9px 13px;border-radius:10px;font-size:11px;font-weight:900;color:#64748b;transition:background .15s ease,color .15s ease}
 .v2-tab.active{background:#eaf5ff;color:#0876c9}
 .v2-clients-tab-btn{color:#64748b;transition:background .15s,color .15s}
 .v2-clients-tab-btn.v2-clients-tab-active{background:#fff;color:var(--c-brand-700,#025fae);box-shadow:0 1px 3px rgba(0,0,0,.08)}
@@ -6744,9 +6755,49 @@
     ['Call Center']: ['dashboard','clients','calls','calendar','pipeline','ventas','historial','tickets'],
     ['Técnico']: ['dashboard','roofintel','projects','tickets']
   };
-  window.leonV2OpenSection=sec=>{document.querySelectorAll('#v2-nav button').forEach(b=>b.classList.toggle('active',b.dataset.sec===sec));({dashboard:renderDashboard,clients:renderClients,calls:renderCallsLog,calendar:renderCallsCalendar,pipeline:renderPipeline,creditapps:renderCreditApps,ventas:renderVentas,historial:renderHistorialSection,catalog:renderCatalog,roofintel:renderRoofIntel,proposals:renderProposals,payroll:renderPayroll,empleados:renderEmpleados,tickets:renderTickets,projects:renderProjects,reports:renderReports,branding:renderBranding,users:renderUsers,trash:renderTrash,audit:renderAudit,settings:renderSettings}[sec]||renderDashboard)()};
-  function renderNav(){const role=state.currentUser?.role||'Administrador';document.getElementById('v2-role-pill').textContent=role;document.getElementById('v2-nav').innerHTML=navItems.map(([s,i,t])=>`<button data-sec="${s}" onclick="leonV2OpenSection('${s}')"><i class="fa-solid ${i} w-4"></i>${t}</button>`).join('');document.querySelector('#v2-nav button')?.classList.add('active')}
-  function kpi(title,val,sub,icon){return `<div class="v2-card v2-kpi p-5"><div class="text-[10px] font-black uppercase tracking-widest text-slate-500">${title}</div><div class="text-3xl font-black text-slate-900 mt-2">${val}</div><div class="text-xs text-brand-600 font-bold mt-2">${sub}</div><i class="fa-solid ${icon} absolute right-5 top-5 text-xl text-brand-300"></i></div>`}
+  // Pedido real ("hay pestañas que puedes estar en la misma... otros módulos pudiendo estar en el
+  // mismo divididos"): la barra lateral, antes una lista plana de 21 botones, ahora se organiza en
+  // grupos colapsables — puramente visual/de navegación. navItems y ROLE_ACCESS siguen siendo la
+  // única fuente de verdad para qué existe y quién lo puede ver; NAV_GROUPS solo dice en qué grupo
+  // se dibuja cada id ya existente, sin tocar ids, handlers, ni la lógica de permisos por rol.
+  const NAV_GROUPS=[
+    {key:'crm', label:'CRM', icon:'fa-address-book', items:['clients','calls','calendar']},
+    {key:'ventas', label:'Ventas', icon:'fa-cash-register', items:['pipeline','proposals','creditapps','ventas','historial']},
+    {key:'catalogo', label:'Catálogo', icon:'fa-boxes-stacked', items:['catalog','roofintel']},
+    {key:'operaciones', label:'Operaciones', icon:'fa-helmet-safety', items:['tickets','projects']},
+    {key:'empresa', label:'Empresa', icon:'fa-building', items:['payroll','empleados','reports','branding','users','trash','audit','settings']}
+  ];
+  let v2NavGroupsOpen={crm:true, ventas:false, catalogo:false, operaciones:false, empresa:false};
+  let v2CurrentSection='dashboard';
+  window.leonV2OpenSection=sec=>{
+    v2CurrentSection=sec;
+    const grp=NAV_GROUPS.find(g=>g.items.includes(sec));
+    if(grp) v2NavGroupsOpen[grp.key]=true;
+    renderNav();
+    ({dashboard:renderDashboard,clients:renderClients,calls:renderCallsLog,calendar:renderCallsCalendar,pipeline:renderPipeline,creditapps:renderCreditApps,ventas:renderVentas,historial:renderHistorialSection,catalog:renderCatalog,roofintel:renderRoofIntel,proposals:renderProposals,payroll:renderPayroll,empleados:renderEmpleados,tickets:renderTickets,projects:renderProjects,reports:renderReports,branding:renderBranding,users:renderUsers,trash:renderTrash,audit:renderAudit,settings:renderSettings}[sec]||renderDashboard)()
+  };
+  // Abre/cierra un grupo de la barra lateral — no cambia la sección activa ni vuelve a pintar
+  // #v2-main, solo reconstruye el menú y re-aplica el filtro de permisos por rol.
+  window.leonV2ToggleNavGroup=function(key){
+    v2NavGroupsOpen[key]=!v2NavGroupsOpen[key];
+    renderNav();
+    if(typeof applyRolePermissions==='function') applyRolePermissions(state.currentUser?.role||'Administrador');
+  };
+  function renderNav(){
+    const role=state.currentUser?.role||'Administrador';
+    document.getElementById('v2-role-pill').textContent=role;
+    const byId={}; navItems.forEach(it=>byId[it[0]]=it);
+    const mkBtn=([s,i,t])=>`<button data-sec="${s}" class="${s===v2CurrentSection?'active':''}" onclick="leonV2OpenSection('${s}')"><i class="fa-solid ${i} w-4"></i>${t}</button>`;
+    const dash=byId['dashboard'];
+    const groupsHtml=NAV_GROUPS.map(g=>{
+      const items=g.items.map(id=>byId[id]).filter(Boolean);
+      if(!items.length) return '';
+      const isOpen=!!v2NavGroupsOpen[g.key];
+      return `<div data-group="${g.key}" class="v2-nav-group"><button type="button" class="v2-nav-group-toggle" onclick="leonV2ToggleNavGroup('${g.key}')"><i class="fa-solid ${g.icon} w-4"></i><span>${g.label}</span><i class="fa-solid fa-chevron-right v2-nav-chevron ${isOpen?'is-open':''}"></i></button><div class="v2-nav-group-items ${isOpen?'is-open':''}">${items.map(mkBtn).join('')}</div></div>`;
+    }).join('');
+    document.getElementById('v2-nav').innerHTML=(dash?mkBtn(dash):'')+groupsHtml;
+  }
+  function kpi(title,val,sub,icon){return `<div class="v2-card v2-kpi p-5"><div class="flex items-start justify-between gap-3"><div class="text-[10px] font-black uppercase tracking-widest text-slate-500">${title}</div><div class="v2-kpi-icon"><i class="fa-solid ${icon}"></i></div></div><div class="text-3xl font-black text-slate-900 mt-3">${val}</div><div class="text-xs text-brand-600 font-bold mt-2">${sub}</div></div>`}
 
   // ===== Brutal CSS bar charts — real numbers straight from `state`, no chart library, no CDN. =====
   function v2Bars(items){
@@ -6900,7 +6951,7 @@
     const tiempoCierreProm=tiemposCierre.length?Math.round(tiemposCierre.reduce((s,d)=>s+d,0)/tiemposCierre.length):0;
     const vencidas=qs.filter(q=>{const d=daysBetween(q.createdAt,new Date().toISOString());return d!==null&&d>14}).length;
     const sinSeguimiento=leonV2ScopedClients(state.clients).filter(c=>{const d=daysBetween(c.lastContact,new Date().toISOString());return d===null||d>7}).length;
-    document.getElementById('v2-main').innerHTML=`${leonV2FollowUpBannerHtml()}${leonV2PaymentReminderBannerHtml()}<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Oportunidades',money(total),qs.length+' propuestas activas','fa-sack-dollar')}${kpi('Propuestas',qs.length+hist.length,'Activas + historial','fa-file-signature')}${kpi('Clientes',new Set(qs.concat(hist).map(q=>q.clientEmail||q.clientName)).size,'Expedientes registrados','fa-users')}${kpi('Equipo',users().length,'Usuarios con acceso','fa-user-shield')}</div><div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">${kpi('Ticket Promedio',money(ticketProm),'Sobre propuestas aceptadas','fa-receipt')}${kpi('Tiempo de Cierre',tiempoCierreProm+' días',aceptadasH.length?'Promedio hasta aceptación':'Sin datos aún','fa-hourglass-half')}${kpi('Propuestas Vencidas',vencidas,'Más de 14 días activas','fa-triangle-exclamation')}${kpi('Sin Seguimiento',sinSeguimiento,'Clientes sin contacto en 7+ días','fa-user-clock')}</div><div class="grid xl:grid-cols-2 gap-6 mt-6"><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Pipeline por Estado</h3><button onclick="leonV2OpenSection('reports')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-pipeline"></div></div><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-brand-500"></i> Catálogo por Categoría</h3><button onclick="leonV2OpenSection('catalog')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-cat"></div></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Mis tareas de seguimiento</h3><span class="v2-pill">Asignadas a ti</span></div><div id="v2-dash-my-tasks" class="mt-4 space-y-2"></div></div><div class="v2-card p-6 mt-6"><h3 class="font-black">Acciones rápidas</h3><div class="grid sm:grid-cols-4 gap-3 mt-4"><button onclick="leonV2OpenNewCallIntake()" class="p-4 rounded-xl bg-brand-50 text-brand-700 text-xs font-black text-left"><i class="fa-solid fa-phone-volume mr-2"></i>Registrar llamada</button><button onclick="openNewQuoteModal()" class="p-4 rounded-xl bg-blue-50 text-blue-700 text-xs font-black text-left"><i class="fa-solid fa-plus mr-2"></i>Nueva cotización</button><button onclick="leonV2OpenSection('catalog')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-box mr-2"></i>Gestionar catálogo</button><button onclick="leonV2OpenSection('historial')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-clock-rotate-left mr-2"></i>Ver historial</button></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black">Actividad reciente</h3><span class="v2-pill">Auditoría</span></div><div class="mt-4 space-y-3">${qs.slice(0,6).map(q=>`<div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl"><div><b class="text-sm">${esc(q.clientName)}</b><div class="text-[11px] text-slate-500">${esc(q.id)} · ${esc(q.origin||'Autogestionado')}</div></div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div>`).join('')||'<div class="text-sm text-slate-400">Sin actividad todavía.</div>'}</div></div>`;
+    document.getElementById('v2-main').innerHTML=`${leonV2FollowUpBannerHtml()}${leonV2PaymentReminderBannerHtml()}<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Oportunidades',money(total),qs.length+' propuestas activas','fa-sack-dollar')}${kpi('Propuestas',qs.length+hist.length,'Activas + historial','fa-file-signature')}${kpi('Clientes',new Set(qs.concat(hist).map(q=>q.clientEmail||q.clientName)).size,'Expedientes registrados','fa-users')}${kpi('Equipo',users().length,'Usuarios con acceso','fa-user-shield')}</div><div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">${kpi('Ticket Promedio',money(ticketProm),'Sobre propuestas aceptadas','fa-receipt')}${kpi('Tiempo de Cierre',tiempoCierreProm+' días',aceptadasH.length?'Promedio hasta aceptación':'Sin datos aún','fa-hourglass-half')}${kpi('Propuestas Vencidas',vencidas,'Más de 14 días activas','fa-triangle-exclamation')}${kpi('Sin Seguimiento',sinSeguimiento,'Clientes sin contacto en 7+ días','fa-user-clock')}</div><div class="grid xl:grid-cols-2 gap-6 mt-6"><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Pipeline por Estado</h3><button onclick="leonV2OpenSection('reports')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-pipeline"></div></div><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-brand-500"></i> Catálogo por Categoría</h3><button onclick="leonV2OpenSection('catalog')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-cat"></div></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Mis tareas de seguimiento</h3><span class="v2-pill">Asignadas a ti</span></div><div id="v2-dash-my-tasks" class="mt-4 space-y-2"></div></div><div class="v2-card p-6 mt-6"><h3 class="font-black">Acciones rápidas</h3><div class="grid sm:grid-cols-4 gap-3 mt-4"><button onclick="leonV2OpenNewCallIntake()" class="p-4 rounded-xl bg-brand-50 text-brand-700 text-xs font-black text-left transition hover:shadow-md hover:-translate-y-0.5"><i class="fa-solid fa-phone-volume mr-2"></i>Registrar llamada</button><button onclick="openNewQuoteModal()" class="p-4 rounded-xl bg-blue-50 text-blue-700 text-xs font-black text-left transition hover:shadow-md hover:-translate-y-0.5"><i class="fa-solid fa-plus mr-2"></i>Nueva cotización</button><button onclick="leonV2OpenSection('catalog')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left transition hover:shadow-md hover:-translate-y-0.5"><i class="fa-solid fa-box mr-2"></i>Gestionar catálogo</button><button onclick="leonV2OpenSection('historial')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left transition hover:shadow-md hover:-translate-y-0.5"><i class="fa-solid fa-clock-rotate-left mr-2"></i>Ver historial</button></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black">Actividad reciente</h3><span class="v2-pill">Auditoría</span></div><div class="mt-4 space-y-3">${qs.slice(0,6).map(q=>`<div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl"><div><b class="text-sm">${esc(q.clientName)}</b><div class="text-[11px] text-slate-500">${esc(q.id)} · ${esc(q.origin||'Autogestionado')}</div></div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div>`).join('')||'<div class="text-sm text-slate-400">Sin actividad todavía.</div>'}</div></div>`;
     document.getElementById('v2-dash-bars-pipeline').innerHTML=v2Bars(pipelineBars);
     document.getElementById('v2-dash-bars-cat').innerHTML=v2Bars(catBars);
     animateV2Bars();
@@ -9788,7 +9839,25 @@
     setTimeout(()=>document.getElementById('login-pin')?.focus(),50);
   };
   window.updateRoleUI=function(role){buildCRM();document.getElementById('v2-role-pill').textContent=role;document.getElementById('v2-greeting').textContent='Hola, '+(state.currentUser?.name||'equipo')+' 👋';applyRolePermissions(role)};
-  function applyRolePermissions(role){const allowed=ROLE_ACCESS[role]||ROLE_ACCESS.Vendedor; document.querySelectorAll('#v2-nav button').forEach(b=>{b.style.display=allowed.includes(b.dataset.sec)?'flex':'none'}); document.getElementById('v2-main').dataset.role=role; const activeBtn=document.querySelector('#v2-nav button.active'); if(activeBtn&&!allowed.includes(activeBtn.dataset.sec)){leonV2OpenSection('dashboard')}}
+  function applyRolePermissions(role){
+    const allowed=ROLE_ACCESS[role]||ROLE_ACCESS.Vendedor;
+    // Si la sección activa ya no está permitida para este rol, redirige PRIMERO — leonV2OpenSection
+    // ahora reconstruye el menú entero (renderNav(), por los grupos colapsables), así que si el
+    // filtrado por rol se aplicara antes de esto, esa reconstrucción lo borraría de inmediato. El
+    // filtrado por data-sec/grupo tiene que ser siempre lo último que corre, sin excepción.
+    const activeBtn=document.querySelector('#v2-nav button.active');
+    if(activeBtn&&!allowed.includes(activeBtn.dataset.sec)){leonV2OpenSection('dashboard')}
+    // Solo los botones de sección (data-sec) se filtran por rol — los botones que abren/cierran un
+    // grupo (sin data-sec) siempre quedan visibles, aunque el grupo entero se oculte más abajo si
+    // ninguno de sus botones de sección es visible para este rol.
+    document.querySelectorAll('#v2-nav button[data-sec]').forEach(b=>{b.style.display=allowed.includes(b.dataset.sec)?'flex':'none'});
+    document.querySelectorAll('#v2-nav [data-group]').forEach(g=>{
+      const anyVisible=Array.from(g.querySelectorAll('button[data-sec]')).some(b=>allowed.includes(b.dataset.sec));
+      g.style.display=anyVisible?'':'none';
+    });
+    document.getElementById('v2-main').dataset.role=role;
+  }
+  window.applyRolePermissions=applyRolePermissions;
   // Add a detail button to existing product cards using state/product names when possible.
   function enhanceCatalog(){const p=products();document.querySelectorAll('#catalogo .group').forEach(card=>{if(card.dataset.v2done)return;const title=card.querySelector('h3,h4');if(!title)return;const prod=p.find(x=>x.name===title.textContent.trim());if(!prod)return;card.dataset.v2done='1';const btn=document.createElement('button');btn.className='mt-2 w-full py-2 rounded-lg border border-brand-200 text-brand-700 text-[10px] font-black uppercase';btn.innerHTML='<i class="fa-solid fa-circle-info mr-1"></i> Ver detalle / video';btn.onclick=()=>leonV2OpenProduct(prod.id);card.appendChild(btn)})}
   const origSwitch=window.switchView;window.switchView=function(view){origSwitch(view);if(view==='internal'&&state.currentUser){window.updateRoleUI(state.currentUser.role)}else if(view==='public'){setTimeout(enhanceCatalog,300)}};
