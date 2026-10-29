@@ -3463,6 +3463,8 @@
 .v2-table td{padding:14px 12px;border-top:1px solid #edf3f8;font-size:12px}
 .v2-tab{padding:9px 13px;border-radius:10px;font-size:11px;font-weight:900;color:#64748b}
 .v2-tab.active{background:#eaf5ff;color:#0876c9}
+.v2-clients-tab-btn{color:#64748b;transition:background .15s,color .15s}
+.v2-clients-tab-btn.v2-clients-tab-active{background:#fff;color:var(--c-brand-700,#025fae);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .v2-modal{position:fixed;inset:0;background:rgba(3,10,20,.72);backdrop-filter:blur(8px);z-index:100;display:none;align-items:center;justify-content:center;padding:16px}
 /* CSS plana (no depende del compilador JIT de Tailwind) para garantizar que los toasts/avisos SIEMPRE se vean por encima de cualquier modal abierto. */
 #toast-container{z-index:300!important;position:fixed}
@@ -7737,6 +7739,17 @@
     qs.forEach(q=>(q.items||[]).forEach(i=>{ if(i.category) cats.add(i.category); }));
     return Array.from(cats);
   }
+  // Pestaña activa de la sección Clientes: 'clientes' (venta confirmada, leonV2ClientStage==='Cliente')
+  // o 'leads' (todo lo demás). Pedido real: "clientes y leads deberían estar en la misma página pero
+  // subdividido por pestañas donde solo aparezca cliente y otra es solo leads, no todo ligado" — antes
+  // ambos vivían mezclados en una sola lista. Vive en una variable de módulo (no en `state`) porque es
+  // solo una preferencia de vista de esta pestaña del navegador, no un dato que haya que sincronizar.
+  let v2ClientsTab='clientes';
+  window.leonV2SetClientsTab=function(tab){
+    v2ClientsTab=tab;
+    document.querySelectorAll('#v2-clients-tabs button').forEach(b=>b.classList.toggle('v2-clients-tab-active', b.dataset.tab===tab));
+    renderClientsList();
+  };
   function renderClients(){
     const catSet=new Set(); const muniSet=new Set();
     (state.clients||[]).forEach(c=>{ leonV2ClientCategories(c).forEach(cat=>catSet.add(cat)); if(c.municipio) muniSet.add(c.municipio); });
@@ -7746,7 +7759,10 @@
     // poder seleccionar "no contestado" o "pendiente de llamar" y de una vez ver a quién hay que
     // darle seguimiento, sin tener que escribir nada en el buscador.
     const leadStatusOptions=(state.leadStatuses||[]).map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
-    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-3 mb-5"><div><h3 class="text-xl font-black text-slate-900">Clientes</h3><p class="text-xs text-slate-500 mt-1">Expediente 360° — contacto, propuestas vinculadas y actividad por cliente.</p></div><div class="flex flex-wrap gap-2"><input type="text" id="v2-clients-search" oninput="renderClientsList()" placeholder="Buscar por nombre, teléfono, correo, municipio o expediente..." class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none w-64 max-w-full"><select id="v2-clients-filter-leadstatus" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo status de lead</option>${leadStatusOptions}</select><select id="v2-clients-filter-cat" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo producto</option>${catOptions}</select><select id="v2-clients-filter-muni" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo municipio</option>${muniOptions}</select><button onclick="leonV2OpenNewCallIntake()" title="Registrar llamada" class="px-3 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase"><i class="fa-solid fa-phone-volume mr-1"></i>Registrar llamada</button><button onclick="leonV2ExportClientsCsv()" title="Descargar CSV" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-csv mr-1"></i>CSV</button>${leonV2IsAdmin()?`<button onclick="leonV2DownloadClientImportTemplate()" title="Descargar plantilla de ejemplo" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-arrow-down mr-1"></i>Plantilla</button><input type="file" id="v2-clients-import-file" accept=".csv" class="hidden" onchange="handleClientsImportFile(event)"><button onclick="document.getElementById('v2-clients-import-file').click()" title="Importar varios clientes desde un archivo CSV" class="px-3 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase"><i class="fa-solid fa-file-import mr-1"></i>Importar clientes</button>`:''}</div></div><div id="v2-clients-import-summary" class="hidden mb-4"></div><div id="v2-clients-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div></div>`;
+    const scoped=leonV2ScopedClients(state.clients||[]);
+    const clientesCount=scoped.filter(c=>leonV2ClientStage(c)==='Cliente').length;
+    const leadsCount=scoped.length-clientesCount;
+    document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6"><div class="flex flex-wrap justify-between items-center gap-3 mb-4"><div><h3 class="text-xl font-black text-slate-900">Clientes</h3><p class="text-xs text-slate-500 mt-1">Expediente 360° — contacto, propuestas vinculadas y actividad por cliente.</p></div><div id="v2-clients-tabs" class="flex gap-1 bg-slate-100 rounded-xl p-1"><button data-tab="clientes" onclick="leonV2SetClientsTab('clientes')" class="v2-clients-tab-btn ${v2ClientsTab==='clientes'?'v2-clients-tab-active':''} px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-user-check mr-1"></i>Clientes (${clientesCount})</button><button data-tab="leads" onclick="leonV2SetClientsTab('leads')" class="v2-clients-tab-btn ${v2ClientsTab==='leads'?'v2-clients-tab-active':''} px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider"><i class="fa-solid fa-phone-volume mr-1"></i>Leads (${leadsCount})</button></div></div><div class="flex flex-wrap gap-2 mb-5"><input type="text" id="v2-clients-search" oninput="renderClientsList()" placeholder="Buscar por nombre, teléfono, correo, municipio o expediente..." class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none w-64 max-w-full"><select id="v2-clients-filter-leadstatus" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo status de lead</option>${leadStatusOptions}</select><select id="v2-clients-filter-cat" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo producto</option>${catOptions}</select><select id="v2-clients-filter-muni" onchange="renderClientsList()" class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs outline-none font-bold text-slate-600"><option value="">Todo municipio</option>${muniOptions}</select><button onclick="leonV2OpenNewCallIntake()" title="Registrar llamada" class="px-3 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase"><i class="fa-solid fa-phone-volume mr-1"></i>Registrar llamada</button><button onclick="leonV2ExportClientsCsv()" title="Descargar CSV" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-csv mr-1"></i>CSV</button>${leonV2IsAdmin()?`<button onclick="leonV2DownloadClientImportTemplate()" title="Descargar plantilla de ejemplo" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-600 hover:border-brand-300 hover:text-brand-600"><i class="fa-solid fa-file-arrow-down mr-1"></i>Plantilla</button><input type="file" id="v2-clients-import-file" accept=".csv" class="hidden" onchange="handleClientsImportFile(event)"><button onclick="document.getElementById('v2-clients-import-file').click()" title="Importar varios clientes desde un archivo CSV" class="px-3 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white text-xs font-black uppercase"><i class="fa-solid fa-file-import mr-1"></i>Importar clientes</button>`:''}</div><div id="v2-clients-import-summary" class="hidden mb-4"></div><div id="v2-clients-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div></div>`;
     renderClientsList();
   }
   function renderClientsList(){
@@ -7756,6 +7772,9 @@
     const leadStatusFilter=document.getElementById('v2-clients-filter-leadstatus')?.value||'';
     // Cada vendedor ve solo SUS clientes — ver leonV2ScopedClients. Solo Administrador ve todos.
     let list=leonV2ScopedClients(state.clients).slice().sort((a,b)=>new Date(b.lastContact||0)-new Date(a.lastContact||0));
+    // Pestaña: "Clientes" = venta confirmada; "Leads" = todo lo demás (nuevo, contactado,
+    // interesado, sin respuesta...) — nunca mezclados, por pedido explícito.
+    list=list.filter(c=>v2ClientsTab==='clientes' ? leonV2ClientStage(c)==='Cliente' : leonV2ClientStage(c)!=='Cliente');
     // Se asegura el status ANTES de filtrar por él (clientes viejos sin leadStatus asignado
     // todavía deben contar como "Nuevo"/"Cliente" al filtrar, igual que al mostrarse en pantalla).
     list.forEach(leonV2EnsureLeadStatus);
