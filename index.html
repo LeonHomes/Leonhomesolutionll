@@ -3447,28 +3447,53 @@
 <style id="leon-v2-styles">
 /* LEON CRM V2 — enhanced experience */
 .leon-v2-shell{font-family:inherit}
-.v2-card{background:#fff;border:1px solid #e4eef8;border-radius:22px;box-shadow:0 10px 35px rgba(15,23,42,.06);transition:box-shadow .2s ease,transform .2s ease}
-.v2-card:hover{box-shadow:0 16px 45px rgba(15,23,42,.09)}
-.v2-nav{position:relative;background:rgba(7,17,31,.82);color:#fff;border-radius:22px;padding:10px;box-shadow:0 18px 45px rgba(2,20,40,.28);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(24,147,245,.22);overflow:hidden}
-.v2-nav::before{content:'';position:absolute;inset:0;background:linear-gradient(150deg,rgba(24,147,245,.16) 0%,rgba(255,255,255,.03) 40%,rgba(24,147,245,.10) 100%);pointer-events:none}
-.v2-nav::after{content:'';position:absolute;left:-60%;top:0;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.10),transparent);animation:navSheenDark 8s ease-in-out infinite;pointer-events:none}
-.v2-nav>*{position:relative}
-@keyframes navSheenDark{0%{left:-60%}50%,100%{left:140%}}
-.v2-nav button{width:100%;text-align:left;padding:11px 13px;border-radius:12px;color:#a9b7c8;font-size:12px;font-weight:800;display:flex;gap:10px;align-items:center}
-.v2-nav button:hover,.v2-nav button.active{background:linear-gradient(90deg,rgba(24,147,245,.24),rgba(24,147,245,.08));color:#fff}
-.v2-nav-group{margin-top:2px}
-.v2-nav-group-toggle{width:100%;text-align:left;padding:11px 13px;border-radius:12px;color:#7d93aa;font-size:10.5px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;display:flex;gap:10px;align-items:center;cursor:pointer;background:none;border:none}
-.v2-nav-group-toggle:hover{color:#fff;background:rgba(255,255,255,.04)}
+.v2-card{background:#fff;border:1px solid #e7ebf1;border-radius:18px;box-shadow:0 1px 2px rgba(15,23,42,.03),0 10px 28px -18px rgba(15,23,42,.18);transition:box-shadow .2s ease,transform .2s ease}
+.v2-card:hover{box-shadow:0 1px 2px rgba(15,23,42,.04),0 16px 32px -16px rgba(15,23,42,.22)}
+.v2-nav{position:relative;background:#0a0f1a;background-image:radial-gradient(circle at 15% 0%,rgba(24,147,245,.16),transparent 45%);border-radius:20px;padding:16px 12px;display:flex;flex-direction:column;gap:3px}
+.v2-nav-logo{display:flex;align-items:center;gap:10px;padding:2px 6px 16px}
+.v2-nav-logo-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#0574d6,#1893f5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:13px;flex:0 0 auto}
+.v2-nav-logo-text{color:#fff;font-weight:900;font-size:14px;letter-spacing:.01em;white-space:nowrap;line-height:1.3}
+.v2-nav-logo-sub{color:#5b6b82;font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap}
+.v2-nav-label{color:#45526a;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:6px 12px 8px}
+.v2-nav button{width:100%;text-align:left;padding:10px 12px;border-radius:10px;color:#94a3b8;font-size:12.5px;font-weight:700;display:flex;gap:10px;align-items:center;background:none;border:none}
+.v2-nav button:hover{background:rgba(255,255,255,.06);color:#e2e8f0}
+.v2-nav button.active{background:linear-gradient(135deg,#0574d6,#1893f5);color:#fff;box-shadow:0 4px 14px -4px rgba(5,116,214,.55)}
+.v2-nav-group{margin-top:1px}
+.v2-nav-group-toggle{width:100%;text-align:left;padding:10px 12px;border-radius:10px;color:#cbd5e1;font-size:12.5px;font-weight:700;display:flex;gap:10px;align-items:center;cursor:pointer;background:none;border:none}
+.v2-nav-group-toggle:hover{background:rgba(255,255,255,.06)}
 .v2-nav-group-toggle span{flex:1}
-.v2-nav-chevron{font-size:9px;transition:transform .2s ease;color:#5c7390}
-.v2-nav-chevron.is-open{transform:rotate(90deg);color:#7d93aa}
-.v2-nav-group-items{max-height:0;overflow:hidden;transition:max-height .25s ease}
-.v2-nav-group-items.is-open{max-height:620px}
-.v2-nav-group-items button{padding-left:30px}
+.v2-nav-chevron{font-size:10px;transition:transform .18s ease;color:#5b6b82}
+.v2-nav-chevron.is-open{transform:rotate(180deg)}
+.v2-nav-group-items{max-height:0;overflow:hidden;transition:max-height .22s ease}
+.v2-nav-group-items.is-open{max-height:320px}
+.v2-nav-group-items button{padding:8px 12px 8px 40px;font-size:12px;font-weight:600;color:#8493a8}
+.v2-nav-group-items button:hover{color:#e2e8f0;background:rgba(255,255,255,.055)}
+.v2-nav-group-items button.active{color:#fff;background:rgba(24,147,245,.18);box-shadow:none}
+.v2-nav-usercard{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);margin-top:14px}
+.v2-nav-usercard-avatar{width:34px;height:34px;border-radius:10px;background:#1893f5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:0 0 auto}
 .v2-kpi{position:relative;overflow:hidden}
 .v2-kpi:hover{transform:translateY(-2px)}
-.v2-kpi:after{content:'';position:absolute;width:90px;height:90px;border-radius:50%;right:-35px;top:-35px;background:rgba(24,147,245,.08)}
-.v2-kpi-icon{position:relative;z-index:1;width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,rgba(24,147,245,.16),rgba(24,147,245,.05));color:#0876c9;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.v2-kpi:after{content:'';position:absolute;width:90px;height:90px;border-radius:50%;right:-35px;top:-35px;background:rgba(24,147,245,.06)}
+.v2-kpi-icon{position:relative;z-index:1;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.v2-lead-row{display:flex;align-items:center;gap:14px;padding:11px 8px;border-bottom:1px solid #f1f5f9;border-radius:10px;transition:background .12s}
+.v2-lead-row:last-child{border-bottom:none}
+.v2-lead-row:hover{background:#f8fafc}
+.v2-lead-avatar{width:38px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:0 0 auto}
+.v2-btn-ghost{background:#fff;border:1px solid #e2e8f0;color:#475569;font-weight:700;border-radius:10px;padding:8px 14px;font-size:11.5px;transition:border-color .15s,color .15s,background .15s}
+.v2-btn-ghost:hover{border-color:#b9d9f8;color:#025fae;background:#f5faff}
+.v2-btn-icon{border:1px solid #e2e8f0;background:#fff;color:#64748b;border-radius:10px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s,background .15s}
+.v2-btn-icon:hover{border-color:#b9d9f8;color:#0574d6;background:#f5faff}
+.v2-action-tile{text-align:left;border-radius:15px;padding:16px;transition:transform .14s,box-shadow .14s,border-color .14s;border:1px solid #e7ebf1;background:#fafbfc}
+.v2-action-tile:hover{transform:translateY(-2px);box-shadow:0 14px 30px -18px rgba(15,23,42,.28)}
+.v2-action-tile-icon{width:34px;height:34px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.v2-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.v2-dash-charts-row{display:grid;grid-template-columns:1.1fr 1fr .85fr;gap:16px}
+@media(max-width:1100px){.v2-dash-charts-row{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.v2-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.v2-dash-charts-row{grid-template-columns:1fr}}
+@media(max-width:560px){.v2-kpi-grid{grid-template-columns:1fr}}
+.v2-actions-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media(max-width:900px){.v2-actions-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .v2-status{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;padding:5px 9px;border-radius:999px}
 .v2-table th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;text-align:left;padding:12px}
 .v2-table td{padding:14px 12px;border-top:1px solid #edf3f8;font-size:12px}
@@ -3783,6 +3808,18 @@
   // $315.26). Fijar maximumFractionDigits:2 explícitamente arregla esto en TODO el sistema de una vez.
   const money=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+
+  // Avatar circular con iniciales — mismo lenguaje visual del mockup aprobado (Seguimientos
+  // pendientes, Pagos por recordar, Actividad reciente). El color cicla de forma determinística
+  // según el nombre, así el mismo cliente siempre sale con el mismo color entre renders.
+  const LEON_AVATAR_PALETTE=[{bg:'#eaf4ff',fg:'#025fae'},{bg:'#f0fdf4',fg:'#059669'},{bg:'#fdf4ff',fg:'#9333ea'},{bg:'#fffbeb',fg:'#b45309'}];
+  function leonV2InitialsAvatarHtml(name){
+    const initials=(String(name||'').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('')||'?').toUpperCase();
+    const seed=String(name||'').split('').reduce((a,ch)=>a+ch.charCodeAt(0),0);
+    const c=LEON_AVATAR_PALETTE[seed%LEON_AVATAR_PALETTE.length];
+    return `<div class="v2-lead-avatar" style="background:${c.bg};color:${c.fg}">${esc(initials)}</div>`;
+  }
+  window.leonV2InitialsAvatarHtml=leonV2InitialsAvatarHtml;
 
   // ===================== BUSCADOR CON AUTOCOMPLETAR (reemplaza los <select> gigantes) =====================
   // Antes: elegir un cliente/producto era un <select> normal — con una lista larga (cientos de
@@ -4877,14 +4914,14 @@
   function leonV2PaymentReminderBannerHtml(){
     const due=leonV2PendingPayments();
     if(!due.length) return '';
-    return `<div class="v2-card p-5 mb-6 border-2 border-emerald-300 bg-emerald-50/60">
-      <div class="flex items-center justify-between gap-3 flex-wrap">
-        <h3 class="font-black text-emerald-800 text-sm"><i class="fa-solid fa-sack-dollar mr-2"></i>Pagos por recordar (${due.length})</h3>
-        <button onclick="leonV2OpenSection('calendar')" class="text-[10px] font-black uppercase text-emerald-700 hover:text-emerald-900"><i class="fa-solid fa-calendar-days mr-1"></i>Ver calendario</button>
+    return `<div class="v2-card" style="padding:22px 24px;margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:11px;background:#f0fdf4;color:#059669;display:flex;align-items:center;justify-content:center;flex:0 0 auto"><i class="fa-solid fa-sack-dollar"></i></div><div><div style="font-size:14.5px;font-weight:800;color:#0b1220">Pagos por recordar</div><div style="font-size:11.5px;color:#94a3b8;font-weight:600">${due.length} pago${due.length===1?'':'s'} que avisar en los próximos días</div></div></div>
+        <button onclick="leonV2OpenSection('calendar')" style="font-size:11.5px;font-weight:800;color:#025fae;display:flex;align-items:center;gap:6px;background:none;border:none"><i class="fa-solid fa-calendar-days"></i>Ver calendario completo</button>
       </div>
-      <div class="mt-3 space-y-2">${due.slice(0,8).map(({c,payment,overdue})=>{
-        return `<div class="flex items-center justify-between gap-3 bg-white rounded-xl px-3 py-2 border border-emerald-200 flex-wrap"><div><b class="text-sm">${esc(c.name)}</b><span class="text-[11px] text-slate-500 ml-1">${esc(c.phone||'')}</span><div class="text-[11px] ${overdue?'text-red-600 font-bold':'text-emerald-700'} mt-0.5">${overdue?'Pago vencido':'Recordar pago'} — Pago ${payment.n} de ${money(payment.amount)}, vence ${esc(new Date(payment.dueDate+'T00:00:00').toLocaleDateString('es-PR',{day:'numeric',month:'short',year:'numeric'}))}</div></div><div class="flex items-center gap-2"><button onclick="leonV2TogglePaymentPaid('${c.id}',${payment.n-1})" class="v2-tab text-[11px]"><i class="fa-solid fa-check mr-1"></i>Marcar pagado</button><button onclick="leonV2OpenClientDossier('${c.id}')" class="v2-tab active text-[11px]">Ver expediente</button></div></div>`;
-      }).join('')}${due.length>8?`<div class="text-[11px] text-slate-400 mt-1">y ${due.length-8} más...</div>`:''}</div>
+      <div style="display:flex;flex-direction:column">${due.slice(0,8).map(({c,payment,overdue})=>{
+        return `<div class="v2-lead-row">${leonV2InitialsAvatarHtml(c.name)}<div style="flex:1 1 180px;min-width:0"><div style="font-size:13.5px;font-weight:700;color:#0b1220">${esc(c.name)}</div><div style="font-size:11.5px;color:#94a3b8;font-weight:600">Pago ${payment.n} · ${money(payment.amount)}</div></div><div style="flex:0 0 auto;display:flex;align-items:center;gap:7px;${overdue?'background:#fef2f2;color:#dc2626':'background:#fffbeb;color:#b45309'};font-size:10px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap">${overdue?'Vencido':'Vence'} · ${esc(new Date(payment.dueDate+'T00:00:00').toLocaleDateString('es-PR',{day:'numeric',month:'short'}))}</div><button onclick="leonV2TogglePaymentPaid('${c.id}',${payment.n-1})" class="v2-btn-icon" title="Marcar pagado"><i class="fa-solid fa-check"></i></button><button onclick="leonV2OpenClientDossier('${c.id}')" class="v2-btn-ghost">Ver expediente</button></div>`;
+      }).join('')}</div>${due.length>8?`<div style="text-align:center;margin-top:10px"><span style="font-size:11.5px;color:#94a3b8;font-weight:700">y ${due.length-8} más — ver todos en el calendario</span></div>`:''}
     </div>`;
   }
   window.leonV2PaymentReminderBannerHtml=leonV2PaymentReminderBannerHtml;
@@ -6741,7 +6778,31 @@
   window.leonV2PrintProposalById=id=>{const q=findQuoteAnywhere(id);if(!q)return;const t=leonV2ComputeTotal(q);const rs=leonV2RoofSealPlanInfo(q);const w=window.open('','_blank');w.document.write(`<html><head><title>Propuesta ${esc(q.id)}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}h1{color:#0876c9}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}img{width:80px;height:60px;object-fit:contain} .total{font-size:22px;font-weight:800;text-align:right;margin-top:20px}.head{display:flex;justify-content:space-between;border-bottom:3px solid #0876c9;padding-bottom:18px}.box{background:#f5f9fd;padding:16px;border-radius:10px;margin-top:20px}.breakdown td{padding:6px 0;border:none}</style></head><body><div class="head"><div><h1>LEON HOME SOLUTIONS</h1><b>PROPUESTA COMERCIAL</b><div>${esc(q.id)}</div></div><div><b>Fecha</b><br>${esc(q.createdAt||'')}</div></div><div class="box"><b>CLIENTE</b><br>${esc(q.clientName)}<br>${esc(q.clientCompany||'')}<br>${esc(q.clientEmail||'')} · ${esc(q.clientPhone||'')}</div><div class="box"><b>CONSULTOR</b><br>${esc(q.vendorName||'Asignación pendiente')}<br>Origen: ${esc(q.origin||'')}</div>${rs?`<div class="box"><b>DETALLE DEL PLAN DE SELLADO DE TECHO</b><br>Área a sellar: <b>${rs.sqft.toLocaleString('en-US')} ft²</b> · Precio: <b>${money(rs.pricePerFt2)}/ft²</b>${rs.warrantyYears?' · Garantía: <b>'+leonV2YearsLabel(rs.warrantyYears)+'</b>':''}${rs.materials?'<br>Materiales/incluye: '+esc(rs.materials):''}</div>`:''}<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${q.items.map(i=>`<tr><td><img src="${esc(i.image||'')}" onerror="this.style.display='none'"> ${esc(i.name)}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${money(i.price*i.qty)}</td></tr>`).join('')}</tbody></table><table class="breakdown"><tbody><tr><td>Subtotal</td><td style="text-align:right">${money(t.subtotal)}</td></tr>${t.discount?`<tr><td>Descuento</td><td style="text-align:right">-${money(t.discount)}</td></tr>`:''}${t.install?`<tr><td>Instalación</td><td style="text-align:right">${money(t.install)}</td></tr>`:''}${t.transport?`<tr><td>Transporte</td><td style="text-align:right">${money(t.transport)}</td></tr>`:''}${t.exemptSubtotal?`<tr><td>Exento de IVU (equipos marcados como exentos)</td><td style="text-align:right">${money(t.exemptSubtotal)}</td></tr>`:''}${t.tax?`<tr><td>Impuesto (IVU)</td><td style="text-align:right">${money(t.tax)}</td></tr>`:''}</tbody></table><div class="total">TOTAL: ${money(t.total)}</div>${leonV2PrintFinancingBlock(q,t)}<div class="box">Condiciones: propuesta sujeta a disponibilidad, validación comercial y condiciones de financiación. Vigencia configurable por administración.</div>${q.acceptance?`<div class="box" style="background:#ecfdf5"><b>ACEPTACIÓN DIGITAL</b><br>${esc(q.acceptance.name)} — ${esc(new Date(q.acceptance.acceptedAt).toLocaleString())}<br>${q.acceptance.acceptedByPhone?`<span style="font-size:12px">Aceptada por llamada telefónica — certificado por <b>${esc(q.acceptance.phoneVerifiedBy||'')}</b></span><br>`:(q.acceptance.signatureDataUrl?`<img src="${q.acceptance.signatureDataUrl}" style="height:50px;margin-top:6px;display:block">`:'')}<span style="font-size:11px;color:#555">${q.acceptance.acceptedByPhone?'Aceptación verbal por teléfono, certificada por un empleado — no hay firma trazada.':'Firma trazada a mano por la persona (no es un proveedor certificado con validez legal notarial).'}</span></div>`:''}<div style="margin-top:70px;display:flex;justify-content:space-between"><div>________________________<br>Cliente</div><div>________________________<br>Consultor</div></div><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()};
 
   function buildCRM(){
-    const old=document.querySelector('#internal-view > .max-w-7xl'); if(!old)return; old.innerHTML=`<div class="leon-v2-shell"><div class="flex flex-col lg:flex-row justify-between gap-4 mb-6"><div><div class="v2-pill bg-white"><i class="fa-solid fa-shield-halved text-brand-600"></i><span id="v2-role-pill">Administrador</span></div><h2 class="text-3xl md:text-4xl font-black text-slate-900 mt-3" id="v2-greeting">Buenos días 👋</h2><p class="text-sm text-slate-500 mt-1">Tu espacio comercial se adapta automáticamente a tus permisos.</p><div id="v2-db-status" class="mt-2"></div></div><div class="flex items-center gap-3"><div class="relative"><button onclick="leonV2ToggleNotifications()" class="relative px-4 py-3 rounded-xl border bg-white text-xs font-black" title="Notificaciones"><i class="fa-solid fa-bell"></i><span id="v2-notif-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-glass-lg z-50 max-h-96 overflow-y-auto"></div></div><button onclick="leonV2OpenSection('clients')" class="px-4 py-3 rounded-xl border bg-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-2"></i>Buscar cliente</button><button onclick="logoutUser()" class="px-4 py-3 rounded-xl bg-red-50 text-red-600 text-xs font-black"><i class="fa-solid fa-right-from-bracket mr-2"></i>Salir</button></div></div><div class="grid lg:grid-cols-[230px_1fr] gap-6 v2-layout"><aside class="v2-nav h-fit"><div class="px-3 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Workspace</div><div id="v2-nav"></div></aside><section id="v2-main" class="min-w-0"></section></div></div>`;renderNav();renderDashboard();leonV2RefreshNotifications();if(typeof window.leonV2UpdateDbStatusBadge==='function')window.leonV2UpdateDbStatusBadge();
+    const old=document.querySelector('#internal-view > .max-w-7xl'); if(!old)return; old.innerHTML=`<div class="leon-v2-shell">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px">
+        <div id="v2-db-status"></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button onclick="leonV2OpenSection('clients')" style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:9px 14px;color:#94a3b8;font-size:12.5px;font-weight:600"><i class="fa-solid fa-magnifying-glass"></i>Buscar cliente</button>
+          <div class="relative"><button onclick="leonV2ToggleNotifications()" class="v2-btn-icon" style="position:relative" title="Notificaciones"><i class="fa-solid fa-bell"></i><span id="v2-notif-count" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">0</span></button><div id="v2-notif-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-glass-lg z-50 max-h-96 overflow-y-auto"></div></div>
+          <div class="v2-pill bg-white"><i class="fa-solid fa-shield-halved text-brand-600"></i><span id="v2-role-pill">Administrador</span></div>
+          <button onclick="logoutUser()" class="v2-btn-icon" title="Salir"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:22px">
+        <div><h2 style="margin:0;font-size:28px;font-weight:900;letter-spacing:-.01em;color:#0b1220" id="v2-greeting">Hola</h2><p style="margin:6px 0 0;font-size:13.5px;color:#64748b;font-weight:500">Tu espacio comercial se adapta automáticamente a tus permisos.</p></div>
+        <button onclick="leonV2OpenNewCallIntake()" style="background:linear-gradient(135deg,#0574d6,#1893f5);color:#fff;border:none;font-weight:800;letter-spacing:.02em;padding:12px 20px;border-radius:13px;font-size:12.5px;display:flex;align-items:center;gap:8px"><i class="fa-solid fa-plus"></i>Nueva acción</button>
+      </div>
+      <div class="grid lg:grid-cols-[260px_1fr] gap-6 v2-layout">
+        <aside class="v2-nav">
+          <div class="v2-nav-logo"><div class="v2-nav-logo-mark">LH</div><div><div class="v2-nav-logo-text">LEON</div><div class="v2-nav-logo-sub">Home Solutions</div></div></div>
+          <div class="v2-nav-label">Workspace</div>
+          <div id="v2-nav"></div>
+          <div style="flex-grow:1;min-height:12px"></div>
+          <div class="v2-nav-usercard"><div class="v2-nav-usercard-avatar" id="v2-nav-user-initials">?</div><div style="min-width:0;flex-grow:1"><div style="color:#e2e8f0;font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="v2-nav-user-name">—</div><div style="color:#5b6b82;font-size:10.5px;font-weight:600" id="v2-nav-user-role">—</div></div></div>
+        </aside>
+        <section id="v2-main" class="min-w-0"></section>
+      </div>
+    </div>`;renderNav();renderDashboard();leonV2RefreshNotifications();if(typeof window.leonV2UpdateDbStatusBadge==='function')window.leonV2UpdateDbStatusBadge();
   }
   const navItems=[['dashboard','fa-chart-pie','Dashboard'],['clients','fa-address-card','Clientes'],['calls','fa-phone-volume','Llamadas'],['calendar','fa-calendar-days','Calendario'],['pipeline','fa-filter-circle-dollar','Seguimiento de Ventas'],['creditapps','fa-file-invoice-dollar','Solicitudes de Crédito'],['ventas','fa-cash-register','Ventas'],['historial','fa-clock-rotate-left','Historial'],['catalog','fa-boxes-stacked','Catálogo'],['roofintel','fa-house-chimney-crack','Roof Intelligence'],['proposals','fa-file-signature','Propuestas'],['payroll','fa-sitemap','Comisiones'],['empleados','fa-users-gear','Empleados'],['tickets','fa-ticket','Tickets'],['projects','fa-helmet-safety','Proyectos'],['reports','fa-chart-line','Reportes'],['branding','fa-pen-ruler','Sitio Web'],['users','fa-user-shield','Usuarios'],['trash','fa-trash-can','Papelera'],['audit','fa-clipboard-list','Auditoría'],['settings','fa-gear','Configuración']];
   // Qué secciones del panel puede ver cada rol — única fuente de verdad (antes vivía inline dentro
@@ -6757,16 +6818,22 @@
   };
   // Pedido real ("hay pestañas que puedes estar en la misma... otros módulos pudiendo estar en el
   // mismo divididos"): la barra lateral, antes una lista plana de 21 botones, ahora se organiza en
-  // grupos colapsables — puramente visual/de navegación. navItems y ROLE_ACCESS siguen siendo la
-  // única fuente de verdad para qué existe y quién lo puede ver; NAV_GROUPS solo dice en qué grupo
-  // se dibuja cada id ya existente, sin tocar ids, handlers, ni la lógica de permisos por rol.
-  const NAV_GROUPS=[
-    {key:'crm', label:'CRM', icon:'fa-address-book', items:['clients','calls','calendar']},
-    {key:'ventas', label:'Ventas', icon:'fa-cash-register', items:['pipeline','proposals','creditapps','ventas','historial']},
-    {key:'catalogo', label:'Catálogo', icon:'fa-boxes-stacked', items:['catalog','roofintel']},
-    {key:'operaciones', label:'Operaciones', icon:'fa-helmet-safety', items:['tickets','projects']},
-    {key:'empresa', label:'Empresa', icon:'fa-building', items:['payroll','empleados','reports','branding','users','trash','audit','settings']}
+  // grupos colapsables + algunos botones sueltos — puramente visual/de navegación, en el mismo
+  // orden del panel que el cliente ya vio y aprobó. navItems y ROLE_ACCESS siguen siendo la única
+  // fuente de verdad para qué existe y quién lo puede ver; NAV_SEQUENCE solo dice en qué orden y
+  // bajo qué grupo se dibuja cada id ya existente, sin tocar ids, handlers, ni permisos por rol.
+  const NAV_SEQUENCE=[
+    {type:'leaf', id:'dashboard'},
+    {type:'group', key:'crm', label:'CRM', icon:'fa-address-book', items:['clients','calls','calendar']},
+    {type:'group', key:'ventas', label:'Ventas', icon:'fa-cash-register', items:['pipeline','proposals','creditapps','ventas','historial']},
+    {type:'group', key:'catalogo', label:'Catálogo', icon:'fa-boxes-stacked', items:['catalog','roofintel']},
+    {type:'group', key:'operaciones', label:'Operaciones', icon:'fa-helmet-safety', items:['tickets','projects']},
+    {type:'leaf', id:'reports'},
+    {type:'group', key:'empresa', label:'Empresa', icon:'fa-building', items:['empleados','payroll','users','audit','trash']},
+    {type:'leaf', id:'branding'},
+    {type:'leaf', id:'settings'}
   ];
+  const NAV_GROUPS=NAV_SEQUENCE.filter(x=>x.type==='group');
   let v2NavGroupsOpen={crm:true, ventas:false, catalogo:false, operaciones:false, empresa:false};
   let v2CurrentSection='dashboard';
   window.leonV2OpenSection=sec=>{
@@ -6788,16 +6855,66 @@
     document.getElementById('v2-role-pill').textContent=role;
     const byId={}; navItems.forEach(it=>byId[it[0]]=it);
     const mkBtn=([s,i,t])=>`<button data-sec="${s}" class="${s===v2CurrentSection?'active':''}" onclick="leonV2OpenSection('${s}')"><i class="fa-solid ${i} w-4"></i>${t}</button>`;
-    const dash=byId['dashboard'];
-    const groupsHtml=NAV_GROUPS.map(g=>{
-      const items=g.items.map(id=>byId[id]).filter(Boolean);
+    const html=NAV_SEQUENCE.map(entry=>{
+      if(entry.type==='leaf'){
+        const it=byId[entry.id]; return it?mkBtn(it):'';
+      }
+      const items=entry.items.map(id=>byId[id]).filter(Boolean);
       if(!items.length) return '';
-      const isOpen=!!v2NavGroupsOpen[g.key];
-      return `<div data-group="${g.key}" class="v2-nav-group"><button type="button" class="v2-nav-group-toggle" onclick="leonV2ToggleNavGroup('${g.key}')"><i class="fa-solid ${g.icon} w-4"></i><span>${g.label}</span><i class="fa-solid fa-chevron-right v2-nav-chevron ${isOpen?'is-open':''}"></i></button><div class="v2-nav-group-items ${isOpen?'is-open':''}">${items.map(mkBtn).join('')}</div></div>`;
+      const isOpen=!!v2NavGroupsOpen[entry.key];
+      return `<div data-group="${entry.key}" class="v2-nav-group"><button type="button" class="v2-nav-group-toggle" onclick="leonV2ToggleNavGroup('${entry.key}')"><i class="fa-solid ${entry.icon} w-4"></i><span>${entry.label}</span><i class="fa-solid fa-chevron-down v2-nav-chevron ${isOpen?'is-open':''}"></i></button><div class="v2-nav-group-items ${isOpen?'is-open':''}">${items.map(mkBtn).join('')}</div></div>`;
     }).join('');
-    document.getElementById('v2-nav').innerHTML=(dash?mkBtn(dash):'')+groupsHtml;
+    document.getElementById('v2-nav').innerHTML=html;
+    // Tarjeta de usuario al fondo de la barra lateral (nombre/rol/iniciales) — mismo bloque que en
+    // el mockup aprobado. Se repinta cada vez que renderNav() corre (login, cambio de rol, togglear
+    // un grupo, navegar) así siempre refleja quién tiene la sesión abierta.
+    const u=state.currentUser||{};
+    const initials=(String(u.name||'').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('')||'?').toUpperCase();
+    const initEl=document.getElementById('v2-nav-user-initials'); if(initEl) initEl.textContent=initials;
+    const nameEl=document.getElementById('v2-nav-user-name'); if(nameEl) nameEl.textContent=u.name||'Equipo LEON';
+    const roleEl=document.getElementById('v2-nav-user-role'); if(roleEl) roleEl.textContent=role;
   }
-  function kpi(title,val,sub,icon){return `<div class="v2-card v2-kpi p-5"><div class="flex items-start justify-between gap-3"><div class="text-[10px] font-black uppercase tracking-widest text-slate-500">${title}</div><div class="v2-kpi-icon"><i class="fa-solid ${icon}"></i></div></div><div class="text-3xl font-black text-slate-900 mt-3">${val}</div><div class="text-xs text-brand-600 font-bold mt-2">${sub}</div></div>`}
+  // Paleta de colores por tipo de métrica — igual a la del mockup aprobado (cada KPI con su propio
+  // tono de ícono, no todos en azul). "trend" es opcional (solo la primera tarjeta del mockup la
+  // lleva, con un % real de crecimiento si hay datos para calcularlo, o se omite si no hay).
+  const LEON_KPI_COLORS={
+    blue:{bg:'#eaf4ff',fg:'#025fae'}, indigo:{bg:'#f0f5ff',fg:'#4f46e5'}, green:{bg:'#f0fdf4',fg:'#059669'},
+    purple:{bg:'#fdf4ff',fg:'#9333ea'}, amber:{bg:'#fffbeb',fg:'#b45309'}, red:{bg:'#fef2f2',fg:'#dc2626'}
+  };
+  function kpi(title,val,sub,icon,colorKey,trend){
+    const c=LEON_KPI_COLORS[colorKey]||LEON_KPI_COLORS.blue;
+    return `<div class="v2-card v2-kpi p-5"><div class="flex items-start justify-between gap-3"><div class="v2-kpi-icon" style="background:${c.bg};color:${c.fg}"><i class="fa-solid ${icon}"></i></div>${trend?`<span style="font-size:10.5px;font-weight:800;color:#10b981;background:#ecfdf5;padding:3px 8px;border-radius:999px">${esc(trend)}</span>`:''}</div><div class="text-2xl font-black text-slate-900 mt-3">${val}</div><div class="text-[11px] text-slate-400 font-bold mt-1 uppercase tracking-wide">${title}</div><div class="text-xs text-slate-500 font-semibold mt-1.5">${sub}</div></div>`;
+  }
+
+  // Distribución real de leads por status, para el donut "Leads por status" del Dashboard — solo
+  // cuenta leads (no clientes ya confirmados, ver leonV2ClientStage), con porcentajes calculados de
+  // los datos reales, nunca números de ejemplo.
+  const LEON_DONUT_PALETTE=['#60a5fa','#38bdf8','#10b981','#f59e0b','#f43f5e','#a78bfa','#fb923c'];
+  function leonV2LeadStatusBreakdown(){
+    const leads=leonV2ScopedClients(state.clients||[]).filter(c=>leonV2ClientStage(c)!=='Cliente');
+    leads.forEach(leonV2EnsureLeadStatus);
+    const counts={};
+    leads.forEach(c=>{ const s=c.leadStatus||'Nuevo'; counts[s]=(counts[s]||0)+1; });
+    const total=leads.length;
+    const entries=Object.entries(counts).map(([label,count],i)=>({label,count,pct:total?Math.round(count/total*100):0,color:LEON_DONUT_PALETTE[i%LEON_DONUT_PALETTE.length]}));
+    entries.sort((a,b)=>b.count-a.count);
+    return {entries, total};
+  }
+  window.leonV2LeadStatusBreakdown=leonV2LeadStatusBreakdown;
+  function leonV2LeadStatusDonutHtml(){
+    const {entries,total}=leonV2LeadStatusBreakdown();
+    if(!total) return `<div class="text-sm text-slate-400 text-center py-10">Sin leads todavía.</div>`;
+    let offset=0;
+    const circles=entries.map(e=>{
+      const dash=Math.max(e.pct,0.001);
+      const seg=`<circle cx="18" cy="18" r="15.915" fill="none" stroke="${e.color}" stroke-width="3.6" stroke-dasharray="${dash} ${100-dash}" stroke-dashoffset="${-offset}" stroke-linecap="round"/>`;
+      offset+=dash;
+      return seg;
+    }).join('');
+    const legend=entries.map(e=>`<div style="display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:700;color:#475569"><span style="width:8px;height:8px;border-radius:999px;background:${e.color};display:inline-block"></span>${esc(e.label)} · ${e.pct}%</div>`).join('');
+    return `<svg width="140" height="140" viewBox="0 0 36 36" style="transform:rotate(-90deg);margin:4px auto 10px;display:block"><circle cx="18" cy="18" r="15.915" fill="none" stroke="#eef2f7" stroke-width="3.6"/>${circles}</svg><div style="display:flex;flex-direction:column;gap:6px;width:100%">${legend}</div>`;
+  }
+  window.leonV2LeadStatusDonutHtml=leonV2LeadStatusDonutHtml;
 
   // ===== Brutal CSS bar charts — real numbers straight from `state`, no chart library, no CDN. =====
   function v2Bars(items){
@@ -6835,14 +6952,14 @@
   function leonV2FollowUpBannerHtml(){
     const due=leonV2PendingFollowUps();
     if(!due.length) return '';
-    return `<div class="v2-card p-5 mb-6 border-2 border-amber-300 bg-amber-50/60">
-      <div class="flex items-center justify-between gap-3 flex-wrap">
-        <h3 class="font-black text-amber-800 text-sm"><i class="fa-solid fa-bell mr-2"></i>Seguimientos pendientes (${due.length})</h3>
-        <button onclick="leonV2OpenSection('calendar')" class="text-[10px] font-black uppercase text-amber-700 hover:text-amber-900"><i class="fa-solid fa-calendar-days mr-1"></i>Ver calendario</button>
+    return `<div class="v2-card" style="padding:22px 24px;margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:11px;background:#fef3e2;color:#d97706;display:flex;align-items:center;justify-content:center;flex:0 0 auto"><i class="fa-solid fa-phone-volume"></i></div><div><div style="font-size:14.5px;font-weight:800;color:#0b1220">Seguimientos pendientes</div><div style="font-size:11.5px;color:#94a3b8;font-weight:600">${due.length} lead${due.length===1?'':'s'} necesita${due.length===1?'':'n'} una llamada</div></div></div>
+        <button onclick="leonV2OpenSection('calendar')" style="font-size:11.5px;font-weight:800;color:#025fae;display:flex;align-items:center;gap:6px;background:none;border:none"><i class="fa-solid fa-calendar-days"></i>Ver calendario completo</button>
       </div>
-      <div class="mt-3 space-y-2">${due.slice(0,8).map(({c,call,dueDate,dueTime,overdue})=>{
-        return `<div class="flex items-center justify-between gap-3 bg-white rounded-xl px-3 py-2 border border-amber-200 flex-wrap"><div><b class="text-sm">${esc(c.name)}</b><span class="text-[11px] text-slate-500 ml-1">${esc(c.phone||'')}</span><div class="text-[11px] ${overdue?'text-red-600 font-bold':'text-amber-700'} mt-0.5">${overdue?'Vencido':'Para hoy'} — seguimiento programado ${esc(leonV2FormatFollowUp(dueDate,dueTime))}</div></div><div class="flex items-center gap-2"><button onclick="leonV2OpenCallLogForm('${c.id}')" class="v2-tab text-[11px]"><i class="fa-solid fa-phone-volume mr-1"></i>Llamar</button><button onclick="leonV2OpenClientDossier('${c.id}')" class="v2-tab active text-[11px]">Ver expediente</button></div></div>`;
-      }).join('')}${due.length>8?`<div class="text-[11px] text-slate-400 mt-1">y ${due.length-8} más...</div>`:''}</div>
+      <div style="display:flex;flex-direction:column">${due.slice(0,8).map(({c,call,dueDate,dueTime,overdue})=>{
+        return `<div class="v2-lead-row">${leonV2InitialsAvatarHtml(c.name)}<div style="flex:1 1 180px;min-width:0"><div style="font-size:13.5px;font-weight:700;color:#0b1220">${esc(c.name)}</div><div style="font-size:11.5px;color:#94a3b8;font-weight:600">${esc(c.phone||'Sin teléfono')}</div></div><div style="flex:0 0 auto;display:flex;align-items:center;gap:7px;${overdue?'background:#fef2f2;color:#dc2626':'background:#fffbeb;color:#b45309'};font-size:10px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap">${overdue?'Vencido':'Hoy'} · ${esc(leonV2FormatFollowUp(dueDate,dueTime))}</div><button onclick="leonV2OpenCallLogForm('${c.id}')" class="v2-btn-icon" title="Llamar"><i class="fa-solid fa-phone-volume"></i></button><button onclick="leonV2OpenClientDossier('${c.id}')" class="v2-btn-ghost">Ver expediente</button></div>`;
+      }).join('')}</div>${due.length>8?`<div style="text-align:center;margin-top:10px"><span style="font-size:11.5px;color:#94a3b8;font-weight:700">y ${due.length-8} más — ver todos en el calendario</span></div>`:''}
     </div>`;
   }
   window.leonV2FollowUpBannerHtml=leonV2FollowUpBannerHtml;
@@ -6951,7 +7068,7 @@
     const tiempoCierreProm=tiemposCierre.length?Math.round(tiemposCierre.reduce((s,d)=>s+d,0)/tiemposCierre.length):0;
     const vencidas=qs.filter(q=>{const d=daysBetween(q.createdAt,new Date().toISOString());return d!==null&&d>14}).length;
     const sinSeguimiento=leonV2ScopedClients(state.clients).filter(c=>{const d=daysBetween(c.lastContact,new Date().toISOString());return d===null||d>7}).length;
-    document.getElementById('v2-main').innerHTML=`${leonV2FollowUpBannerHtml()}${leonV2PaymentReminderBannerHtml()}<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Oportunidades',money(total),qs.length+' propuestas activas','fa-sack-dollar')}${kpi('Propuestas',qs.length+hist.length,'Activas + historial','fa-file-signature')}${kpi('Clientes',new Set(qs.concat(hist).map(q=>q.clientEmail||q.clientName)).size,'Expedientes registrados','fa-users')}${kpi('Equipo',users().length,'Usuarios con acceso','fa-user-shield')}</div><div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">${kpi('Ticket Promedio',money(ticketProm),'Sobre propuestas aceptadas','fa-receipt')}${kpi('Tiempo de Cierre',tiempoCierreProm+' días',aceptadasH.length?'Promedio hasta aceptación':'Sin datos aún','fa-hourglass-half')}${kpi('Propuestas Vencidas',vencidas,'Más de 14 días activas','fa-triangle-exclamation')}${kpi('Sin Seguimiento',sinSeguimiento,'Clientes sin contacto en 7+ días','fa-user-clock')}</div><div class="grid xl:grid-cols-2 gap-6 mt-6"><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Pipeline por Estado</h3><button onclick="leonV2OpenSection('reports')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-pipeline"></div></div><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-brand-500"></i> Catálogo por Categoría</h3><button onclick="leonV2OpenSection('catalog')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-cat"></div></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Mis tareas de seguimiento</h3><span class="v2-pill">Asignadas a ti</span></div><div id="v2-dash-my-tasks" class="mt-4 space-y-2"></div></div><div class="v2-card p-6 mt-6"><h3 class="font-black">Acciones rápidas</h3><div class="grid sm:grid-cols-4 gap-3 mt-4"><button onclick="leonV2OpenNewCallIntake()" class="p-4 rounded-xl bg-brand-50 text-brand-700 text-xs font-black text-left transition hover:shadow-md hover:-translate-y-0.5"><i class="fa-solid fa-phone-volume mr-2"></i>Registrar llamada</button><button onclick="openNewQuoteModal()" class="p-4 rounded-xl bg-blue-50 text-blue-700 text-xs font-black text-left transition hover:shadow-md hover:-translate-y-0.5"><i class="fa-solid fa-plus mr-2"></i>Nueva cotización</button><button onclick="leonV2OpenSection('catalog')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left transition hover:shadow-md hover:-translate-y-0.5"><i class="fa-solid fa-box mr-2"></i>Gestionar catálogo</button><button onclick="leonV2OpenSection('historial')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left transition hover:shadow-md hover:-translate-y-0.5"><i class="fa-solid fa-clock-rotate-left mr-2"></i>Ver historial</button></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black">Actividad reciente</h3><span class="v2-pill">Auditoría</span></div><div class="mt-4 space-y-3">${qs.slice(0,6).map(q=>`<div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl"><div><b class="text-sm">${esc(q.clientName)}</b><div class="text-[11px] text-slate-500">${esc(q.id)} · ${esc(q.origin||'Autogestionado')}</div></div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div>`).join('')||'<div class="text-sm text-slate-400">Sin actividad todavía.</div>'}</div></div>`;
+    document.getElementById('v2-main').innerHTML=`${leonV2FollowUpBannerHtml()}${leonV2PaymentReminderBannerHtml()}<div class="v2-kpi-grid">${kpi('Oportunidades',money(total),qs.length+' propuestas activas','fa-sack-dollar','blue')}${kpi('Propuestas',qs.length+hist.length,'Activas + historial','fa-file-signature','indigo')}${kpi('Clientes',new Set(qs.concat(hist).map(q=>q.clientEmail||q.clientName)).size,'Expedientes registrados','fa-users','green')}${kpi('Equipo',users().length,'Usuarios con acceso','fa-user-shield','purple')}</div><div class="v2-kpi-grid" style="margin-top:16px">${kpi('Ticket Promedio',money(ticketProm),'Sobre propuestas aceptadas','fa-receipt','blue')}${kpi('Tiempo de Cierre',tiempoCierreProm+' días',aceptadasH.length?'Promedio hasta aceptación':'Sin datos aún','fa-hourglass-half','green')}${kpi('Propuestas Vencidas',vencidas,'Más de 14 días activas','fa-triangle-exclamation','amber')}${kpi('Sin Seguimiento',sinSeguimiento,'Clientes sin contacto en 7+ días','fa-user-clock','red')}</div><div class="v2-dash-charts-row" style="margin-top:24px"><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Pipeline por Estado</h3><button onclick="leonV2OpenSection('reports')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-pipeline"></div></div><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-brand-500"></i> Catálogo por Categoría</h3><button onclick="leonV2OpenSection('catalog')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-cat"></div></div><div class="v2-card" style="padding:22px;display:flex;flex-direction:column;align-items:center"><div style="font-size:13.5px;font-weight:800;color:#0b1220;align-self:flex-start;margin-bottom:10px">Leads por status</div>${leonV2LeadStatusDonutHtml()}</div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Mis tareas de seguimiento</h3><span class="v2-pill">Asignadas a ti</span></div><div id="v2-dash-my-tasks" class="mt-4 space-y-2"></div></div><div class="v2-card p-6 mt-6"><h3 class="font-black">Acciones rápidas</h3><div class="v2-actions-grid" style="margin-top:16px"><button onclick="leonV2OpenNewCallIntake()" class="v2-action-tile" style="background:#f5faff;border-color:#dceeff"><div class="v2-action-tile-icon" style="color:#0574d6"><i class="fa-solid fa-phone-volume"></i></div><div style="font-size:12.5px;font-weight:800;color:#0b1220">Registrar llamada</div></button><button onclick="openNewQuoteModal()" class="v2-action-tile" style="background:#f5fbf8;border-color:#dcf2e6"><div class="v2-action-tile-icon" style="color:#059669"><i class="fa-solid fa-plus"></i></div><div style="font-size:12.5px;font-weight:800;color:#0b1220">Nueva cotización</div></button><button onclick="leonV2OpenSection('catalog')" class="v2-action-tile"><div class="v2-action-tile-icon" style="color:#64748b"><i class="fa-solid fa-box"></i></div><div style="font-size:12.5px;font-weight:800;color:#0b1220">Gestionar catálogo</div></button><button onclick="leonV2OpenSection('historial')" class="v2-action-tile"><div class="v2-action-tile-icon" style="color:#64748b"><i class="fa-solid fa-clock-rotate-left"></i></div><div style="font-size:12.5px;font-weight:800;color:#0b1220">Ver historial</div></button></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black">Actividad reciente</h3><span class="v2-pill">Auditoría</span></div><div style="display:flex;flex-direction:column;margin-top:14px">${qs.slice(0,6).map(q=>`<div class="v2-lead-row" style="justify-content:space-between"><div><div style="font-size:13px;font-weight:700;color:#0b1220">${esc(q.clientName)}</div><div style="font-size:11px;color:#94a3b8;font-weight:600">${esc(q.id)} · ${esc(q.origin||'Autogestionado')}</div></div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div>`).join('')||'<div class="text-sm text-slate-400">Sin actividad todavía.</div>'}</div></div>`;
     document.getElementById('v2-dash-bars-pipeline').innerHTML=v2Bars(pipelineBars);
     document.getElementById('v2-dash-bars-cat').innerHTML=v2Bars(catBars);
     animateV2Bars();
@@ -9838,7 +9955,7 @@
     const err=document.getElementById('pin-error'); err.classList.add('hidden'); err.innerText='';
     setTimeout(()=>document.getElementById('login-pin')?.focus(),50);
   };
-  window.updateRoleUI=function(role){buildCRM();document.getElementById('v2-role-pill').textContent=role;document.getElementById('v2-greeting').textContent='Hola, '+(state.currentUser?.name||'equipo')+' 👋';applyRolePermissions(role)};
+  window.updateRoleUI=function(role){buildCRM();document.getElementById('v2-role-pill').textContent=role;document.getElementById('v2-greeting').textContent='Hola, '+(state.currentUser?.name||'equipo');applyRolePermissions(role)};
   function applyRolePermissions(role){
     const allowed=ROLE_ACCESS[role]||ROLE_ACCESS.Vendedor;
     // Si la sección activa ya no está permitida para este rol, redirige PRIMERO — leonV2OpenSection
