@@ -3646,6 +3646,24 @@
   </form>
 </div></div>
 
+<!-- LEON V2: plan de pagos del cliente — banco/cuenta para pago directo + calendario de pagos -->
+<div id="leon-v2-payment-plan" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-2xl">
+  <div class="flex justify-between items-start mb-5"><div><div class="v2-pill mb-2"><i class="fa-solid fa-sack-dollar"></i> PAGOS</div><h3 class="text-2xl font-black">Plan de pagos y banco</h3><p class="text-sm text-slate-500">El sistema recuerda llamar al cliente 2 días antes de que venza cada pago — se ve en el Dashboard y en el Calendario.</p></div><button onclick="leonV2ClosePaymentPlan()" class="text-slate-400 text-xl"><i class="fa-solid fa-xmark"></i></button></div>
+  <form id="v2-payment-plan-form" onsubmit="leonV2SavePaymentPlan(event)">
+    <input type="hidden" id="v2-pp-client-id">
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Nombre del banco</label><input id="v2-pp-bank-name" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Ej. Banco Popular"></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Número de cuenta</label><input id="v2-pp-bank-account" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="Para pago directo"></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Monto por pago</label><input id="v2-pp-amount" type="number" step="0.01" min="0" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3" placeholder="0.00"></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Fecha del primer pago</label><input id="v2-pp-first-date" type="date" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Cantidad de pagos</label><input id="v2-pp-count" type="number" step="1" min="1" value="1" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"></div>
+      <div><label class="text-[10px] font-black uppercase text-slate-500">Frecuencia</label><select id="v2-pp-frequency" class="w-full mt-1 border border-slate-200 rounded-xl px-4 py-3"><option value="unico">Pago único</option><option value="semanal">Semanal</option><option value="quincenal">Quincenal</option><option value="mensual" selected>Mensual</option></select></div>
+    </div>
+    <p class="text-[10px] text-slate-400 mt-3">Si luego corriges el monto o la fecha, el calendario de pagos se vuelve a generar — un pago que ya habías marcado como pagado no pierde ese estado si queda en la misma posición.</p>
+    <div class="flex justify-end gap-3 mt-6"><button type="button" onclick="leonV2ClosePaymentPlan()" class="px-5 py-3 rounded-xl bg-slate-100 text-slate-600 font-black text-xs uppercase">Cancelar</button><button type="submit" class="px-6 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black text-xs uppercase shadow-lg shadow-brand-500/25"><i class="fa-solid fa-floppy-disk mr-2"></i>Guardar plan de pagos</button></div>
+  </form>
+</div></div>
+
 <!-- LEON V2: drill-down de un vendedor dentro del árbol jerárquico -->
 <div id="leon-v2-vendor-drilldown" class="v2-modal"><div class="v2-modal-box p-6 md:p-8 max-w-4xl"><div id="v2-vendor-drilldown-content"></div></div></div>
 
@@ -4775,6 +4793,154 @@
     return dateFmt+', '+timeFmt;
   }
   window.leonV2FormatFollowUp=leonV2FormatFollowUp;
+  // ===================== PLAN DE PAGOS DEL CLIENTE =====================
+  // Pedido real: "cuando registre un cliente debe aparecer fecha de pago, para uno saber cuando así
+  // seteamos un recordatorio en calendario para llamar 2 días antes para recordarle su primer pago y
+  // los demás pagos... que uno sepa cuánto va a pagar... integra en el perfil del cliente número de
+  // cuenta y nombre del banco para el pago directo". Vive en el expediente del cliente (se configura
+  // o edita en cualquier momento desde ahí, ver leonV2OpenPaymentPlanForm) — no es obligatorio al
+  // registrar el lead porque muchas veces esos datos (banco, monto, fecha) todavía no se conocen.
+  const LEON_PAYMENT_FREQ_DAYS = {unico:0, semanal:7, quincenal:15, mensual:30};
+  function leonV2AddDays(dateStr, days){
+    const d=new Date(dateStr+'T00:00:00');
+    d.setDate(d.getDate()+days);
+    return d.toISOString().slice(0,10);
+  }
+  // Reconstruye c.payments a partir de los campos de configuración (monto, fecha del primer pago,
+  // cantidad de pagos, frecuencia) — conserva el estado "pagado" de los pagos que ya existían en esa
+  // misma posición, para no perder el historial al simplemente corregir el monto o la fecha.
+  function leonV2RegeneratePaymentSchedule(c){
+    if(!c) return;
+    if(!c.firstPaymentDate || !c.paymentAmount){ c.payments=[]; return; }
+    const count=Math.max(1, Number(c.paymentCount)||1);
+    const freq=(LEON_PAYMENT_FREQ_DAYS[c.paymentFrequency]!=null)?c.paymentFrequency:'mensual';
+    const stepDays=LEON_PAYMENT_FREQ_DAYS[freq]||30;
+    const prev=c.payments||[];
+    const next=[];
+    for(let i=0;i<count;i++){
+      const dueDate = i===0 ? c.firstPaymentDate : leonV2AddDays(c.firstPaymentDate, stepDays*i);
+      const old=prev[i];
+      next.push({ n:i+1, dueDate, amount:Number(c.paymentAmount)||0, paid: old?!!old.paid:false, paidDate: old?(old.paidDate||null):null });
+    }
+    c.payments=next;
+  }
+  window.leonV2RegeneratePaymentSchedule=leonV2RegeneratePaymentSchedule;
+  // Todos los pagos programados (con fecha) de los clientes visibles para el usuario actual — se usa
+  // para pintar el calendario completo, pagados y pendientes, sin importar si ya toca recordar o no.
+  function leonV2AllPaymentEntries(){
+    const clients=leonV2ScopedClients(state.clients||[]);
+    const items=[];
+    clients.forEach(c=>{
+      (c.payments||[]).forEach(p=>{
+        if(!p.dueDate) return;
+        const dt=new Date(p.dueDate+'T00:00:00');
+        if(!isNaN(dt.getTime())) items.push({c, payment:p, date:p.dueDate, dt});
+      });
+    });
+    items.sort((a,b)=>a.dt-b.dt);
+    return items;
+  }
+  window.leonV2AllPaymentEntries=leonV2AllPaymentEntries;
+  // Pagos pendientes (sin pagar) que YA toca recordar — 2 días antes del vencimiento, pedido
+  // explícito — o que ya están vencidos. Se usa en el banner del Dashboard y en el Calendario.
+  function leonV2PendingPayments(){
+    const today=new Date(); today.setHours(0,0,0,0);
+    const clients=leonV2ScopedClients(state.clients||[]);
+    const due=[];
+    clients.forEach(c=>{
+      (c.payments||[]).forEach(p=>{
+        if(p.paid || !p.dueDate) return;
+        const dueDateObj=new Date(p.dueDate+'T00:00:00');
+        if(isNaN(dueDateObj.getTime())) return;
+        const reminderDate=leonV2AddDays(p.dueDate,-2);
+        const reminderObj=new Date(reminderDate+'T00:00:00');
+        if(reminderObj<=today){
+          due.push({c, payment:p, dueDate:p.dueDate, reminderDate, overdue: dueDateObj<today});
+        }
+      });
+    });
+    due.sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
+    return due;
+  }
+  window.leonV2PendingPayments=leonV2PendingPayments;
+  function leonV2PaymentReminderBannerHtml(){
+    const due=leonV2PendingPayments();
+    if(!due.length) return '';
+    return `<div class="v2-card p-5 mb-6 border-2 border-emerald-300 bg-emerald-50/60">
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <h3 class="font-black text-emerald-800 text-sm"><i class="fa-solid fa-sack-dollar mr-2"></i>Pagos por recordar (${due.length})</h3>
+        <button onclick="leonV2OpenSection('calendar')" class="text-[10px] font-black uppercase text-emerald-700 hover:text-emerald-900"><i class="fa-solid fa-calendar-days mr-1"></i>Ver calendario</button>
+      </div>
+      <div class="mt-3 space-y-2">${due.slice(0,8).map(({c,payment,overdue})=>{
+        return `<div class="flex items-center justify-between gap-3 bg-white rounded-xl px-3 py-2 border border-emerald-200 flex-wrap"><div><b class="text-sm">${esc(c.name)}</b><span class="text-[11px] text-slate-500 ml-1">${esc(c.phone||'')}</span><div class="text-[11px] ${overdue?'text-red-600 font-bold':'text-emerald-700'} mt-0.5">${overdue?'Pago vencido':'Recordar pago'} — Pago ${payment.n} de ${money(payment.amount)}, vence ${esc(new Date(payment.dueDate+'T00:00:00').toLocaleDateString('es-PR',{day:'numeric',month:'short',year:'numeric'}))}</div></div><div class="flex items-center gap-2"><button onclick="leonV2TogglePaymentPaid('${c.id}',${payment.n-1})" class="v2-tab text-[11px]"><i class="fa-solid fa-check mr-1"></i>Marcar pagado</button><button onclick="leonV2OpenClientDossier('${c.id}')" class="v2-tab active text-[11px]">Ver expediente</button></div></div>`;
+      }).join('')}${due.length>8?`<div class="text-[11px] text-slate-400 mt-1">y ${due.length-8} más...</div>`:''}</div>
+    </div>`;
+  }
+  window.leonV2PaymentReminderBannerHtml=leonV2PaymentReminderBannerHtml;
+  // Marca/desmarca un pago como pagado — accesible desde el banner del Dashboard, el Calendario y el
+  // expediente del cliente (índice = posición dentro de c.payments, no el número de pago visible).
+  window.leonV2TogglePaymentPaid=function(clientId, idx){
+    const c=(state.clients||[]).find(x=>x.id===clientId); if(!c||!c.payments||!c.payments[idx]) return;
+    const p=c.payments[idx];
+    p.paid=!p.paid;
+    p.paidDate=p.paid?new Date().toISOString():null;
+    const actor=(state.currentUser&&state.currentUser.name)||'Equipo';
+    if(!c.activity)c.activity=[];
+    c.activity.push({type:'pago',text:(p.paid?'Pago '+p.n+' marcado como pagado':'Pago '+p.n+' marcado como pendiente de nuevo')+' — '+money(p.amount),at:new Date().toISOString(),by:actor});
+    if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('clients');
+    showToast(p.paid?'Pago marcado como pagado.':'Pago marcado como pendiente.','success');
+    if(document.getElementById('leon-v2-client-dossier')?.classList.contains('show')) window.leonV2OpenClientDossier(c.id);
+    if(typeof renderDashboard==='function' && document.getElementById('v2-main')?.innerHTML.includes('Pagos por recordar')) renderDashboard();
+    if(typeof renderCallsCalendar==='function' && document.getElementById('v2-main')?.innerHTML.includes('Calendario de seguimientos')) renderCallsCalendar();
+  };
+  // Tarjeta del expediente: banco/cuenta para pago directo + el calendario de pagos generado.
+  function leonV2PaymentPlanCardHtml(c){
+    const payments=c.payments||[];
+    const todayStr=new Date().toISOString().slice(0,10);
+    return `<div class="v2-card p-6 mt-6"><div class="flex justify-between items-center flex-wrap gap-2"><h4 class="font-black text-sm"><i class="fa-solid fa-sack-dollar text-emerald-500 mr-2"></i>Plan de pagos</h4><button onclick="leonV2OpenPaymentPlanForm('${c.id}')" class="text-[11px] font-bold text-brand-600 hover:text-brand-800 uppercase tracking-wider"><i class="fa-solid fa-pen mr-1"></i>${payments.length?'Editar plan':'Configurar plan de pagos'}</button></div>
+      <div class="grid sm:grid-cols-2 gap-3 mt-4">
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200"><div class="text-[10px] uppercase font-black text-slate-500">Banco</div><div class="text-sm font-bold mt-1">${esc(c.bankName||'—')}</div></div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200"><div class="text-[10px] uppercase font-black text-slate-500">Número de cuenta</div><div class="text-sm font-mono mt-1">${esc(c.bankAccount||'—')}</div></div>
+      </div>
+      ${payments.length?`<div class="mt-4 space-y-1.5">${payments.map((p,i)=>{
+        const overdue=!p.paid && p.dueDate<todayStr;
+        return `<div class="flex items-center justify-between gap-3 px-3 py-2 rounded-xl border ${p.paid?'border-emerald-200 bg-emerald-50/60':overdue?'border-red-200 bg-red-50/60':'border-slate-200 bg-slate-50'} flex-wrap"><div><b class="text-sm">Pago ${p.n}</b><span class="text-[11px] text-slate-500 ml-2">${esc(new Date(p.dueDate+'T00:00:00').toLocaleDateString('es-PR',{day:'numeric',month:'short',year:'numeric'}))}</span><span class="text-sm font-bold ml-2">${money(p.amount)}</span></div><div class="flex items-center gap-2"><span class="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${p.paid?'bg-emerald-100 text-emerald-700':overdue?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}">${p.paid?'Pagado':overdue?'Vencido':'Pendiente'}</span><button onclick="leonV2TogglePaymentPaid('${c.id}',${i})" class="v2-tab text-[11px]">${p.paid?'Desmarcar':'Marcar pagado'}</button></div></div>`;
+      }).join('')}</div><p class="text-[10px] text-slate-400 mt-3">Se recuerda llamar al cliente 2 días antes de cada vencimiento — visible en el Dashboard y el Calendario.</p>`:`<div class="text-sm text-slate-400 mt-4">Sin plan de pagos configurado todavía.</div>`}
+    </div>`;
+  }
+  window.leonV2PaymentPlanCardHtml=leonV2PaymentPlanCardHtml;
+  window.leonV2OpenPaymentPlanForm=function(id){
+    const c=(state.clients||[]).find(x=>x.id===id); if(!c)return;
+    document.getElementById('v2-pp-client-id').value=c.id;
+    document.getElementById('v2-pp-bank-name').value=c.bankName||'';
+    document.getElementById('v2-pp-bank-account').value=c.bankAccount||'';
+    document.getElementById('v2-pp-amount').value=c.paymentAmount||'';
+    document.getElementById('v2-pp-first-date').value=c.firstPaymentDate||'';
+    document.getElementById('v2-pp-count').value=c.paymentCount||1;
+    document.getElementById('v2-pp-frequency').value=c.paymentFrequency||'mensual';
+    leonV2Close('leon-v2-client-dossier');
+    open('leon-v2-payment-plan');
+  };
+  window.leonV2ClosePaymentPlan=function(){ leonV2Close('leon-v2-payment-plan'); };
+  window.leonV2SavePaymentPlan=function(e){
+    e.preventDefault();
+    const id=document.getElementById('v2-pp-client-id').value;
+    const c=(state.clients||[]).find(x=>x.id===id); if(!c){showToast('No se encontró el expediente.','warning');return}
+    c.bankName=document.getElementById('v2-pp-bank-name').value.trim();
+    c.bankAccount=document.getElementById('v2-pp-bank-account').value.trim();
+    c.paymentAmount=Number(document.getElementById('v2-pp-amount').value)||0;
+    c.firstPaymentDate=document.getElementById('v2-pp-first-date').value||'';
+    c.paymentCount=Math.max(1, Number(document.getElementById('v2-pp-count').value)||1);
+    c.paymentFrequency=document.getElementById('v2-pp-frequency').value||'mensual';
+    leonV2RegeneratePaymentSchedule(c);
+    const actor=(state.currentUser&&state.currentUser.name)||'Equipo';
+    if(!c.activity)c.activity=[];
+    c.activity.push({type:'pago_plan',text:'Plan de pagos configurado — '+(c.payments.length)+' pago(s) de '+money(c.paymentAmount)+(c.firstPaymentDate?', primer pago '+c.firstPaymentDate:''),at:new Date().toISOString(),by:actor});
+    if(typeof window.leonV2SyncCollection==='function') window.leonV2SyncCollection('clients');
+    showToast('Plan de pagos guardado.','success');
+    leonV2ClosePaymentPlan();
+    window.leonV2OpenClientDossier(id);
+  };
   // ===================== INTEGRACIÓN CON GOOGLE CALENDAR =====================
   // Pedido real: "sería bueno que el recordatorio se conectara al google calendar... que yo agende
   // algo y se cree el agendado en google calendar", "que no envíe notificaciones" (los recordatorios
@@ -6661,18 +6827,21 @@
   };
   window.leonV2CalToday=function(){ v2CalCursor=null; v2CalSelectedDay=null; renderCallsCalendar(); };
   window.leonV2CalSelectDay=function(dateStr){ v2CalSelectedDay=dateStr; renderCallsCalendar(); };
-  function leonV2CalDayDetailHtml(dateStr, allItems){
+  function leonV2CalDayDetailHtml(dateStr, allItems, paymentItems){
     const dayItems=allItems.filter(it=>it.date===dateStr).slice().sort((a,b)=>a.dt-b.dt);
+    const dayPayments=(paymentItems||[]).filter(it=>it.date===dateStr);
     const dateObj=new Date(dateStr+'T00:00:00');
     const label=dateObj.toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     return `<div class="v2-card p-5"><h4 class="font-black text-sm capitalize"><i class="fa-solid fa-calendar-day text-brand-500 mr-2"></i>${esc(label)}</h4>
       <div class="mt-3 space-y-2">${dayItems.length?dayItems.map(({c,call,time})=>`<div class="flex items-center justify-between gap-3 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200 flex-wrap"><div><span class="text-[11px] font-black text-brand-600">${time?esc(leonV2FormatFollowUp(call.nextFollowUp,time).split(', ').slice(1).join(', ')):'Todo el día'}</span> <b class="text-sm ml-1">${esc(c.name)}</b><div class="text-[11px] text-slate-500">${esc(c.phone||'Sin teléfono')}</div></div><div class="flex items-center gap-2">${leonV2LeadStatusSelectHtml(c)}<button onclick="leonV2OpenCallLogForm('${c.id}')" class="v2-tab text-[11px]"><i class="fa-solid fa-phone-volume mr-1"></i>Llamar</button><button onclick="leonV2OpenClientDossier('${c.id}')" class="v2-tab active text-[11px]">Ver expediente</button></div></div>`).join(''):'<div class="text-sm text-slate-400">Sin seguimientos programados este día.</div>'}</div>
+      ${dayPayments.length?`<div class="mt-4 pt-4 border-t border-slate-100"><h5 class="text-[10px] font-black uppercase text-emerald-700 mb-2"><i class="fa-solid fa-sack-dollar mr-1"></i>Pagos que vencen este día</h5><div class="space-y-2">${dayPayments.map(({c,payment})=>`<div class="flex items-center justify-between gap-3 bg-emerald-50/60 rounded-xl px-3 py-2 border border-emerald-200 flex-wrap"><div><b class="text-sm">${esc(c.name)}</b><span class="text-[11px] text-slate-500 ml-1">${esc(c.phone||'')}</span><div class="text-[11px] ${payment.paid?'text-emerald-700':'text-amber-700'} mt-0.5">Pago ${payment.n} — ${money(payment.amount)}${payment.paid?' · Ya pagado':''}</div></div><div class="flex items-center gap-2"><button onclick="leonV2TogglePaymentPaid('${c.id}',${payment.n-1})" class="v2-tab text-[11px]">${payment.paid?'Desmarcar':'Marcar pagado'}</button><button onclick="leonV2OpenClientDossier('${c.id}')" class="v2-tab active text-[11px]">Ver expediente</button></div></div>`).join('')}</div></div>`:''}
     </div>`;
   }
   function renderCallsCalendar(){
     if(!v2CalCursor){ const n=new Date(); v2CalCursor={year:n.getFullYear(), month:n.getMonth()}; }
     const {year,month}=v2CalCursor;
     const allItems=leonV2AllFollowUpEntries();
+    const paymentItems=leonV2AllPaymentEntries();
     const todayStr=new Date().toISOString().slice(0,10);
     const selected=v2CalSelectedDay||todayStr;
     const firstOfMonth=new Date(year,month,1);
@@ -6681,23 +6850,28 @@
     const monthLabel=firstOfMonth.toLocaleDateString('es-PR',{month:'long',year:'numeric'});
     const countsByDay={};
     allItems.forEach(it=>{ countsByDay[it.date]=(countsByDay[it.date]||0)+1; });
+    const paymentCountsByDay={};
+    paymentItems.forEach(it=>{ if(!it.payment.paid) paymentCountsByDay[it.date]=(paymentCountsByDay[it.date]||0)+1; });
     let cells='';
     for(let i=0;i<startWeekday;i++) cells+=`<div class="rounded-xl" style="min-height:64px"></div>`;
     for(let day=1;day<=daysInMonth;day++){
       const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
       const count=countsByDay[dateStr]||0;
+      const payCount=paymentCountsByDay[dateStr]||0;
       const isToday=dateStr===todayStr;
       const isSelected=dateStr===selected;
       const overdue=count>0 && dateStr<todayStr;
+      const payOverdue=payCount>0 && dateStr<todayStr;
       cells+=`<div onclick="leonV2CalSelectDay('${dateStr}')" class="cursor-pointer rounded-xl p-2 border ${isSelected?'border-brand-400 bg-brand-50':'border-slate-100 hover:border-brand-200'} ${isToday?'ring-2 ring-brand-300':''}" style="min-height:64px">
         <div class="text-[11px] font-black ${isToday?'text-brand-600':'text-slate-600'}">${day}</div>
         ${count?`<div class="mt-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block ${overdue?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}">${count} seguim.</div>`:''}
+        ${payCount?`<div class="mt-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block ${payOverdue?'bg-red-100 text-red-700':'bg-emerald-100 text-emerald-700'}">${payCount} pago(s)</div>`:''}
       </div>`;
     }
     const weekdayLabels=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
     document.getElementById('v2-main').innerHTML=`<div class="v2-card p-6">
       <div class="flex flex-wrap justify-between items-center gap-3 mb-5">
-        <div><h3 class="text-xl font-black text-slate-900">Calendario de seguimientos</h3><p class="text-xs text-slate-500 mt-1">Cada llamada con fecha y hora de "próximo seguimiento" aparece en su día.</p></div>
+        <div><h3 class="text-xl font-black text-slate-900">Calendario de seguimientos</h3><p class="text-xs text-slate-500 mt-1">Cada llamada con fecha y hora de "próximo seguimiento", y cada pago programado, aparece en su día.</p></div>
         <div class="flex items-center gap-2 flex-wrap">
           <button onclick="leonV2CalNav(-1)" class="v2-tab"><i class="fa-solid fa-chevron-left"></i></button>
           <button onclick="leonV2CalToday()" class="v2-tab">Hoy</button>
@@ -6708,7 +6882,7 @@
       </div>
       <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase text-slate-400 mb-1">${weekdayLabels.map(w=>`<div>${w}</div>`).join('')}</div>
       <div class="grid grid-cols-7 gap-1">${cells}</div>
-      <div class="mt-5">${leonV2CalDayDetailHtml(selected, allItems)}</div>
+      <div class="mt-5">${leonV2CalDayDetailHtml(selected, allItems, paymentItems)}</div>
     </div>`;
   }
   window.renderCallsCalendar=renderCallsCalendar;
@@ -6726,7 +6900,7 @@
     const tiempoCierreProm=tiemposCierre.length?Math.round(tiemposCierre.reduce((s,d)=>s+d,0)/tiemposCierre.length):0;
     const vencidas=qs.filter(q=>{const d=daysBetween(q.createdAt,new Date().toISOString());return d!==null&&d>14}).length;
     const sinSeguimiento=leonV2ScopedClients(state.clients).filter(c=>{const d=daysBetween(c.lastContact,new Date().toISOString());return d===null||d>7}).length;
-    document.getElementById('v2-main').innerHTML=`${leonV2FollowUpBannerHtml()}<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Oportunidades',money(total),qs.length+' propuestas activas','fa-sack-dollar')}${kpi('Propuestas',qs.length+hist.length,'Activas + historial','fa-file-signature')}${kpi('Clientes',new Set(qs.concat(hist).map(q=>q.clientEmail||q.clientName)).size,'Expedientes registrados','fa-users')}${kpi('Equipo',users().length,'Usuarios con acceso','fa-user-shield')}</div><div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">${kpi('Ticket Promedio',money(ticketProm),'Sobre propuestas aceptadas','fa-receipt')}${kpi('Tiempo de Cierre',tiempoCierreProm+' días',aceptadasH.length?'Promedio hasta aceptación':'Sin datos aún','fa-hourglass-half')}${kpi('Propuestas Vencidas',vencidas,'Más de 14 días activas','fa-triangle-exclamation')}${kpi('Sin Seguimiento',sinSeguimiento,'Clientes sin contacto en 7+ días','fa-user-clock')}</div><div class="grid xl:grid-cols-2 gap-6 mt-6"><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Pipeline por Estado</h3><button onclick="leonV2OpenSection('reports')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-pipeline"></div></div><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-brand-500"></i> Catálogo por Categoría</h3><button onclick="leonV2OpenSection('catalog')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-cat"></div></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Mis tareas de seguimiento</h3><span class="v2-pill">Asignadas a ti</span></div><div id="v2-dash-my-tasks" class="mt-4 space-y-2"></div></div><div class="v2-card p-6 mt-6"><h3 class="font-black">Acciones rápidas</h3><div class="grid sm:grid-cols-4 gap-3 mt-4"><button onclick="leonV2OpenNewCallIntake()" class="p-4 rounded-xl bg-brand-50 text-brand-700 text-xs font-black text-left"><i class="fa-solid fa-phone-volume mr-2"></i>Registrar llamada</button><button onclick="openNewQuoteModal()" class="p-4 rounded-xl bg-blue-50 text-blue-700 text-xs font-black text-left"><i class="fa-solid fa-plus mr-2"></i>Nueva cotización</button><button onclick="leonV2OpenSection('catalog')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-box mr-2"></i>Gestionar catálogo</button><button onclick="leonV2OpenSection('historial')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-clock-rotate-left mr-2"></i>Ver historial</button></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black">Actividad reciente</h3><span class="v2-pill">Auditoría</span></div><div class="mt-4 space-y-3">${qs.slice(0,6).map(q=>`<div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl"><div><b class="text-sm">${esc(q.clientName)}</b><div class="text-[11px] text-slate-500">${esc(q.id)} · ${esc(q.origin||'Autogestionado')}</div></div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div>`).join('')||'<div class="text-sm text-slate-400">Sin actividad todavía.</div>'}</div></div>`;
+    document.getElementById('v2-main').innerHTML=`${leonV2FollowUpBannerHtml()}${leonV2PaymentReminderBannerHtml()}<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">${kpi('Oportunidades',money(total),qs.length+' propuestas activas','fa-sack-dollar')}${kpi('Propuestas',qs.length+hist.length,'Activas + historial','fa-file-signature')}${kpi('Clientes',new Set(qs.concat(hist).map(q=>q.clientEmail||q.clientName)).size,'Expedientes registrados','fa-users')}${kpi('Equipo',users().length,'Usuarios con acceso','fa-user-shield')}</div><div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">${kpi('Ticket Promedio',money(ticketProm),'Sobre propuestas aceptadas','fa-receipt')}${kpi('Tiempo de Cierre',tiempoCierreProm+' días',aceptadasH.length?'Promedio hasta aceptación':'Sin datos aún','fa-hourglass-half')}${kpi('Propuestas Vencidas',vencidas,'Más de 14 días activas','fa-triangle-exclamation')}${kpi('Sin Seguimiento',sinSeguimiento,'Clientes sin contacto en 7+ días','fa-user-clock')}</div><div class="grid xl:grid-cols-2 gap-6 mt-6"><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-simple text-brand-500"></i> Pipeline por Estado</h3><button onclick="leonV2OpenSection('reports')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-pipeline"></div></div><div class="v2-bar-card"><div class="flex items-center justify-between mb-6"><h3 class="font-black text-slate-900 text-sm flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-brand-500"></i> Catálogo por Categoría</h3><button onclick="leonV2OpenSection('catalog')" class="v2-tab">Ver más</button></div><div id="v2-dash-bars-cat"></div></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Mis tareas de seguimiento</h3><span class="v2-pill">Asignadas a ti</span></div><div id="v2-dash-my-tasks" class="mt-4 space-y-2"></div></div><div class="v2-card p-6 mt-6"><h3 class="font-black">Acciones rápidas</h3><div class="grid sm:grid-cols-4 gap-3 mt-4"><button onclick="leonV2OpenNewCallIntake()" class="p-4 rounded-xl bg-brand-50 text-brand-700 text-xs font-black text-left"><i class="fa-solid fa-phone-volume mr-2"></i>Registrar llamada</button><button onclick="openNewQuoteModal()" class="p-4 rounded-xl bg-blue-50 text-blue-700 text-xs font-black text-left"><i class="fa-solid fa-plus mr-2"></i>Nueva cotización</button><button onclick="leonV2OpenSection('catalog')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-box mr-2"></i>Gestionar catálogo</button><button onclick="leonV2OpenSection('historial')" class="p-4 rounded-xl bg-slate-50 text-slate-700 text-xs font-black text-left"><i class="fa-solid fa-clock-rotate-left mr-2"></i>Ver historial</button></div></div><div class="v2-card p-6 mt-6"><div class="flex justify-between items-center"><h3 class="font-black">Actividad reciente</h3><span class="v2-pill">Auditoría</span></div><div class="mt-4 space-y-3">${qs.slice(0,6).map(q=>`<div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl"><div><b class="text-sm">${esc(q.clientName)}</b><div class="text-[11px] text-slate-500">${esc(q.id)} · ${esc(q.origin||'Autogestionado')}</div></div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div>`).join('')||'<div class="text-sm text-slate-400">Sin actividad todavía.</div>'}</div></div>`;
     document.getElementById('v2-dash-bars-pipeline').innerHTML=v2Bars(pipelineBars);
     document.getElementById('v2-dash-bars-cat').innerHTML=v2Bars(catBars);
     animateV2Bars();
@@ -7835,6 +8009,7 @@
       </div>
     </div>
     <div class="v2-card p-5 mt-4"><h4 class="font-black text-sm mb-3"><i class="fa-solid fa-list-check text-brand-500 mr-2"></i>Tareas de seguimiento</h4><div id="v2-client-tasks-box"></div></div>
+    ${leonV2PaymentPlanCardHtml(c)}
     <div class="grid lg:grid-cols-[1fr_1fr] gap-6 mt-6">
       <div class="v2-card p-6"><div class="flex justify-between items-center"><h4 class="font-black">Propuestas vinculadas (${quotes.length})</h4><button onclick="leonV2Close('leon-v2-client-dossier');leonV2OpenSection('pipeline');openNewQuoteModal('${c.id}')" class="text-[11px] font-bold text-brand-600 hover:text-brand-800 uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Nueva propuesta</button></div><div class="mt-4 space-y-2 max-h-96 overflow-y-auto">${quotes.length?quotes.map(q=>`<div class="p-3 bg-slate-50 rounded-xl"><div class="flex justify-between items-center"><div><b class="text-sm">${esc(q.id)}</b><div class="text-[11px] text-slate-500">${esc(q.createdAt||'')}</div></div><div class="text-right"><div class="text-sm font-bold">${money(leonV2ComputeTotal(q).total)}</div><span class="v2-status bg-blue-50 text-blue-700">${esc(q.status)}</span></div></div><div class="flex gap-1 flex-wrap mt-2">${q.acceptance&&q.status!=='Aceptada'?`<button onclick="leonV2VendorConfirmSale('${q.id}')" class="v2-tab active" style="background:#059669;border-color:#059669">Confirmar venta</button>`:''}<button onclick="leonV2PrintProposalById('${q.id}')" class="v2-tab" title="Descargar/imprimir PDF"><i class="fa-solid fa-file-pdf"></i></button><button onclick="leonV2EmailProposal('${q.id}')" class="v2-tab" title="Enviar por correo"><i class="fa-solid fa-envelope"></i></button><button onclick="leonV2OpenPortal('${q.id}')" class="v2-tab">Portal</button><button onclick="leonV2OpenCreditAppModal(null,'${q.id}')" class="v2-tab" title="Nueva solicitud de crédito"><i class="fa-solid fa-file-invoice-dollar"></i></button>${leonV2Can('deleteQuote')?`<button onclick="leonV2DeleteQuoteFromDossier('${q.id}','${c.id}')" class="v2-tab" style="color:#dc2626" title="Eliminar propuesta"><i class="fa-solid fa-trash"></i></button>`:''}</div></div>`).join(''):'<div class="text-sm text-slate-400">Sin propuestas todavía.</div>'}</div></div>
       <div class="v2-card p-6"><div class="flex justify-between items-center"><h4 class="font-black">Solicitudes de crédito (${creditApps.length})</h4><button onclick="leonV2OpenCreditAppModal(null,null,'${c.id}')" class="text-[11px] font-bold text-brand-600 hover:text-brand-800 uppercase tracking-wider"><i class="fa-solid fa-plus mr-1"></i>Nueva</button></div><div class="mt-4 space-y-2 max-h-96 overflow-y-auto">${creditApps.length?creditApps.map(a=>`<div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100" onclick="leonV2OpenCreditAppModal('${a.id}')"><div><b class="text-sm">${esc(a.entity||'—')}</b><div class="text-[11px] text-slate-500">${esc(a.createdAt||'')} · ${money(Number((a.financiamiento&&a.financiamiento.monto)||0))}</div></div><div class="flex items-center gap-2"><span class="v2-status ${a.status==='Aprobada'?'bg-emerald-50 text-emerald-700':a.status==='Rechazada'?'bg-red-50 text-red-700':'bg-blue-50 text-blue-700'}">${esc(a.status)}</span><button onclick="event.stopPropagation();leonV2PrintCreditAppById('${a.id}')" class="text-slate-400 hover:text-brand-600" title="Descargar PDF"><i class="fa-solid fa-file-pdf"></i></button></div></div>`).join(''):'<div class="text-sm text-slate-400">Sin solicitudes de crédito todavía. Puede haber varias — una por cada entidad financiera intentada.</div>'}</div></div>
